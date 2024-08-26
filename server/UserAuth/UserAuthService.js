@@ -32,3 +32,16 @@ exports.login = async (credentials) => {
 
     return jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
 }
+
+exports.deleteUserAuth = async (userInfo) => {
+    try {
+        const user = await User.findOne({ where: { username: userInfo.username } });
+        if (!user) {
+            throw new Error("user doesn't exist");
+        }
+
+        await user.destroy();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
