@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 const session = require('express-session');
 const sequelize = require('./config/postgres');
 const app = express();
+const userAuthRoutes = require('./UserAuth/UserAuthRouter');
 
 dotenv.config();
 require('./config/mongodb');
@@ -19,6 +20,8 @@ app.use(session({
         maxAge: 24 * 60 * 60 * 1000
     }
 }));
+
+app.use('/userAuth', userAuthRoutes);
 
 
 sequelize.sync()
