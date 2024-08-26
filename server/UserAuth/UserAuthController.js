@@ -27,3 +27,28 @@ exports.logout = async (req, res) => {
         res.redirect('/login'); 
     });
 }
+
+exports.deleteUser = async (req, res) => {
+    try {
+        if (!req.session.token) {
+            return res.status(401).json({ error: 'Not authenticated' });
+        }
+
+        const decoded = jwt.verify(req.session.token, process.env.JWT_SECRET);
+        const userInfo = {
+            username: decoded.username
+        };
+
+        await userService.deleteUserAuth(userInfo);
+
+        req.session.destroy(err => {
+            if (err) {
+                return res.status(500).send('Failed to logout');
+            }
+            res.clearCookie('connect.sid'); 
+            return res.status(200).body({msg: 'account deleted successfully'}); 
+        });
+    } catch (error) {
+        return res.status(500).json({error: 'Internal Server Error'});
+    }
+}
