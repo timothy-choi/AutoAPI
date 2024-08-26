@@ -3,6 +3,11 @@ const sequelize = require('../config/database');
 
 
 const UserAuth = sequelize.define('UserAuth', {
+    id: {
+        type: DataTypes.UUID,
+        autoIncrement: true,
+        primaryKey: true,
+    },
     username: {
         type: DataTypes.STRING,
         allowNull: false,
