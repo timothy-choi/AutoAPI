@@ -7,6 +7,10 @@ const User = sequelize.define('User', {
         autoIncrement: true,
         primaryKey: true,
     },
+    userAuthId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+    },
     username: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -18,6 +22,11 @@ const User = sequelize.define('User', {
         unique: true,
     },
     createdAt: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+        allowNull: false
+    },
+    LastActiveAt: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
         allowNull: false
