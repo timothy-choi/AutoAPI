@@ -17,6 +17,14 @@ const UserAuth = sequelize.define('UserAuth', {
         type: DataTypes.STRING,
         allowNull: false,
     },
+    mfaEnabled: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    mfaSecret: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
 });
 
 module.exports = UserAuth;
