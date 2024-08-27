@@ -3,7 +3,7 @@ const userService = require('./UserAuthService');
 exports.register = async (req, res) => {
     try {
         await userService.register(req.body);
-        res.redirect("/login");
+        return res.status(201).json({msg: 'user registered'});
     } catch (error) {
         return res.status(400).json({ error: error.message });
     }
@@ -21,10 +21,10 @@ exports.login = async (req, res) => {
 exports.logout = async (req, res) => {
     req.session.destroy(err => {
         if (err) {
-            return res.status(500).send('Failed to logout');
+            return res.status(500).json({error: 'Failed to logout'});
         }
         res.clearCookie('connect.sid'); 
-        res.redirect('/login'); 
+        return res.status(201).json({msg: 'user logged out'}); 
     });
 }
 
@@ -43,10 +43,10 @@ exports.deleteUser = async (req, res) => {
 
         req.session.destroy(err => {
             if (err) {
-                return res.status(500).send('Failed to logout');
+                return res.status(500).json({error: 'Failed to logout'});
             }
             res.clearCookie('connect.sid'); 
-            return res.status(200).body({msg: 'account deleted successfully'}); 
+            return res.status(200).json({msg: 'account deleted successfully'}); 
         });
     } catch (error) {
         return res.status(500).json({error: 'Internal Server Error'});
