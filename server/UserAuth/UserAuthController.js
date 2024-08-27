@@ -11,8 +11,12 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
     try {
-        const token = await userService.login(req.body);
+        const {token, mfaEnabled} = await userService.login(req.body);
         req.session.token = token;
+
+        if (mfaEnabled) {
+            return res.status(200).json({token, mfaRequired: true});
+        }
         return res.status(200).json({ token });
     } catch (error) {
         return res.status(401).json({ error: error.message });

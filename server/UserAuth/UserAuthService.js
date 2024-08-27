@@ -34,10 +34,12 @@ exports.login = async (credentials) => {
     }
 
     if (user.mfaEnabled) {
-        return jwt.sign({ id: user.id, mfaVerified: false }, process.env.JWT_SECRET, { expiresIn: '10m' });
+        var token = jwt.sign({ id: user.id, mfaVerified: false }, process.env.JWT_SECRET, { expiresIn: '10m' })
+        return {token, mfaEnabled: user.mfaEnabled};
     }
 
-    return jwt.sign({ id: user.id, mfaVerified: true }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    var token = jwt.sign({ id: user.id, mfaVerified: true }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    return {token, mfaEnabled: user.mfaEnabled};
 }
 
 exports.deleteUserAuth = async (userInfo) => {
