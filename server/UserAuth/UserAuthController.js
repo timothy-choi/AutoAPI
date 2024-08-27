@@ -1,9 +1,24 @@
 const userService = require('./UserAuthService');
+const speakeasy = require('speakeasy');
+const qrcode = require('qrcode');
 
 exports.register = async (req, res) => {
     try {
-        await userService.register(req.body);
-        return res.status(201).json({msg: 'user registered'});
+        var user = await userService.register(req.body);
+
+        const otpAuthUrl = speakeasy.otpAuthUrl({
+            secret: user.mfaSecret,
+            label: `Auto API (${user.username})`,
+            issuer: 'Auto API'
+        });
+
+        qrcode.toDataURL(otpAuthUrl, (err, data_url) => {
+            if (err) {
+                throw new Error("Failed to generated QR code");
+            }
+
+            return res.status(201).json({msg: 'user registered', mfaSetupUrl: data_url});
+        });
     } catch (error) {
         return res.status(400).json({ error: error.message });
     }
