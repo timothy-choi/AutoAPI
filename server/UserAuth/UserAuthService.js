@@ -1,6 +1,7 @@
 const { User } = require('../models'); // Import User model from Sequelize setup
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const speakeasy = require('speakeasy');
 
 exports.register = async (userData) => {
     const username = userData.username;
@@ -20,7 +21,9 @@ exports.register = async (userData) => {
 
     const hashedPassword = await bcrypt.hash(userData.password, 10);
 
-    const user = await User.create({username: userData.username, password: hashedPassword });
+    const mfaSecretValue = speakeasy.generateSecret({ length: 20 });
+
+    const user = await User.create({username: userData.username, password: hashedPassword, mfaEnabled: false, mfaSecret: mfaSecretValue.base32 });
     return user;
 }
 
@@ -30,7 +33,11 @@ exports.login = async (credentials) => {
         throw new Error("Invalid Credentials");
     }
 
-    return jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    if (user.mfaEnabled) {
+        return jwt.sign({ id: user.id, mfaVerified: false }, process.env.JWT_SECRET, { expiresIn: '10m' });
+    }
+
+    return jwt.sign({ id: user.id, mfaVerified: true }, process.env.JWT_SECRET, { expiresIn: '24h' });
 }
 
 exports.deleteUserAuth = async (userInfo) => {
