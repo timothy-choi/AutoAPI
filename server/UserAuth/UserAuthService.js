@@ -23,7 +23,7 @@ exports.register = async (userData) => {
 
     const mfaSecretValue = speakeasy.generateSecret({ length: 20 });
 
-    const user = await User.create({username: userData.username, password: hashedPassword, mfaEnabled: false, mfaSecret: mfaSecretValue.base32 });
+    const user = await User.create({username: userData.username, password: hashedPassword, mfaEnabled: true, mfaSecret: mfaSecretValue.base32 });
     return user;
 }
 
