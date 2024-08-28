@@ -31,6 +31,14 @@ const User = sequelize.define('User', {
         defaultValue: DataTypes.NOW,
         allowNull: false
     },
+    GroupJoined: {
+        type: DataTypes.BOOLEAN,
+        allowNull: true
+    },
+    GroupId: {
+        type: DataTypes.UUID,
+        allowNull: true
+    }
 });
 
 module.exports = User;
