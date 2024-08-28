@@ -4,6 +4,7 @@ const session = require('express-session');
 const sequelize = require('./config/postgres');
 const app = express();
 const userAuthRoutes = require('./UserAuth/UserAuthRouter');
+const mfaRouter = require('./UserAuth/Mfa/MfaRouter');
 
 dotenv.config();
 require('./config/mongodb');
@@ -22,6 +23,8 @@ app.use(session({
 }));
 
 app.use('/userAuth', userAuthRoutes);
+
+app.use('/mfa', mfaRouter);
 
 
 sequelize.sync()
