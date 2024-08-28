@@ -1,6 +1,6 @@
 const speakeasy = require('speakeasy');
 const jwt = require('jsonwebtoken');
-const UserAuth = require('../UserAuth');
+const UserAuth = require('../UserAuth/UserAuth');
 
 exports.verifyMFA = async (req, res) => {
     try {

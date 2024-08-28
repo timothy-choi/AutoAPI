@@ -4,7 +4,7 @@ const session = require('express-session');
 const sequelize = require('./config/postgres');
 const app = express();
 const userAuthRoutes = require('./UserAuth/UserAuthRouter');
-const mfaRouter = require('./UserAuth/Mfa/MfaRouter');
+const mfaRouter = require('./Mfa/MfaRouter');
 
 dotenv.config();
 require('./config/mongodb');
