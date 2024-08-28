@@ -38,7 +38,20 @@ const User = sequelize.define('User', {
     GroupId: {
         type: DataTypes.UUID,
         allowNull: true
-    }
+    },
+    AllCollaborators: {
+        type: DataTypes.ARRAY(DataTypes.STRING),  
+        allowNull: false,
+        defaultValue: [],  
+    },
+    NotificationsOn: {
+        type: DataTypes.BOOLEAN,
+        allowNull: true
+    },
+    NotificationType: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
 });
 
 module.exports = User;
