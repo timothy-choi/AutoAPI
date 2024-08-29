@@ -51,10 +51,14 @@ const Group = sequelize.define('Group', {
         defaultValue: DataTypes.NOW,
         allowNull: false
     },
-    Tags: {
+    GroupTags: {
         type: DataTypes.ARRAY(DataTypes.STRING),
-        allowNull: false,
+        allowNull: true,
         default: [],
+    },
+    GroupDescription: {
+        type: DataTypes.STRING,
+        allowNull: true,
     },
     LastUpdatedAt: {
         type: DataTypes.DATE,

@@ -131,6 +131,15 @@ const User = sequelize.define('User', {
     UserStatsId: {
         type: DataTypes.UUID,
         allowNull: false,
+    },
+    UserDescription: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    UserTags: {
+        type: DataTypes.ARRAY(DataTypes.STRING),
+        allowNull: true,
+        defaultValue: [],
     }
 });
 
