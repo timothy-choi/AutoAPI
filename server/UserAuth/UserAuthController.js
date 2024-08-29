@@ -82,3 +82,13 @@ exports.replaceUsername = async (req, res) => {
         return res.status(500).json({error: 'Internal Server Error'});
     }
 }
+
+exports.replacePassword = async (req, res) => {
+    try {
+        await userService.replacePassword(req.user_id, req.password);
+
+        return res.status(200).json({msg: 'Successfully updated password' });
+    } catch (error) {
+        return res.status(500).json({error: 'Internal Server Error'});
+    }
+}

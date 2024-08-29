@@ -80,3 +80,17 @@ exports.replaceUsername = async (userId, updatedUsername) => {
         throw new Error("Error with deleting user");
     }
 }
+
+
+exports.replacePassword = async (userId, updatedPassword) => {
+    try {
+        const user = await UserAuth.findByPk(userId);
+
+        user.password = await bcrypt.hash(updatedPassword, 10);;
+
+        await user.save();
+
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
