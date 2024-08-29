@@ -1,4 +1,4 @@
-const { User } = require('../models'); // Import User model from Sequelize setup
+const { UserAuth } = require('../UserAuth/UserAuth'); // Import User model from Sequelize setup
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const speakeasy = require('speakeasy');
@@ -14,7 +14,7 @@ exports.register = async (userData) => {
         throw new Error('Username must be 3-20 characters long and contain only letters, numbers, and underscores.');
     }
 
-    const existingUser = await User.findOne({ where: { username } });
+    const existingUser = await UserAuth.findOne({ where: { username } });
     if (existingUser) {
         throw new Error('Username is already taken.');
     }
@@ -23,12 +23,12 @@ exports.register = async (userData) => {
 
     const mfaSecretValue = speakeasy.generateSecret({ length: 20 });
 
-    const user = await User.create({username: userData.username, password: hashedPassword, mfaEnabled: true, mfaSecret: mfaSecretValue.base32 });
+    const user = await UserAuth.create({username: userData.username, password: hashedPassword, mfaEnabled: true, mfaSecret: mfaSecretValue.base32 });
     return user;
 }
 
 exports.login = async (credentials) => {
-    const user = await User.findOne({ where: { username: credentials.username } });
+    const user = await UserAuth.findOne({ where: { username: credentials.username } });
     if (!user || !(await bcrypt.compare(credentials.password, user.password))) {
         throw new Error("Invalid Credentials");
     }
@@ -44,12 +44,28 @@ exports.login = async (credentials) => {
 
 exports.deleteUserAuth = async (userInfo) => {
     try {
-        const user = await User.findOne({ where: { username: userInfo.username } });
+        const user = await UserAuth.findOne({ where: { username: userInfo.username } });
         if (!user) {
             throw new Error("user doesn't exist");
         }
 
         await user.destroy();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.replaceUsername = async (updatedUsername) => {
+    try {
+        const user = await UserAuth.findOne({ where: { username: updatedUsername } });
+        if (user) {
+            throw new Error("username already taken");
+        }
+
+        user.username = updatedUsername;
+
+        await user.save();
+
     } catch (error) {
         throw new Error("Error with deleting user");
     }
