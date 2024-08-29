@@ -35,7 +35,12 @@ const User = sequelize.define('User', {
         type: DataTypes.BOOLEAN,
         allowNull: true
     },
-    GroupIds: {
+    PastGroupIds: {
+        type: DataTypes.ARRAY(DataTypes.UUID),
+        allowNull: true,
+        defaultValue: [],
+    },
+    CurrentGroupIds: {
         type: DataTypes.ARRAY(DataTypes.UUID),
         allowNull: true,
         defaultValue: [],
