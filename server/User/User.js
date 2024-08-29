@@ -59,29 +59,44 @@ const User = sequelize.define('User', {
         defaultValue: true,
     },
     ApiProjectsCreated: { //stores projects user either created by themselves or was the founder of the api in a group
-        type: DataTypes.ARRAY(DateTypes.JSONB),
+        type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: false,
         defaultValue: []
     },
     ApiProjectsContributed: { //stores projects that the user helped in a group project (not a leader) or recieved a request to helper another user with the their api (not a group)
-        type: DataTypes.ARRAY(DateTypes.JSONB),
+        type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: false,
         defaultValue: [],
     },
     CurrentApiProjects: { //any project the user is currently working on
-        type: DateTypes.ARRAY(DateTypes.JSONB),
+        type: DateTypes.ARRAY(DataTypes.JSONB),
         allowNull: false,
         defaultValue: [],
     },
     ApiProjectsWithAccess: { //projects that user is not either a group member or even helped but private projets that the user can use
-        type: DateTypes.ARRAY(DateTypes.JSONB),
+        type: DateTypes.ARRAY(DataTypes.JSONB),
         allowNull: false,
         defaultValue: [],
     },
     ApiProjectsViewHistory: {  //all projects that uwer has at least seen before in order of access
-        type: DateTypes.ARRAY(DateTypes.JSONB),
+        type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: false,
         defaultValue: [],
+    },
+    CloudProviderInfo: { //information for each cloud provider that user wants to use (ex. AWS, GCP, Azure, etc)
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: false,
+        defaultValue: [],
+    },
+    ActivityLog: { // log to track user's actions (like generated an API, added an endpoint, etc)
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: false,
+        defaultValue: [],
+    }, 
+    CloudProviderDefault: {  //default cloud provider that user an choose or determined based on usage
+        type: DataTypes.JSONB,
+        allowNull: false,
+        defaultValue: {},
     }
 });
 
