@@ -64,3 +64,22 @@ exports.enableMFA = async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 };
+
+exports.disableMFA = async (req, res) => {
+    try {
+        const userAuth = await UserAuth.findOne({ where: { username: req.username } });
+
+        if (!userAuth) {
+            return res.status(404).json({error: 'User not found'});
+        }
+
+        user.mfaEnabled = false;
+        user.mfaSecret = null;
+
+        await userAuth.save();
+
+        return res.status(201).json({msg: 'user mfa disabled'});
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
