@@ -35,9 +35,10 @@ const User = sequelize.define('User', {
         type: DataTypes.BOOLEAN,
         allowNull: true
     },
-    GroupId: {
-        type: DataTypes.UUID,
-        allowNull: true
+    GroupIds: {
+        type: DataTypes.ARRAY(DataTypes.UUID),
+        allowNull: true,
+        defaultValue: [],
     },
     AllCollaborators: {
         type: DataTypes.ARRAY(DataTypes.STRING),  
