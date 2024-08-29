@@ -57,6 +57,14 @@ exports.deleteUserAuth = async (userInfo) => {
 
 exports.replaceUsername = async (userId, updatedUsername) => {
     try {
+        if (updatedUsername.length < 5) {
+            throw new Error('Username too short');
+        }
+    
+        if (!/^[a-zA-Z0-9_]+$/.test(updatedUsername)) {
+            throw new Error('Username must be 3-20 characters long and contain only letters, numbers, and underscores.');
+        }
+
         const user = await UserAuth.findOne({ where: { username: updatedUsername } });
         if (user) {
             throw new Error("username already taken");
