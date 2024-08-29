@@ -72,3 +72,13 @@ exports.deleteUser = async (req, res) => {
         return res.status(500).json({error: 'Internal Server Error'});
     }
 }
+
+exports.replaceUsername = async (req, res) => {
+    try {
+        await userService.replaceUsername(req.username);
+
+        return res.status(200).json({username: req.username });
+    } catch (error) {
+        return res.status(500).json({error: 'Internal Server Error'});
+    }
+}
