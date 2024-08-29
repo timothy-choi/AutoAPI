@@ -55,12 +55,14 @@ exports.deleteUserAuth = async (userInfo) => {
     }
 }
 
-exports.replaceUsername = async (updatedUsername) => {
+exports.replaceUsername = async (userId, updatedUsername) => {
     try {
         const user = await UserAuth.findOne({ where: { username: updatedUsername } });
         if (user) {
             throw new Error("username already taken");
         }
+
+        user = await UserAuth.findByPk(userId);
 
         user.username = updatedUsername;
 

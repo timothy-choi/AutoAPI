@@ -75,7 +75,7 @@ exports.deleteUser = async (req, res) => {
 
 exports.replaceUsername = async (req, res) => {
     try {
-        await userService.replaceUsername(req.username);
+        await userService.replaceUsername(req.user_id, req.username);
 
         return res.status(200).json({username: req.username });
     } catch (error) {
