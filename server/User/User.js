@@ -122,6 +122,10 @@ const User = sequelize.define('User', {
         type: DataTypes.JSONB,
         allowNull: false,
         defaultValue: {},
+    },
+    UserStatsId: {
+        type: DataTypes.UUID,
+        allowNull: false,
     }
 });
 
