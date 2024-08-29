@@ -97,6 +97,21 @@ const User = sequelize.define('User', {
         type: DataTypes.JSONB,
         allowNull: false,
         defaultValue: {},
+    },
+    AllReceivedUserProjectInvitations: { //all invitations that the user has recieved from other users for help on their APIs
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: false,
+        defaultValue: [],
+    },
+    AllSentUserProjectInvitations: { //same ideas as last one, but this time user is sending invitations for help
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: false,
+        defaultValue: [],
+    },
+    AllSentGroupJoinRequests: { // all requests from user to join groups
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: false,
+        defaultValue: [],
     }
 });
 
