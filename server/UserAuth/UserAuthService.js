@@ -71,6 +71,10 @@ exports.replaceUsername = async (userId, updatedUsername) => {
         }
 
         user = await UserAuth.findByPk(userId);
+        
+        if (!user) {
+            throw new Error("User not found");
+        }
 
         user.username = updatedUsername;
 
@@ -85,6 +89,10 @@ exports.replaceUsername = async (userId, updatedUsername) => {
 exports.replacePassword = async (userId, updatedPassword) => {
     try {
         const user = await UserAuth.findByPk(userId);
+
+        if (!user) {
+            throw new Error("User not found");
+        }
 
         user.password = await bcrypt.hash(updatedPassword, 10);;
 
