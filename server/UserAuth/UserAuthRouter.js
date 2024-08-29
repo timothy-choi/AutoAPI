@@ -10,4 +10,8 @@ router.post('/logout', UserAuthController.logout);
 
 router.delete('/deleteUserAuth', UserController.deleteUser);
 
+router.put('/editUsername', UserAuthController.replaceUsername);
+
+router.put('/editPassword', UserAuthController.replacePassword);
+
 module.exports = router;
