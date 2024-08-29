@@ -8,21 +8,21 @@ const Group = sequelize.define('Group', {
         primaryKey: true,
     },
     GroupName: {
-        type: DateTypes.STRING,
+        type: DataTypes.STRING,
         allowNull: false,
         unique: true,
     },
     GroupUsers: {
-        type: DateTypes.JSONB,
+        type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: false,
     }, 
     CanJoin: {
-        type: DateTypes.BOOLEAN,
+        type: DataTypes.BOOLEAN,
         allowNull: false,
         default: true,
     },
     GroupProject: {
-        type: DateTypes.JSONB,
+        type: DataTypes.JSONB,
         allowNull: false,
         defaultValue: {},
     },

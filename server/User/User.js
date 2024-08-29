@@ -41,7 +41,7 @@ const User = sequelize.define('User', {
         defaultValue: [],
     },
     AllCollaborators: {
-        type: DataTypes.ARRAY(DataTypes.STRING),  
+        type: DataTypes.ARRAY(DataTypes.JSONB),  
         allowNull: false,
         defaultValue: [],  
     },
