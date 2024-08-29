@@ -57,7 +57,17 @@ const User = sequelize.define('User', {
         type: DataTypes.BOOLEAN,  
         allowNull: false,
         defaultValue: true,
-    }
+    },
+    ApiProjectsCreated: {
+        type: DataTypes.ARRAY(DateTypes.JSONB),
+        allowNull: false,
+        defaultValue: []
+    },
+    CurrentApiProjects: {
+        type: DateTypes.ARRAY(DateTypes.JSONB),
+        allowNull: false,
+        defaultValue: [],
+    },
 });
 
 module.exports = User;
