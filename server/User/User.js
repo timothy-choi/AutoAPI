@@ -63,6 +63,11 @@ const User = sequelize.define('User', {
         allowNull: false,
         defaultValue: []
     },
+    ApiProjectsContributed: {
+        type: DataTypes.ARRAY(DateTypes.JSONB),
+        allowNull: false,
+        defaultValue: [],
+    },
     CurrentApiProjects: {
         type: DateTypes.ARRAY(DateTypes.JSONB),
         allowNull: false,

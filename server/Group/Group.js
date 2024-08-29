@@ -26,6 +26,11 @@ const Group = sequelize.define('Group', {
         allowNull: false,
         defaultValue: {},
     },
+    PrivateMode: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        default: false,
+    },
 });
 
 module.exports = Group;
