@@ -58,21 +58,31 @@ const User = sequelize.define('User', {
         allowNull: false,
         defaultValue: true,
     },
-    ApiProjectsCreated: {
+    ApiProjectsCreated: { //stores projects user either created by themselves or was the founder of the api in a group
         type: DataTypes.ARRAY(DateTypes.JSONB),
         allowNull: false,
         defaultValue: []
     },
-    ApiProjectsContributed: {
+    ApiProjectsContributed: { //stores projects that the user helped in a group project (not a leader) or recieved a request to helper another user with the their api (not a group)
         type: DataTypes.ARRAY(DateTypes.JSONB),
         allowNull: false,
         defaultValue: [],
     },
-    CurrentApiProjects: {
+    CurrentApiProjects: { //any project the user is currently working on
         type: DateTypes.ARRAY(DateTypes.JSONB),
         allowNull: false,
         defaultValue: [],
     },
+    ApiProjectsWithAccess: { //projects that user is not either a group member or even helped but private projets that the user can use
+        type: DateTypes.ARRAY(DateTypes.JSONB),
+        allowNull: false,
+        defaultValue: [],
+    },
+    ApiProjectsViewHistory: {  //all projects that uwer has at least seen before in order of access
+        type: DateTypes.ARRAY(DateTypes.JSONB),
+        allowNull: false,
+        defaultValue: [],
+    }
 });
 
 module.exports = User;
