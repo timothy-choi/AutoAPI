@@ -31,6 +31,16 @@ const Group = sequelize.define('Group', {
         allowNull: false,
         default: false,
     },
+    UserJoinRequests: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: false,
+        default: [],
+    },
+    UserViewRequests: { //only if group is private
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: false,
+        default: [],
+    },
 });
 
 module.exports = Group;

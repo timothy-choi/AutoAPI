@@ -112,6 +112,11 @@ const User = sequelize.define('User', {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: false,
         defaultValue: [],
+    },
+    AllUserProjectViewRequests: { //list of all user request for access to user's private project(s)
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: false,
+        defaultValue: [],
     }
 });
 
