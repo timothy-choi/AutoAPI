@@ -117,6 +117,11 @@ const User = sequelize.define('User', {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: false,
         defaultValue: [],
+    },
+    UserGithubInfo: {  //user's github info
+        type: DataTypes.JSONB,
+        allowNull: false,
+        defaultValue: {},
     }
 });
 

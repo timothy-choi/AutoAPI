@@ -41,6 +41,11 @@ const Group = sequelize.define('Group', {
         allowNull: false,
         default: [],
     },
+    GroupActivityLog: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: false,
+        default: [],
+    }
 });
 
 module.exports = Group;
