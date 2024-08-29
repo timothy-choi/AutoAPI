@@ -51,6 +51,16 @@ const Group = sequelize.define('Group', {
         defaultValue: DataTypes.NOW,
         allowNull: false
     },
+    Tags: {
+        type: DataTypes.ARRAY(DataTypes.STRING),
+        allowNull: false,
+        default: [],
+    },
+    LastUpdatedAt: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+        allowNull: false
+    }
 });
 
 module.exports = Group;
