@@ -8,6 +8,10 @@ exports.verifyMFA = async (req, res) => {
         const { token } = req.body;
         const user = await UserAuth.findOne({ where: { id: req.user.id } });
 
+        if (!user) {
+            return res.status(404).json({error: 'User not found'});
+        }
+
         const verified = speakeasy.totp.verify({
             secret: user.mfaSecret,
             encoding: 'base32',
