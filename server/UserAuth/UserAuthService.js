@@ -102,3 +102,9 @@ exports.replacePassword = async (userId, updatedPassword) => {
         throw new Error("Error with deleting user");
     }
 }
+
+exports.getUserAuth = async (userId) => {
+    const userAuthInfo = await UserAuth.findByPk(userId);
+
+    return userAuthInfo;
+}
