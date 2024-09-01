@@ -92,3 +92,13 @@ exports.replacePassword = async (req, res) => {
         return res.status(500).json({error: 'Internal Server Error'});
     }
 }
+
+exports.getUserAuth = async (req, res) => {
+    try {
+        var userAuthInfo = await userService.getUserAuth(req.user_id);
+
+        return res.status(200).json({userAuth: userAuthInfo});
+    } catch (error) {
+        return res.status(500).json({error: 'Internal Server Error'});
+    }
+}
