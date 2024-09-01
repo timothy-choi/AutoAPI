@@ -10,6 +10,16 @@ const UserStats = sequelize.define('UserStats', {
     UserId: {
         type: DataTypes.UUID,
         allowNull: false,
+    },
+    TotalNumberOfApisCreated: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+    },
+    TotalNumberOfEndpointsCreated: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
     }
 });
 
