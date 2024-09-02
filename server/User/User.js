@@ -140,7 +140,11 @@ const User = sequelize.define('User', {
         type: DataTypes.ARRAY(DataTypes.STRING),
         allowNull: true,
         defaultValue: [],
-    }
+    },
+    NotificationAccountId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+    },
 });
 
 module.exports = User;
