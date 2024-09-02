@@ -20,7 +20,17 @@ const UserStats = sequelize.define('UserStats', {
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 0,
-    }
+    },
+    TotalNumberOfApisViewed: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+    },
+    TotalNumberOfApisExecuted: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+    },
 });
 
 module.exports = UserStats;
