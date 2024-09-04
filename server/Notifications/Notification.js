@@ -15,6 +15,11 @@ const Notification = sequelize.define('Notification', {
         type: DataTypes.STRING,
         allowNull: false,
     },
+    NotificationSent: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: Date.now,
+    },
 });
 
 module.exports = Notification;
