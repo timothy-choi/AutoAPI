@@ -15,6 +15,11 @@ const NotificationAccount = sequelize.define('NotificationAccount', {
         type: DataTypes.BOOLEAN,
         allowNull: false,
     },
+    AllNotifications: {
+        type: DataTypes.ARRAY(DataTypes.UUID),
+        allowNull: false,
+        defaultValue: [],
+    }
 });
 
 module.exports = NotificationAccount;
