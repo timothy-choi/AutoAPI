@@ -20,6 +20,18 @@ const Notification = sequelize.define('Notification', {
         allowNull: false,
         defaultValue: Date.now,
     },
-});
+    NotificationEmailId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+    },
+    NotificationTopic: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    NotificationMessage: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    }
+}, );
 
 module.exports = Notification;
