@@ -1,7 +1,7 @@
 const NotificationAccount = require('./NotificationAccount');
 
-exports.GetNotificationAccount = async (notificationId) => {
-    var notificationAccount = NotificationAccount.findByPk(notificationId);
+exports.GetNotificationAccount = async (notificationAccountId) => {
+    var notificationAccount = NotificationAccount.findByPk(notificationAccountId);
 
     return notificationAccount;
 };
@@ -11,3 +11,22 @@ exports.GetNotificationAccountByUserId = async (userId) => {
 
     return notificationAccount;
 };
+
+exports.CreateNotificationAccount = async (userId) => {
+    var notificationAccount = await NotificationAccount.create({UserId: userId, NotificationsOn: true});
+
+    return notificationAccount.Id;
+};
+
+exports.DeleteNotificationAccount = async (notificationAccountId) => {
+    try {
+        var notificationAccount = NotificationAccount.findByPk(notificationAccountId);
+        if (notificationAccount == null) {
+            throw new Error("No Account Found");
+        }
+
+        await notificationAccount.destroy();
+    } catch (error) {
+        throw new Error(`New Error: ${error}`);
+    }
+}
