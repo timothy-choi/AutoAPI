@@ -18,6 +18,22 @@ exports.CreateNotificationAccount = async (userId) => {
     return notificationAccount.Id;
 };
 
+exports.UpdateNotificationsOn = async (notificationAccountId) => {
+    try {
+        var notificationAccount = NotificationAccount.findByPk(notificationAccountId);
+
+        if (notificationAccount == null) {
+            throw new Error("account not found");
+        }
+
+        notificationAccount.NotificationsOn = notificationAccount.NotificationsOn ? false : true;
+
+        await notificationAccount.save();
+    } catch (error) {
+        throw new Error(`New Error: ${error}`);
+    }
+};
+
 exports.DeleteNotificationAccount = async (notificationAccountId) => {
     try {
         var notificationAccount = NotificationAccount.findByPk(notificationAccountId);
