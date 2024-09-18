@@ -14,4 +14,6 @@ router.put('/editUsername', UserAuthController.replaceUsername);
 
 router.put('/editPassword', UserAuthController.replacePassword);
 
+router.put('/:user_id', UserAuthController.getUserAuth);
+
 module.exports = router;
