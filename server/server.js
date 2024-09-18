@@ -5,6 +5,7 @@ const sequelize = require('./config/postgres');
 const app = express();
 const userAuthRoutes = require('./UserAuth/UserAuthRouter');
 const mfaRouter = require('./Mfa/MfaRouter');
+const notificationAccountRouter = require('./Notifications/NotificationAccountRouter');
 
 dotenv.config();
 require('./config/mongodb');
@@ -26,6 +27,7 @@ app.use('/userAuth', userAuthRoutes);
 
 app.use('/mfa', mfaRouter);
 
+app.use('/notificationAccount', notificationAccountRouter);
 
 sequelize.sync()
     .then(() => {
