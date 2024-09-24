@@ -6,6 +6,7 @@ const app = express();
 const userAuthRoutes = require('./UserAuth/UserAuthRouter');
 const mfaRouter = require('./Mfa/MfaRouter');
 const notificationAccountRouter = require('./Notifications/NotificationAccountRouter');
+const searchRouter = require('./Search/SearchRouter');
 
 dotenv.config();
 require('./config/mongodb');
@@ -28,6 +29,8 @@ app.use('/userAuth', userAuthRoutes);
 app.use('/mfa', mfaRouter);
 
 app.use('/notificationAccount', notificationAccountRouter);
+
+app.use('/search', searchRouter);
 
 sequelize.sync()
     .then(() => {
