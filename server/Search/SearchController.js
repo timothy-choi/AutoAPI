@@ -1,12 +1,38 @@
 const { equal } = require('joi');
 const client = require('./SearchClient');
-
+const groupSearchSchema = require('./GroupSearchModel');
+const userSearchSchema = require('./UserSearchModel');
+const projectSearchSchema = require('./ProjectSearchModel');
 
 exports.IndexDocument = async (req, res) => {
     try {
+        var bodyValue = null;
+        if (req.index.equals('ApiGroups')) {
+            const { error, value } = groupSearchSchema.validate(req.body);
+            bodyValue = value;
+
+            if (error) {
+                return res.status(500).json({ error: error.details[0].message });
+            }
+        } else if (req.index.equals('ApiUsers')) {
+            const { error, value } = userSearchSchema.validate(req.body);
+            bodyValue = value;
+
+            if (error) {
+                return res.status(500).json({ error: error.details[0].message });
+            }
+        } else {
+            const { error, value } = projectSearchSchema.validate(req.body);
+            bodyValue = value;
+
+            if (error) {
+                return res.status(500).json({ error: error.details[0].message });
+            }
+        }
+
         const response = await client.index({
             index: req.index,
-            body: req.body
+            body: bodyValue
         });
 
         if (response.statusCode != 201) {
