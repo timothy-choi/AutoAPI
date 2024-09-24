@@ -13,22 +13,22 @@ const UserStats = sequelize.define('UserStats', {
     },
     TotalNumberOfApisCreated: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
         defaultValue: 0,
     },
     TotalNumberOfEndpointsCreated: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
         defaultValue: 0,
     },
     TotalNumberOfApisViewed: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
         defaultValue: 0,
     },
     TotalNumberOfApisExecuted: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
         defaultValue: 0,
     },
 });

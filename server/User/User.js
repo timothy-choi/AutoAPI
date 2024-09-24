@@ -29,7 +29,7 @@ const User = sequelize.define('User', {
     LastActiveAt: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
-        allowNull: false
+        allowNull: true
     },
     GroupJoined: {
         type: DataTypes.BOOLEAN,
@@ -47,7 +47,7 @@ const User = sequelize.define('User', {
     },
     AllCollaborators: {
         type: DataTypes.ARRAY(DataTypes.JSONB),  
-        allowNull: false,
+        allowNull: true,
         defaultValue: [],  
     },
     NotificationsOn: {
@@ -60,67 +60,67 @@ const User = sequelize.define('User', {
     },
     IsAvailable: {
         type: DataTypes.BOOLEAN,  
-        allowNull: false,
+        allowNull: true,
         defaultValue: true,
     },
     ApiProjectsCreated: { //stores projects user either created by themselves or was the founder of the api in a group
         type: DataTypes.ARRAY(DataTypes.JSONB),
-        allowNull: false,
+        allowNull: true,
         defaultValue: []
     },
     ApiProjectsContributed: { //stores projects that the user helped in a group project (not a leader) or recieved a request to helper another user with the their api (not a group)
         type: DataTypes.ARRAY(DataTypes.JSONB),
-        allowNull: false,
+        allowNull: true,
         defaultValue: [],
     },
     CurrentApiProjects: { //any project the user is currently working on
         type: DateTypes.ARRAY(DataTypes.JSONB),
-        allowNull: false,
+        allowNull: true,
         defaultValue: [],
     },
     ApiProjectsWithAccess: { //projects that user is not either a group member or even helped but private projets that the user can use
         type: DateTypes.ARRAY(DataTypes.JSONB),
-        allowNull: false,
+        allowNull: true,
         defaultValue: [],
     },
     ApiProjectsViewHistory: {  //all projects that uwer has at least seen before in order of access
         type: DataTypes.ARRAY(DataTypes.JSONB),
-        allowNull: false,
+        allowNull: true,
         defaultValue: [],
     },
     CloudProviderInfo: { //information for each cloud provider that user wants to use (ex. AWS, GCP, Azure, etc)
         type: DataTypes.ARRAY(DataTypes.JSONB),
-        allowNull: false,
+        allowNull: true,
         defaultValue: [],
     },
     ActivityLog: { // log to track user's actions (like generated an API, added an endpoint, etc)
         type: DataTypes.ARRAY(DataTypes.JSONB),
-        allowNull: false,
+        allowNull: true,
         defaultValue: [],
     }, 
     CloudProviderDefault: {  //default cloud provider that user an choose or determined based on usage
         type: DataTypes.JSONB,
-        allowNull: false,
+        allowNull: true,
         defaultValue: {},
     },
     AllReceivedUserProjectInvitations: { //all invitations that the user has recieved from other users for help on their APIs
         type: DataTypes.ARRAY(DataTypes.JSONB),
-        allowNull: false,
+        allowNull: true,
         defaultValue: [],
     },
     AllSentUserProjectInvitations: { //same ideas as last one, but this time user is sending invitations for help
         type: DataTypes.ARRAY(DataTypes.JSONB),
-        allowNull: false,
+        allowNull: true,
         defaultValue: [],
     },
     AllSentGroupJoinRequests: { // all requests from user to join groups
         type: DataTypes.ARRAY(DataTypes.JSONB),
-        allowNull: false,
+        allowNull: true,
         defaultValue: [],
     },
     AllUserProjectViewRequests: { //list of all user request for access to user's private project(s)
         type: DataTypes.ARRAY(DataTypes.JSONB),
-        allowNull: false,
+        allowNull: true,
         defaultValue: [],
     },
     UserGithubInfo: {  //user's github info
@@ -130,11 +130,11 @@ const User = sequelize.define('User', {
     },
     UserStatsId: {
         type: DataTypes.UUID,
-        allowNull: false,
+        allowNull: true,
     },
     UserDescription: {
         type: DataTypes.STRING,
-        allowNull: true,
+        allowNull: false,
     },
     UserTags: {
         type: DataTypes.ARRAY(DataTypes.STRING),
@@ -143,7 +143,7 @@ const User = sequelize.define('User', {
     },
     NotificationAccountId: {
         type: DataTypes.UUID,
-        allowNull: false,
+        allowNull: true,
     },
 });
 
