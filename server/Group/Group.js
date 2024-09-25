@@ -23,7 +23,7 @@ const Group = sequelize.define('Group', {
     },
     GroupProject: {
         type: DataTypes.JSONB,
-        allowNull: false,
+        allowNull: true,
         defaultValue: {},
     },
     PrivateMode: {
@@ -33,17 +33,17 @@ const Group = sequelize.define('Group', {
     },
     UserJoinRequests: {
         type: DataTypes.ARRAY(DataTypes.JSONB),
-        allowNull: false,
+        allowNull: true,
         default: [],
     },
     UserViewRequests: { //only if group is private
         type: DataTypes.ARRAY(DataTypes.JSONB),
-        allowNull: false,
+        allowNull: true,
         default: [],
     },
     GroupActivityLog: {
         type: DataTypes.ARRAY(DataTypes.JSONB),
-        allowNull: false,
+        allowNull: true,
         default: [],
     },
     CreatedAt: {
@@ -58,12 +58,12 @@ const Group = sequelize.define('Group', {
     },
     GroupDescription: {
         type: DataTypes.STRING,
-        allowNull: true,
+        allowNull: false,
     },
     LastUpdatedAt: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
-        allowNull: false
+        allowNull: true
     }
 });
 
