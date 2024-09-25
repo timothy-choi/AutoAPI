@@ -64,6 +64,86 @@ exports.SetPrivateMode = async (groupId) => {
     }
 }
 
+exports.AddUserJoinRequests = async (groupId, joinRequest) => {
+    try {
+        var groupInfo = await Group.findByPk(groupId);
+
+        if (!groupInfo) {
+            throw new Error('group does not exist');
+        } 
+
+        groupInfo.UserJoinRequests.push(joinRequest);
+
+        await groupInfo.save();
+    } catch (error) {
+        throw new Error('Could not modify group');
+    }
+}
+
+exports.RemoveUserJoinRequests = async (groupId, joinRequest) => {
+    try {
+        var groupInfo = await Group.findByPk(groupId);
+
+        if (!groupInfo) {
+            throw new Error('group does not exist');
+        } 
+
+        groupInfo.UserJoinRequests.remove(joinRequest);
+
+        await groupInfo.save();
+    } catch (error) {
+        throw new Error('Could not modify group');
+    }
+}
+
+exports.AddUserViewRequests = async (groupId, viewRequest) => {
+    try {
+        var groupInfo = await Group.findByPk(groupId);
+
+        if (!groupInfo) {
+            throw new Error('group does not exist');
+        } 
+
+        groupInfo.UserViewRequests.push(viewRequest);
+
+        await groupInfo.save();
+    } catch (error) {
+        throw new Error('Could not modify group');
+    }
+}
+
+exports.RemoveUserViewRequests = async (groupId, viewRequest) => {
+    try {
+        var groupInfo = await Group.findByPk(groupId);
+
+        if (!groupInfo) {
+            throw new Error('group does not exist');
+        } 
+
+        groupInfo.UserViewRequests.remove(viewRequest);
+
+        await groupInfo.save();
+    } catch (error) {
+        throw new Error('Could not modify group');
+    }
+}
+
+exports.AddGroupActivityLog = async (groupId, groupLogActivity) => {
+    try {
+        var groupInfo = await Group.findByPk(groupId);
+
+        if (!groupInfo) {
+            throw new Error('group does not exist');
+        } 
+
+        groupInfo.GroupActivityLog.push(groupLogActivity);
+
+        await groupInfo.save();
+    } catch (error) {
+        throw new Error('Could not modify group');
+    }
+} 
+
 exports.DeleteGroup = async (groupId) => {
     try {
         var groupInfo = await Group.findByPk(groupId);
