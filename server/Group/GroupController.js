@@ -30,6 +30,76 @@ exports.CreateGroup = async (req, res) => {
     }
 }
 
+exports.AddGroupUsers = async (req, res) => {
+    try {
+        await GroupService.AddGroupUsers(req.groupId, req.body);
+        
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({error: error.message});
+    }
+}
+
+exports.RemoveGroupUsers = async (req, res) => {
+    try {
+        await GroupService.RemoveGroupUsers(req.groupId, req.body);
+        
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({error: error.message});
+    }
+}
+
+exports.SetCanJoin = async (req, res) => {
+    try {
+        await GroupService.SetCanJoin(req.groupId);
+        
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({error: error.message});
+    }
+}
+
+exports.SetProject = async (req, res) => {
+    try {
+        await GroupService.SetProject(req.groupId, req.body);
+        
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({error: error.message});
+    }
+}
+
+exports.SetPrivateMode = async (req, res) => {
+    try {
+        await GroupService.SetPrivateMode(req.groupId);
+        
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({error: error.message});
+    }
+}
+
+exports.AddUserJoinRequests = async (req, res) => {
+    try {
+        await GroupService.AddUserJoinRequests(req.groupId, req.body);
+        
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({error: error.message});
+    }
+}
+
+exports.RemoveUserJoinRequests = async (req, res) => {
+    try {
+        await GroupService.RemoveUserJoinRequests(req.groupId, req.body);
+        
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({error: error.message});
+    }
+}
+
 exports.DeleteGroup = async (req, res) => {
     try {
         await GroupService.DeleteGroup(req.groupId);
