@@ -28,6 +28,42 @@ exports.CreateGroup = async (groupBody) => {
     }
 }
 
+exports.AddGroupUsers = async (groupId, groupUser) => {
+    try {
+        var groupInfo = await Group.findByPk(groupId);
+
+        if (!groupInfo) {
+            throw new Error('group does not exist');
+        } 
+
+        groupInfo.GroupUsers.push(groupUser);
+
+        groupInfo.LastUpdatedAt = Date.now();
+
+        await groupInfo.save();
+    } catch (error) {
+        throw new Error('Could not modify group');
+    }
+}
+
+exports.RemoveGroupUsers = async (groupId, groupUser) => {
+    try {
+        var groupInfo = await Group.findByPk(groupId);
+
+        if (!groupInfo) {
+            throw new Error('group does not exist');
+        } 
+
+        groupInfo.GroupUsers.remove(groupUser);
+
+        groupInfo.LastUpdatedAt = Date.now();
+
+        await groupInfo.save();
+    } catch (error) {
+        throw new Error('Could not modify group');
+    }
+}
+
 exports.SetProject = async (groupId, project) => {
     try {
         var groupInfo = await Group.findByPk(groupId);
