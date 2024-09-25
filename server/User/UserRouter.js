@@ -18,4 +18,17 @@ router.put("/groupJoined/:userId", UserController.SetJoinedGroup);
 
 router.put("/pastGroupId/add/:userId/:groupId", UserController.AddPastGroupId);
 
+router.put("/currentGroupId/add/:userId/:groupId", UserController.AddCurrentGroupId);
+
+router.put("/currentGroupId/remove/:userId/:groupId", UserController.RemoveCurrentGroupId);
+
+router.put("/allCollaborators/add/:userId", UserController.AddAllCollaborators);
+
+router.put("/allCollaborators/remove/:userId", UserController.RemoveAllCollaborators);
+
+router.put("/notificationsOn/:userId", UserController.SetNotificationsOn);
+
+router.put("/notificationType/:userId/:notificationType", UserController.SetNotificationType);
+
+router.put("/isAvailable/:userId", UserController.SetIsAvailable);
 module.exports = router;

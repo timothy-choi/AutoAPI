@@ -77,6 +77,76 @@ exports.AddPastGroupId = async (req, res) => {
     }
 }
 
+exports.AddCurrentGroupId = async (req, res) => {
+    try {
+        await UserService.AddCurrentGroupId(req.userId, req.groupId);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveCurrentGroupId = async (req, res) => {
+    try {
+        await UserService.RemoveCurrentGroupId(req.userId, req.groupId);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddAllCollaborators = async (req, res) => {
+    try {
+        await UserService.AddAllCollaborators(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveAllCollaborators = async (req, res) => {
+    try {
+        await UserService.RemoveAllCollaborators(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.SetNotificationsOn = async (req, res) => {
+    try {
+        await UserService.SetNotificationsOn(req.userId);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+} 
+
+exports.SetNotificationType = async (req, res) => {
+    try {
+        await UserService.SetNotificationType(req.userId, req.notificationType);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+} 
+
+exports.SetIsAvailable = async (req, res) => {
+    try {
+        await UserService.SetIsAvailable(req.userId);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+} 
+
 exports.DeleteUser = async (req, res) => {
     try {
         var user = await UserService.GetUserById(req.userId);
