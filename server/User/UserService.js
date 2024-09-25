@@ -151,6 +151,24 @@ exports.AddAllCollaborators = async (userId, collaborators) => {
     }
 }
 
+exports.RemoveAllCollaborators = async (userId, collaborators) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.AllCollaborators.remove(collaborators);
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+} 
+
 exports.SetNotificationsOn = async (userId) => {
     try {
         var userInfo = await User.findByPk(userId);
