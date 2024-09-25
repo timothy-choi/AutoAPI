@@ -637,6 +637,114 @@ exports.RemoveAllUserProjectViewRequests = async (userId, viewRequest) => {
     }
 }
 
+exports.SetUserGithubInfo = async (userId, githubInfo) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.UserGithubInfo = githubInfo;
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.SetUserStatsId = async (userId, statsId) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.UserStatsId = statsId;
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.SetUserDescription = async (userId, userDescription) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.UserDescription = userDescription;
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.AddUserTag = async (userId, userTag) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.UserTags.push(userTag);
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.RemoveUserTag = async (userId, userTag) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.UserTags.remove(userTag);
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.SetNotificationAccountId = async (userId, notificationAccountId) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.NotificationAccountId = notificationAccountId;
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
 exports.DeleteUser = async (userId) => {
     try {
         var userInfo = await User.findByPk(userId);
