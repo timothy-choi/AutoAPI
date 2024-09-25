@@ -31,4 +31,17 @@ router.put("/notificationsOn/:userId", UserController.SetNotificationsOn);
 router.put("/notificationType/:userId/:notificationType", UserController.SetNotificationType);
 
 router.put("/isAvailable/:userId", UserController.SetIsAvailable);
+
+router.put("/apiProjectsCreated/add/:userId", UserController.AddApiProjectsCreated);
+
+router.put("/apiProjectsCreated/remove/:userId", UserController.RemoveApiProjectsCreated);
+
+router.put("/apiProjectsContributed/add/:userId", UserController.AddApiProjectsContributed);
+
+router.put("/apiProjectsContributed/remove/:userId", UserController.RemoveApiProjectsContributed);
+
+router.put("/currentApiProjects/add/:userId", UserController.AddCurrentApiProjects);
+
+router.put("/currentApiProjects/remove/:userId", UserController.RemoveCurrentApiProjects);
+
 module.exports = router;

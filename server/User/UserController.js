@@ -147,6 +147,66 @@ exports.SetIsAvailable = async (req, res) => {
     }
 } 
 
+exports.AddApiProjectsCreated = async (req, res) => {
+    try {
+        await UserService.AddApiProjectsCreated(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveApiProjectsCreated = async (req, res) => {
+    try {
+        await UserService.RemoveApiProjectsCreated(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddApiProjectsContributed = async (req, res) => {
+    try {
+        await UserService.AddApiProjectsContributed(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveApiProjectsContributed = async (req, res) => {
+    try {
+        await UserService.RemoveApiProjectsContributed(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddCurrentApiProjects = async (req, res) => {
+    try {
+        await UserService.AddCurrentApiProjects(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveCurrentApiProjects = async (req, res) => {
+    try {
+        await UserService.RemoveCurrentApiProjects(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteUser = async (req, res) => {
     try {
         var user = await UserService.GetUserById(req.userId);
