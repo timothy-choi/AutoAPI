@@ -367,6 +367,66 @@ exports.RemoveAllUserProjectViewRequests = async (req, res) => {
     }
 }
 
+exports.SetUserGithubInfo = async (req, res) => {
+    try {
+        await UserService.SetUserGithubInfo(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.SetUserStatsId = async (req, res) => {
+    try {
+        await UserService.SetUserStatsId(req.userId, req.statsId);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.SetUserDescription = async (req, res) => {
+    try {
+        await UserService.SetUserDescription(req.userId, req.body.userDescription);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddUserTag = async (req, res) => {
+    try {
+        await UserService.AddUserTag(req.userId, req.userTag);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveUserTag = async (req, res) => {
+    try {
+        await UserService.RemoveUserTag(req.userId, req.userTag);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.SetNotificationAccountId = async (req, res) => {
+    try {
+        await UserService.SetUserDescription(req.userId, req.notificationAccountId);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteUser = async (req, res) => {
     try {
         var user = await UserService.GetUserById(req.userId);

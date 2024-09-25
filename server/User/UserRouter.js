@@ -76,4 +76,16 @@ router.put("/allUserProjectViewRequests/add/:userId", UserController.AddAllUserP
 
 router.put("/allUserProjectViewRequests/remove/:userId", UserController.RemoveAllUserProjectViewRequests);
 
+router.put("/userGithubInfo/:userId", UserController.SetUserGithubInfo);
+
+router.put("/userStatsId/:userId/:statsId", UserController.SetUserStatsId);
+
+router.put("/userDescription/:userId", UserController.SetUserDescription);
+
+router.put("/UserTag/add/:userId/:userTag", UserController.AddUserTag);
+
+router.put("/UserTag/remove/:userId/:userTag", UserController.RemoveUserTag);
+
+router.put("/notificationAccountId/:userId/:notificationAccountId", UserController.SetNotificationAccountId);
+
 module.exports = router;
