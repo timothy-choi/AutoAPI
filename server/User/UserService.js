@@ -313,42 +313,6 @@ exports.RemoveCurrentApiProjects = async (userId, project) => {
     }
 }
 
-exports.AddApiProjectsCreated = async (userId, project) => {
-    try {
-        var userInfo = await User.findByPk(userId);
-
-        if (!userInfo) {
-            throw new Error("Error with finding user");
-        }
-
-        userInfo.ApiProjectsCreated.push(project);
-
-        userInfo.LastActiveAt = Date.now();
-
-        await userInfo.save();
-    } catch (error) {
-        throw new Error("Error with deleting user");
-    }
-}
-
-exports.RemoveApiProjectsCreated = async (userId, project) => {
-    try {
-        var userInfo = await User.findByPk(userId);
-
-        if (!userInfo) {
-            throw new Error("Error with finding user");
-        }
-
-        userInfo.ApiProjectsCreated.remove(project);
-
-        userInfo.LastActiveAt = Date.now();
-
-        await userInfo.save();
-    } catch (error) {
-        throw new Error("Error with deleting user");
-    }
-}
-
 exports.AddApiProjectsWithAccess = async (userId, project) => {
     try {
         var userInfo = await User.findByPk(userId);
