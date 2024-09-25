@@ -2,15 +2,23 @@ const UserService = require('./UserService');
 
 
 exports.GetUserById = async (req, res) => {
-    var user = await UserService.GetUserById(req.userId);
+    try {
+        var user = await UserService.GetUserById(req.userId);
 
-    return res.status(200).body(user);
+        return res.status(200).body(user);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
 }
 
 exports.GetUserByUsername = async (req, res) => {
-    var user = await UserService.GetUserByUsername(req.username);
+    try {
+        var user = await UserService.GetUserByUsername(req.username);
 
-    return res.status(200).body(user);
+        return res.status(200).body(user);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
 }
 
 exports.CreateUser = async (req, res) => {
