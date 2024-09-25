@@ -287,6 +287,86 @@ exports.SetCloudProviderDefault = async (req, res) => {
     }
 }
 
+exports.AddAllReceivedUserProjectInvitations = async (req, res) => {
+    try {
+        await UserService.AddAllReceivedUserProjectInvitations(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveAllReceivedUserProjectInvitations = async (req, res) => {
+    try {
+        await UserService.RemoveAllReceivedUserProjectInvitations(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddAllSentUserProjectInvitations = async (req, res) => {
+    try {
+        await UserService.AddAllSentUserProjectInvitations(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveAllSentUserProjectInvitations = async (req, res) => {
+    try {
+        await UserService.RemoveAllSentUserProjectInvitations(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddAllSentGroupJoinRequests = async (req, res) => {
+    try {
+        await UserService.AddAllSentGroupJoinRequests(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveAllSentGroupJoinRequests = async (req, res) => {
+    try {
+        await UserService.RemoveAllSentGroupJoinRequests(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddAllUserProjectViewRequests = async (req, res) => {
+    try {
+        await UserService.AddAllUserProjectViewRequests(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveAllUserProjectViewRequests = async (req, res) => {
+    try {
+        await UserService.RemoveAllUserProjectViewRequests(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteUser = async (req, res) => {
     try {
         var user = await UserService.GetUserById(req.userId);

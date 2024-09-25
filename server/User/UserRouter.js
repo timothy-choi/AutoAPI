@@ -60,4 +60,20 @@ router.put("/activityLog/:userId", UserController.AddActivityLog);
 
 router.put("/cloudProviderDefault/:userId", UserController.SetCloudProviderDefault);
 
+router.put("/allReceivedUserProjectInvitations/add/:userId", UserController.AddAllReceivedUserProjectInvitations);
+
+router.put("/allReceivedUserProjectInvitations/remove/:userId", UserController.RemoveAllReceivedUserProjectInvitations);
+
+router.put("/allSentUserProjectInvitations/add/:userId", UserController.AddAllSentUserProjectInvitations);
+
+router.put("/allSentUserProjectInvitations/remove/:userId", UserController.RemoveAllSentUserProjectInvitations);
+
+router.put("/allSentGroupJoinProjects/add/:userId", UserController.AddAllSentGroupJoinRequests);
+
+router.put("/allSentGroupJoinProjects/remove/:userId", UserController.RemoveAllSentGroupJoinRequests);
+
+router.put("/allUserProjectViewRequests/add/:userId", UserController.AddAllUserProjectViewRequests);
+
+router.put("/allUserProjectViewRequests/remove/:userId", UserController.RemoveAllUserProjectViewRequests);
+
 module.exports = router;
