@@ -29,9 +29,49 @@ exports.CreateUser = async (req, res) => {
             return res.status(500).json({ error: 'User already exists'});
         }
 
-        var userInfo = UserService.CreateUser(req.body);
+        var userInfo = await UserService.CreateUser(req.body);
 
         return res.status(201).json(userInfo);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.ReplaceUsername = async (req, res) => {
+    try {
+        await UserService.ReplaceUsername(req.userId, req.username);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.ReplaceEmail = async (req, res) => {
+    try {
+        await UserService.ReplaceEmail(req.userId, req.email);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.SetJoinedGroup = async (req, res) => {
+    try {
+        await UserService.SetJoinedGroup(req.userId);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddPastGroupId = async (req, res) => {
+    try {
+        await UserService.AddPastGroupId(req.userId, req.groupId);
+
+        return res.status(200).json(null);
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }
