@@ -205,6 +205,186 @@ exports.SetIsAvailable = async (userId) => {
     }
 }
 
+exports.AddApiProjectsCreated = async (userId, project) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.ApiProjectsCreated.push(project);
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.RemoveApiProjectsCreated = async (userId, project) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.ApiProjectsCreated.remove(project);
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.AddApiProjectsContributed = async (userId, project) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.ApiProjectsContributed.push(project);
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.RemoveApiProjectsContributed = async (userId, project) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.ApiProjectsContributed.remove(project);
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.AddCurrentApiProjects = async (userId, project) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.CurrentApiProjects.push(project);
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.RemoveCurrentApiProjects = async (userId, project) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.CurrentApiProjects.remove(project);
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.AddApiProjectsCreated = async (userId, project) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.ApiProjectsCreated.push(project);
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.RemoveApiProjectsCreated = async (userId, project) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.ApiProjectsCreated.remove(project);
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.AddApiProjectsWithAccess = async (userId, project) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.ApiProjectsWithAccess.push(project);
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.RemoveApiProjectsWithAccess = async (userId, project) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.ApiProjectsWithAccess.remove(project);
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
 exports.DeleteUser = async (userId) => {
     try {
         var userInfo = await User.findByPk(userId);
