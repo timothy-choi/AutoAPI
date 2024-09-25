@@ -144,6 +144,54 @@ exports.AddGroupActivityLog = async (groupId, groupLogActivity) => {
     }
 } 
 
+exports.AddGroupTag = async (groupId, groupTag) => {
+    try {
+        var groupInfo = await Group.findByPk(groupId);
+
+        if (!groupInfo) {
+            throw new Error('group does not exist');
+        } 
+
+        groupInfo.GroupTags.push(groupTag);
+
+        await groupInfo.save();
+    } catch (error) {
+        throw new Error('Could not modify group');
+    }
+}
+
+exports.RemoveGroupTag = async (groupId, groupTag) => {
+    try {
+        var groupInfo = await Group.findByPk(groupId);
+
+        if (!groupInfo) {
+            throw new Error('group does not exist');
+        } 
+
+        groupInfo.GroupTags.remove(groupTag);
+
+        await groupInfo.save();
+    } catch (error) {
+        throw new Error('Could not modify group');
+    }
+}
+
+exports.SetGroupDescription = async (groupId, groupDesc) => {
+    try {
+        var groupInfo = await Group.findByPk(groupId);
+
+        if (!groupInfo) {
+            throw new Error('group does not exist');
+        } 
+
+        groupInfo.GroupDescription = groupDesc;
+
+        await groupInfo.save();
+    } catch (error) {
+        throw new Error('Could not modify group');
+    }
+}
+
 exports.DeleteGroup = async (groupId) => {
     try {
         var groupInfo = await Group.findByPk(groupId);
