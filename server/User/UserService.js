@@ -115,6 +115,24 @@ exports.AddCurrentGroupId = async (userId, groupId) => {
     }
 }
 
+exports.RemoveCurrentGroupId = async (userId, groupId) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.CurrentGroupIds.remove(groupId);
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
 exports.AddAllCollaborators = async (userId, collaborators) => {
     try {
         var userInfo = await User.findByPk(userId);
@@ -124,6 +142,60 @@ exports.AddAllCollaborators = async (userId, collaborators) => {
         }
 
         userInfo.AllCollaborators.push(collaborators);
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.SetNotificationsOn = async (userId) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.NotificationsOn = userInfo.NotificationsOn ? false : true;
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.SetNotificationType = async (userId, notificationType) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.NotificationType = notificationType;
+
+        userInfo.LastActiveAt = Date.now();
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.SetIsAvailable = async (userId) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.IsAvailable = userInfo.IsAvailable ? false : true;
 
         userInfo.LastActiveAt = Date.now();
 
