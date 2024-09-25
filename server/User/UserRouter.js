@@ -44,4 +44,20 @@ router.put("/currentApiProjects/add/:userId", UserController.AddCurrentApiProjec
 
 router.put("/currentApiProjects/remove/:userId", UserController.RemoveCurrentApiProjects);
 
+router.put("/apiProjectsWithAccess/add/:userId", UserController.AddApiProjectsWithAccess);
+
+router.put("/apiProjectsWithAccess/remove/:userId", UserController.RemoveApiProjectsWithAccess);
+
+router.put("/apiProjectsViewHistory/add/:userId", UserController.AddApiProjectsViewHistory);
+
+router.put("/apiProjectsViewHistory/remove/:userId", UserController.RemoveApiProjectsViewHistory);
+
+router.put("/cloudProviderInfo/add/:userId", UserController.AddCloudProviderInfo);
+
+router.put("/cloudProviderInfo/remove/:userId", UserController.RemoveCloudProviderInfo);
+
+router.put("/activityLog/:userId", UserController.AddActivityLog);
+
+router.put("/cloudProviderDefault/:userId", UserController.SetCloudProviderDefault);
+
 module.exports = router;

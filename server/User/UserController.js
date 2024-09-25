@@ -207,6 +207,86 @@ exports.RemoveCurrentApiProjects = async (req, res) => {
     }
 }
 
+exports.AddApiProjectsWithAccess = async (req, res) => {
+    try {
+        await UserService.AddApiProjectsWithAccess(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveApiProjectsWithAccess = async (req, res) => {
+    try {
+        await UserService.RemoveApiProjectsWithAccess(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddApiProjectsViewHistory = async (req, res) => {
+    try {
+        await UserService.AddApiProjectsViewHistory(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveApiProjectsViewHistory = async (req, res) => {
+    try {
+        await UserService.RemoveApiProjectsViewHistory(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddCloudProviderInfo = async (req, res) => {
+    try {
+        await UserService.AddCloudProviderInfo(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveCloudProviderInfo = async (req, res) => {
+    try {
+        await UserService.RemoveCloudProviderInfo(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddActivityLog = async (req, res) => {
+    try {
+        await UserService.AddActivityLog(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.SetCloudProviderDefault = async (req, res) => {
+    try {
+        await UserService.SetCloudProviderDefault(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteUser = async (req, res) => {
     try {
         var user = await UserService.GetUserById(req.userId);
