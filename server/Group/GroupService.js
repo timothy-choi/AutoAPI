@@ -74,6 +74,8 @@ exports.AddUserJoinRequests = async (groupId, joinRequest) => {
 
         groupInfo.UserJoinRequests.push(joinRequest);
 
+        groupInfo.LastUpdatedAt = Date.now();
+
         await groupInfo.save();
     } catch (error) {
         throw new Error('Could not modify group');
@@ -89,6 +91,8 @@ exports.RemoveUserJoinRequests = async (groupId, joinRequest) => {
         } 
 
         groupInfo.UserJoinRequests.remove(joinRequest);
+
+        groupInfo.LastUpdatedAt = Date.now();
 
         await groupInfo.save();
     } catch (error) {
@@ -106,6 +110,8 @@ exports.AddUserViewRequests = async (groupId, viewRequest) => {
 
         groupInfo.UserViewRequests.push(viewRequest);
 
+        groupInfo.LastUpdatedAt = Date.now();
+
         await groupInfo.save();
     } catch (error) {
         throw new Error('Could not modify group');
@@ -121,6 +127,8 @@ exports.RemoveUserViewRequests = async (groupId, viewRequest) => {
         } 
 
         groupInfo.UserViewRequests.remove(viewRequest);
+
+        groupInfo.LastUpdatedAt = Date.now();
 
         await groupInfo.save();
     } catch (error) {
@@ -138,6 +146,8 @@ exports.AddGroupActivityLog = async (groupId, groupLogActivity) => {
 
         groupInfo.GroupActivityLog.push(groupLogActivity);
 
+        groupInfo.LastUpdatedAt = Date.now();
+
         await groupInfo.save();
     } catch (error) {
         throw new Error('Could not modify group');
@@ -153,6 +163,8 @@ exports.AddGroupTag = async (groupId, groupTag) => {
         } 
 
         groupInfo.GroupTags.push(groupTag);
+
+        groupInfo.LastUpdatedAt = Date.now();
 
         await groupInfo.save();
     } catch (error) {
@@ -170,6 +182,8 @@ exports.RemoveGroupTag = async (groupId, groupTag) => {
 
         groupInfo.GroupTags.remove(groupTag);
 
+        groupInfo.LastUpdatedAt = Date.now();
+
         await groupInfo.save();
     } catch (error) {
         throw new Error('Could not modify group');
@@ -185,6 +199,8 @@ exports.SetGroupDescription = async (groupId, groupDesc) => {
         } 
 
         groupInfo.GroupDescription = groupDesc;
+
+        groupInfo.LastUpdatedAt = Date.now();
 
         await groupInfo.save();
     } catch (error) {
