@@ -100,6 +100,66 @@ exports.RemoveUserJoinRequests = async (req, res) => {
     }
 }
 
+exports.AddUserViewRequests = async (req, res) => {
+    try {
+        await GroupService.AddUserViewRequests(req.groupId, req.body);
+        
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({error: error.message});
+    }
+}
+
+exports.RemoveUserViewRequests = async (req, res) => {
+    try {
+        await GroupService.RemoveUserViewRequests(req.groupId, req.body);
+        
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({error: error.message});
+    }
+}
+
+exports.AddGroupActivityLog = async (req, res) => {
+    try {
+        await GroupService.AddGroupActivityLog(req.groupId, req.body);
+        
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({error: error.message});
+    }
+}
+
+exports.AddGroupTag = async (req, res) => {
+    try {
+        await GroupService.AddGroupTag(req.groupId, req.groupTag);
+        
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({error: error.message});
+    }
+}
+
+exports.RemoveGroupTag = async (req, res) => {
+    try {
+        await GroupService.RemoveGroupTag(req.groupId, req.groupTag);
+        
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({error: error.message});
+    }
+}
+
+exports.SetGroupDescription = async (req, res) => {
+    try {
+        await GroupService.SetGroupDescription(req.groupId, req.body.groupDescription);
+        
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({error: error.message});
+    }
+}
+
 exports.DeleteGroup = async (req, res) => {
     try {
         await GroupService.DeleteGroup(req.groupId);

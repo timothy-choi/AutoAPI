@@ -22,6 +22,18 @@ router.put("/userJoinRequests/add/:groupId", GroupController.AddUserJoinRequests
 
 router.put("/userJoinRequests/remove/:groupId", GroupController.RemoveUserJoinRequests);
 
+router.put("/userViewRequests/add/:groupId", GroupController.AddUserViewRequests);
+
+router.put("/userViewRequests/remove/:groupId", GroupController.RemoveUserViewRequests);
+
+router.put("/groupActivtiyLog/:groupId", GroupController.AddGroupActivityLog);
+
+router.put("/groupTag/add/:groupId/:groupTag", GroupController.AddGroupTag);
+
+router.put("/groupTag/remove/:groupId/:groupTag", GroupController.RemoveGroupTag);
+
+router.put("/groupDescription/:groupId", GroupController.SetGroupDescription);
+
 router.delete("/:groupId", GroupController.DeleteGroup);
 
 module.exports = router;
