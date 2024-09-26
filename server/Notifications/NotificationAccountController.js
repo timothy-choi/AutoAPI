@@ -50,6 +50,16 @@ exports.AddNewNotification = async (req, res) => {
     }
 };
 
+exports.RemoveNotification = async (req, res) => {
+    try {
+        await NotificationAccountService.RemoveNotification(res.notificationAccountId, res.notificationId);
+
+        return res.status(202).json({'success': true});
+    } catch (error) {
+        return res.status(500).json({'error': error});
+    }
+};
+
 exports.DeleteNotificationAccount = async (req, res) => {
     try {
         await NotificationAccountService.DeleteNotificationAccount(req.notificationAccountId);

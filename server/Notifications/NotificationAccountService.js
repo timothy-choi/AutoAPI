@@ -49,6 +49,22 @@ exports.AddNewNotification = async (notificationAccountId, notificationId) => {
     }
 }
 
+exports.RemoveNotification = async (notificationAccountId, notificationId) => {
+    try {
+        var notificationAccount = NotificationAccount.findByPk(notificationAccountId);
+        if (notificationAccount == null) {
+            throw new Error("No Account Found");
+        }
+
+       notificationAccount.AllNotifications.remove(notificationId);
+
+       await notificationAccount.save();
+    } catch (error) {
+        throw new Error(`New Error: ${error}`);
+    }
+}
+
+
 exports.DeleteNotificationAccount = async (notificationAccountId) => {
     try {
         var notificationAccount = NotificationAccount.findByPk(notificationAccountId);
