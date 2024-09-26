@@ -145,6 +145,16 @@ const User = sequelize.define('User', {
         type: DataTypes.UUID,
         allowNull: true,
     },
+    Followers: {
+        type: DataTypes.ARRAY(DateTypes.JSONB),
+        allowNull: true,
+        defaultValue: []
+    },
+    Following: {
+        type: DataTypes.ARRAY(DateTypes.JSONB),
+        allowNull: true,
+        defaultValue: []
+    }
 });
 
 module.exports = User;
