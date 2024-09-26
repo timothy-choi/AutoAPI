@@ -10,6 +10,7 @@ const searchRouter = require('./Search/SearchRouter');
 const userRouter = require('./User/UserRouter');
 const groupRouter = require('./Group/GroupRouter');
 const userStatsRouter = require('./User/UserStatsRouter');
+const notificationRouter = require('./Notifications/NotificationRouter');
 
 dotenv.config();
 require('./config/mongodb');
@@ -40,6 +41,8 @@ app.use('/user', userRouter);
 app.use('/group', groupRouter);
 
 app.use('/userStats', userStatsRouter);
+
+app.user('/notification', notificationRouter);
 
 sequelize.sync()
     .then(() => {
