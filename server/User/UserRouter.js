@@ -88,4 +88,12 @@ router.put("/UserTag/remove/:userId/:userTag", UserController.RemoveUserTag);
 
 router.put("/notificationAccountId/:userId/:notificationAccountId", UserController.SetNotificationAccountId);
 
+router.put("/followers/add/:userId", UserController.AddFollower);
+
+router.put("/followers/remove/:userId", UserController.RemoveFollower);
+
+router.put("/following/add/:userId", UserController.AddFollowing);
+
+router.put("/following/remove/:userId", UserController.RemoveFollowing);
+
 module.exports = router;

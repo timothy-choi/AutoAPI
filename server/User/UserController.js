@@ -427,6 +427,46 @@ exports.SetNotificationAccountId = async (req, res) => {
     }
 }
 
+exports.AddFollower = async (req, res) => {
+    try {
+        await UserService.AddFollower(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveFollower = async (req, res) => {
+    try {
+        await UserService.RemoveFollower(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddFollowing = async (req, res) => {
+    try {
+        await UserService.AddFollowing(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveFollowing = async (req, res) => {
+    try {
+        await UserService.RemoveFollowing(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteUser = async (req, res) => {
     try {
         var user = await UserService.GetUserById(req.userId);
