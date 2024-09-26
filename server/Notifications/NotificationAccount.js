@@ -19,6 +19,11 @@ const NotificationAccount = sequelize.define('NotificationAccount', {
         type: DataTypes.ARRAY(DataTypes.UUID),
         allowNull: false,
         defaultValue: [],
+    },
+    PushSubscription: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {},
     }
 });
 

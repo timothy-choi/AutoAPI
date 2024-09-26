@@ -14,6 +14,8 @@ router.put("/AddNotification/add/:notificationAccountId/:notificationId", Notifi
 
 router.put("/AddNotification/remove/:notificationAccountId/:notificationId", NotificationAccountController.RemoveNotification);
 
+router.put("/pushSubscription/:notificationAccountId", NotificationAccountController.SetPushSubscription);
+
 router.delete("/:notificationAccountId", NotificationAccountController.DeleteNotificationAccount);
 
 module.exports = router;

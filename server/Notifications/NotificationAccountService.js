@@ -64,6 +64,20 @@ exports.RemoveNotification = async (notificationAccountId, notificationId) => {
     }
 }
 
+exports.SetPushSubscription = async (notificationAccountId, pushSubscription) => {
+    try {
+        var notificationAccount = NotificationAccount.findByPk(notificationAccountId);
+        if (notificationAccount == null) {
+            throw new Error("No Account Found");
+        }
+
+       notificationAccount.PushSubscription = pushSubscription;
+
+       await notificationAccount.save();
+    } catch (error) {
+        throw new Error(`New Error: ${error}`);
+    }
+}
 
 exports.DeleteNotificationAccount = async (notificationAccountId) => {
     try {

@@ -60,6 +60,16 @@ exports.RemoveNotification = async (req, res) => {
     }
 };
 
+exports.SetPushSubscription = async (req, res) => {
+    try {
+        await NotificationAccountService.SetPushSubscription(res.notificationAccountId, res.body);
+
+        return res.status(202).json({'success': true});
+    } catch (error) {
+        return res.status(500).json({'error': error});
+    }
+}
+
 exports.DeleteNotificationAccount = async (req, res) => {
     try {
         await NotificationAccountService.DeleteNotificationAccount(req.notificationAccountId);
