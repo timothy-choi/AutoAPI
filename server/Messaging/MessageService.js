@@ -16,6 +16,24 @@ exports.CreateMessage = async (messageBody) => {
     }
 }
 
+exports.EditMessage = async (messageId, messageEditedText) => {
+    try {
+        var message = await GetMessageById(messageId);
+
+        if (!message) {
+            throw new Error('message does not exist');
+        }
+
+        message.MessageText = messageEditedText;
+
+        message.MessageUpdated = Date.now();
+
+        await message.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.DeleteMessage = async (messageId) => {
     try {
         var message = await GetMessageById(messageId);

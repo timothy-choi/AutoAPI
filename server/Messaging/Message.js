@@ -27,6 +27,11 @@ const Message = sequelize.define('Message', {
         type: DataTypes.DATE,
         allowNull: false,
         defaultValue: Date.now,
+    },
+    MessageUpdated: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: Date.now,
     }
 });
 
