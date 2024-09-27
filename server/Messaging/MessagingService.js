@@ -28,6 +28,102 @@ exports.CreateMessaging = async (messagingBody) => {
     }
 };
 
+exports.AddUser = async (messagingId, user) => {
+    try {
+        var messaging = await this.GetMessagingById(messagingId);
+
+        if (!messaging) {
+            throw new Error('chatroom does not exist');
+        }
+
+        messaging.CurrentUsers.push(user);
+
+        await messaging.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.DeleteUser = async (messagingId, user) => {
+    try {
+        var messaging = await this.GetMessagingById(messagingId);
+
+        if (!messaging) {
+            throw new Error('chatroom does not exist');
+        }
+
+        messaging.CurrentUsers.remove(user);
+
+        await messaging.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.AddSession = async (messagingId, sessionId) => {
+    try {
+        var messaging = await this.GetMessagingById(messagingId);
+
+        if (!messaging) {
+            throw new Error('chatroom does not exist');
+        }
+
+        messaging.AllSessions.push(sessionId);
+
+        await messaging.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.DeleteSession = async (messagingId, sessionId) => {
+    try {
+        var messaging = await this.GetMessagingById(messagingId);
+
+        if (!messaging) {
+            throw new Error('chatroom does not exist');
+        }
+
+        messaging.AllSessions.remove(sessionId);
+
+        await messaging.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.AddMessage = async (messagingId, messageId) => {
+    try {
+        var messaging = await this.GetMessagingById(messagingId);
+
+        if (!messaging) {
+            throw new Error('chatroom does not exist');
+        }
+
+        messaging.Messages.push(messageId);
+
+        await messaging.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.DeleteMessage = async (messagingId, messageId) => {
+    try {
+        var messaging = await this.GetMessagingById(messagingId);
+
+        if (!messaging) {
+            throw new Error('chatroom does not exist');
+        }
+
+        messaging.Messages.remove(messageId);
+
+        await messaging.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.DeleteMessaging = async (messagingId) => {
     try {
         var messaging = await this.GetMessagingById(messagingId);
