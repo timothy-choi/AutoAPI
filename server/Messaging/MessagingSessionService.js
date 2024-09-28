@@ -28,6 +28,104 @@ exports.CreateMessagingSession = async (messagingSessionBody) => {
     }
 }
 
+exports.EditUsername = async (messagingSessionId, user) => {
+    try {
+        var messagingSession = await this.GetMessagingSessionById(messagingSessionId);
+
+        if (!messagingSession) {
+            throw new Error('session does not exist');
+        }
+
+        messagingSession.Username = user;
+
+        await messagingSession.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.SetLastMessageReadId = async (messagingSessionId, messageId) => {
+    try {
+        var messagingSession = await this.GetMessagingSessionById(messagingSessionId);
+
+        if (!messagingSession) {
+            throw new Error('session does not exist');
+        }
+
+        messagingSession.LastReadMessageId = messageId;
+
+        messagingSession.LastActiveAt = Date.now();
+
+        await messagingSession.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.SetLastActiveAt = async (messagingSessionId) => {
+    try {
+        var messagingSession = await this.GetMessagingSessionById(messagingSessionId);
+
+        if (!messagingSession) {
+            throw new Error('session does not exist');
+        }
+
+        messagingSession.LastActiveAt = Date.now();
+
+        await messagingSession.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.SetJoinedAt = async (messagingSessionId) => {
+    try {
+        var messagingSession = await this.GetMessagingSessionById(messagingSessionId);
+
+        if (!messagingSession) {
+            throw new Error('session does not exist');
+        }
+
+        messagingSession.JoinedAt = Date.now();
+
+        await messagingSession.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.SetClosedChatAt = async (messagingSessionId) => {
+    try {
+        var messagingSession = await this.GetMessagingSessionById(messagingSessionId);
+
+        if (!messagingSession) {
+            throw new Error('session does not exist');
+        }
+
+        messagingSession.ClosedChatAt = Date.now();
+
+        await messagingSession.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.SetSessionStatus = async (messagingSessionId, sessionStatus) => {
+    try {
+        var messagingSession = await this.GetMessagingSessionById(messagingSessionId);
+
+        if (!messagingSession) {
+            throw new Error('session does not exist');
+        }
+
+        messagingSession.SessionStatus = sessionStatus;
+
+        await messagingSession.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.DeleteMessagingSession = async (messagingSessionId) => {
     try {
         var messagingSession = await GetMessagingSessionById(messagingSessionId);
