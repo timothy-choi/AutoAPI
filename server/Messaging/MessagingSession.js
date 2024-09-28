@@ -23,14 +23,14 @@ const MessageSession = sequelize.define('MessageSessions', {
         type: DataTypes.UUID,
         allowNull: true,
     },
-    JoinedAt: {
+    LastActiveAt: {
         type: DataTypes.DATE,
-        allowNull: false,
+        allowNull: true,
         defaultValue: Date.now,
     },
     JoinedAt: {
         type: DataTypes.DATE,
-        allowNull: true,
+        allowNull: false,
         defaultValue: Date.now,
     },
     ClosedChatAt: {
