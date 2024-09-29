@@ -16,6 +16,7 @@ const emailNotificationRouter = require('./Notifications/EmailNotificationsRoute
 const notificationWorkflowRouter = require('./Notifications/NotificationWorkflowController');
 const messageRouter = require('./Messaging/MessageRouter');
 const messagingRouter = require('./Messaging/MessagingController');
+const messagingSessionRouter = require('./Messaging/MessagingSessionRouter');
 
 dotenv.config();
 require('./config/mongodb');
@@ -62,6 +63,8 @@ app.use('/notificationWorkflow', notificationWorkflowRouter);
 app.use('/message', messageRouter);
 
 app.use('/messaging', messagingRouter);
+
+app.use('/messagingSession', messagingSessionRouter);
 
 sequelize.sync()
     .then(() => {
