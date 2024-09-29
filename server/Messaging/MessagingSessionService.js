@@ -54,8 +54,6 @@ exports.SetLastMessageReadId = async (messagingSessionId, messageId) => {
 
         messagingSession.LastReadMessageId = messageId;
 
-        messagingSession.LastActiveAt = Date.now();
-
         await messagingSession.save();
     } catch (error) {
         throw new Error(error.message);
