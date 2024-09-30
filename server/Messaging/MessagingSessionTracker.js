@@ -1,12 +1,17 @@
 const redis = require('redis');
-const WebSocket = require('ws');
 
 const client = redis.createClient();
 
 const INACTIVITY_THRESHOLD = 10 * 60 * 1000; 
 
 async function addSession(user, session) {
-    await client.hset('activeSessions', user, JSON.stringify(session));
+    const sessionInfo = {
+        id: session.Id,
+        session: session.wsSession,
+        lastActivity: session.lastActiveTime
+    };
+
+    await client.hset('activeSessions', user, JSON.stringify(sessionInfo));
     await client.hset('sessionToUser', session.Id, user);
 }
 
@@ -31,7 +36,7 @@ async function getUserForSession(sessionId) {
 async function updateLastActiveTime(userId, lastActiveTime) {
     const sessionInfo = await getSessionInfo(userId);
     if (sessionInfo) {
-        sessionInfo.LastActiveAt = lastActiveTime;
+        sessionInfo.lastActivity = lastActiveTime;
         await client.hset('activeSessions', userId, JSON.stringify(sessionInfo));
     }
 }
