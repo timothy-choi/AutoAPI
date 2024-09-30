@@ -12,47 +12,48 @@ async function addSession(user, session) {
     const sessionInfo = {
         id: session.Id,
         session: session.wsSession,
-        lastActivity: session.lastActiveTime
+        lastActivity: session.lastActiveTime,
+        roomId: session.roomId
     };
 
-    await client.hset('activeSessions', user, JSON.stringify(sessionInfo));
+    await client.hset('activeSessions:' + session.roomId, user, JSON.stringify(sessionInfo));
     await client.hset('sessionToUser', session.Id, user);
 }
 
-async function removeSession(user, sessionId) {
-    await client.hdel('activeSessions', user);
+async function removeSession(user, roomId, sessionId) {
+    await client.hdel('activeSessions:' + roomId, user);
     await client.hdel('sessionToUser', sessionId);
 }
 
-async function getSessionInfo(userId) {
-    const sessionInfo = await client.hget('activeSessions', userId);
+async function getSessionInfo(roomId, userId) {
+    const sessionInfo = await client.hget('activeSessions:' + roomId, userId);
     return sessionInfo ? JSON.parse(sessionInfo) : null;
 }
 
-async function getActiveSessions() {
-    return await client.hgetall('activeSessions');
+async function getActiveSessions(roomId) {
+    return await client.hgetall('activeSessions:' + roomId);
 }
 
 async function getUserForSession(sessionId) {
     return await client.hget('sessionToUser', sessionId);
 }
 
-async function updateLastActiveTime(userId, lastActiveTime) {
-    const sessionInfo = await getSessionInfo(userId);
+async function updateLastActiveTime(roomId, userId, lastActiveTime) {
+    const sessionInfo = await getSessionInfo(roomId, userId);
     if (sessionInfo) {
         sessionInfo.lastActivity = lastActiveTime;
-        await client.hset('activeSessions', userId, JSON.stringify(sessionInfo));
+        await client.hset('activeSessions:' + roomId, userId, JSON.stringify(sessionInfo));
     }
 }
 
-async function getActiveUsers() {
-    const activeSessions = await getActiveSessions();
+async function getActiveUsers(roomId) {
+    const activeSessions = await getActiveSessions(roomId);
 
     return Object.entries(activeSessions).filter(([_, sessionInfo]) => Date.now() - JSON.parse(sessionInfo).lastActivity < INACTIVITY_THRESHOLD).map(([userId, _]) => userId);
 }
 
-async function getInactiveUsers() {
-    const activeSessions = await getActiveSessions();
+async function getInactiveUsers(roomId) {
+    const activeSessions = await getActiveSessions(roomId);
 
     return Object.entries(activeSessions).filter(([_, sessionInfo]) => Date.now() - JSON.parse(sessionInfo).lastActivity >= INACTIVITY_THRESHOLD).map(([userId, _]) => userId);
 }
