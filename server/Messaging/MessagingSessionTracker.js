@@ -4,6 +4,10 @@ const client = redis.createClient();
 
 const INACTIVITY_THRESHOLD = 10 * 60 * 1000; 
 
+client.on('error', (err) => {
+    console.error('Redis error:', err);
+});
+
 async function addSession(user, session) {
     const sessionInfo = {
         id: session.Id,
@@ -53,5 +57,21 @@ async function getInactiveUsers() {
     return Object.entries(activeSessions).filter(([_, sessionInfo]) => Date.now() - JSON.parse(sessionInfo).lastActivity >= INACTIVITY_THRESHOLD).map(([userId, _]) => userId);
 }
 
+process.on('SIGINT', () => {
+    console.log('Shutting down Redis client...');
+    client.quit();
+    process.exit();
+});
+
+module.exports = {
+    addSession,
+    removeSession,
+    getSessionInfo,
+    getActiveSessions,
+    getUserForSession,
+    updateLastActiveTime,
+    getActiveUsers,
+    getInactiveUsers
+};
 
 
