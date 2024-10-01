@@ -33,6 +33,11 @@ const MessageSession = sequelize.define('MessageSessions', {
         allowNull: false,
         defaultValue: Date.now,
     },
+    HasJoined: {
+        type: DataTypes.BOOLEAN,
+        allowNull: true,
+        defaultValue: false,
+    },
     ClosedChatAt: {
         type: DataTypes.DATE,
         allowNull: true,

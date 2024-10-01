@@ -124,6 +124,22 @@ exports.SetSessionStatus = async (messagingSessionId, sessionStatus) => {
     }
 }
 
+exports.SetSessionStatus = async (messagingSessionId) => {
+    try {
+        var messagingSession = await this.GetMessagingSessionById(messagingSessionId);
+
+        if (!messagingSession) {
+            throw new Error('session does not exist');
+        }
+
+        messagingSession.HasJoined = true;
+
+        await messagingSession.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.DeleteMessagingSession = async (messagingSessionId) => {
     try {
         var messagingSession = await GetMessagingSessionById(messagingSessionId);

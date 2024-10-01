@@ -90,6 +90,16 @@ exports.SetSessionStatus = async (req, res) => {
     }
 }
 
+exports.SetHasJoined = async (req, res) => {
+    try {
+        await MessagingSessionService.SetHasJoined(req.messagingSessionId);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteMessagingSession = async (req, res) => {
     try {
         await MessagingSessionService.DeleteMessagingSession(req.messagingSessionId);

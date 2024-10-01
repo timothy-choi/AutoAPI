@@ -21,6 +21,8 @@ router.put("/closedChatAt/:messagingSessionId", MessagingSessionController.SetCl
 
 router.put("/sessionStatus/:messageSessionId/:sessionStatus", MessagingSessionController.SetSessionStatus);
 
+router.put("/hasJoined/:messagingSessionId", MessagingSessionController.SetHasJoined);
+
 router.delete("/:messageSessionId", MessageSessionController.DeleteMessagingSession);
 
 module.exports = router;
