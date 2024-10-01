@@ -30,6 +30,21 @@ wss.on('connection', async (ws, req) => {
         };
 
         await addSession(user.Username, sessionInfo);
+
+        if (!messagingSession.HasJoined) {
+            await axios.put('/MessagingSession/hasJoined/' + messagingSession.Id);
+
+            const joinedText = {
+                type: 'notification',
+                message: sessionInfo.user + ' has entered the chat'
+            };
+        } 
+
+        await axios.put('/MessagingSession/joinedAt/' + messagingSession.Id);
+
+        await axios.put('/MessagingSession/sessionStatus/' + messagingSession.Id + "/ACTIVE");
+
+
     } else {
         ws.close(1003, 'Bad Data');
     }
