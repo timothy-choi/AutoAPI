@@ -12,7 +12,7 @@ function getParamsFromSession(session) {
     return { roomId: params.roomId, userId: params.userId };
 }
 
-async function broadcastToRoom(roomId, message, sender) {
+async function broadcastToRoom(roomId, message) {
     const activeSessions = await getActiveSessions(roomId);
 
     for (const [userId, sessionInfo] of Object.entries(activeSessions)) {
@@ -53,7 +53,7 @@ wss.on('connection', async (ws, req) => {
                 messageDate: Date.now()
             };
 
-            await broadcastToRoom(chatroomId, joinedText, ws);
+            await broadcastToRoom(chatroomId, joinedText);
         } 
 
         await axios.put('/MessagingSession/joinedAt/' + messagingSession.Id);
@@ -68,7 +68,7 @@ wss.on('connection', async (ws, req) => {
                 messageDate: Date.now()
             };
 
-            await broadcastToRoom(chatroomId, messageInfo, ws);
+            await broadcastToRoom(chatroomId, messageInfo);
 
             var lastTime = messageInfo.messageDate;
 
@@ -81,6 +81,8 @@ wss.on('connection', async (ws, req) => {
             await removeSession(messagingSession.Username, chatroomId, sessionInfo.sessionId);
 
             await axios.put('/MessagingSession/closedChatAt/' + messagingSession.Id);
+
+            await axios.put('/MessagingSession/sessionStatus/' + messagingSession.Id + "/CLOSED");
         })
 
 
