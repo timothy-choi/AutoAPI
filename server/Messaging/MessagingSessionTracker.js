@@ -13,7 +13,8 @@ async function addSession(user, session) {
         id: session.Id,
         session: session.wsSession,
         lastActivity: session.lastActiveTime,
-        roomId: session.roomId
+        roomId: session.roomId,
+        username: user
     };
 
     await client.hset('activeSessions:' + session.roomId, user, JSON.stringify(sessionInfo));
