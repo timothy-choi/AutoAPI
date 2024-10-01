@@ -20,7 +20,7 @@ exports.CreateMessagingSession = async (messagingSessionBody) => {
             throw new Error('session already exists');
         }
 
-        messagingSession = await MessagingSession.create({ChatroomId: messagingSessionBody.chatroomId, UserId: messagingSessionBody.userId, Username: messagingSessionBody.username, JoinedAt: Date.now(), SessionStatus: "Active"});
+        messagingSession = await MessagingSession.create({ChatroomId: messagingSessionBody.chatroomId, UserId: messagingSessionBody.userId, Username: messagingSessionBody.username, FirstJoinedAt: Date.now(), JoinedAt: Date.now(), SessionStatus: "Active"});
 
         return messagingSession;
     } catch (error) {
@@ -124,7 +124,7 @@ exports.SetSessionStatus = async (messagingSessionId, sessionStatus) => {
     }
 }
 
-exports.SetSessionStatus = async (messagingSessionId) => {
+exports.SetHasJoined = async (messagingSessionId) => {
     try {
         var messagingSession = await this.GetMessagingSessionById(messagingSessionId);
 

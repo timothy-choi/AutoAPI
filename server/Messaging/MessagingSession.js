@@ -38,6 +38,11 @@ const MessageSession = sequelize.define('MessageSessions', {
         allowNull: true,
         defaultValue: false,
     },
+    FirstJoinedAt: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: Date.now,
+    },
     ClosedChatAt: {
         type: DataTypes.DATE,
         allowNull: true,
