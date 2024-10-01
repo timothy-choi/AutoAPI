@@ -77,6 +77,12 @@ wss.on('connection', async (ws, req) => {
             await axios.put('/MessagingSession/lastActiveAt/' + messagingSession.Id);
         });
 
+        ws.on('closed', async () => {
+            await removeSession(messagingSession.Username, chatroomId, sessionInfo.sessionId);
+
+            await axios.put('/MessagingSession/closedChatAt/' + messagingSession.Id);
+        })
+
 
     } else {
         ws.close(1003, 'Bad Data');
