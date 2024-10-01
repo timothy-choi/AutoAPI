@@ -75,6 +75,8 @@ wss.on('connection', async (ws, req) => {
             await updateLastActiveTime(chatroomId, userId, lastTime);
             
             await axios.put('/MessagingSession/lastActiveAt/' + messagingSession.Id);
+
+            await axios.put('/MessagingSession/sessionStatus/' + messagingSession.Id + "/ACTIVE");
         });
 
         ws.on('closed', async () => {
@@ -83,10 +85,16 @@ wss.on('connection', async (ws, req) => {
             await axios.put('/MessagingSession/closedChatAt/' + messagingSession.Id);
 
             await axios.put('/MessagingSession/sessionStatus/' + messagingSession.Id + "/CLOSED");
-        })
-
-
+        });
     } else {
         ws.close(1003, 'Bad Data');
     }
-})
+});
+
+setInterval(async () => {
+    const activeUsers = getActiveUsers();
+    const inactiveUsers = getInactiveUsers();
+    const allCurrentUsers = (await activeUsers).concat(inactiveUsers);
+
+    
+}, 60000);
