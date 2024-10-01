@@ -12,6 +12,19 @@ function getParamsFromSession(session) {
     return { roomId: params.roomId, userId: params.userId };
 }
 
+async function broadcastToRoom(roomId, message, sender) {
+    const activeSessions = await getActiveSessions(roomId);
+
+    for (const [userId, sessionInfo] of Object.entries(activeSessions)) {
+        const sessionData = JSON.parse(sessionInfo);
+        const wsSession = sessionData.session;
+
+        if (wsSession && wsSession.readyState === WebSocket.OPEN && wsSession !== sender) {
+            wsSession.send(message);
+        }
+    }
+}
+
 wss.on('connection', async (ws, req) => {
     const { chatroomId, userId } = getParamsFromSession(req);
 
@@ -38,11 +51,29 @@ wss.on('connection', async (ws, req) => {
                 type: 'notification',
                 message: sessionInfo.user + ' has entered the chat'
             };
+
+            await broadcastToRoom(chatroomId, joinedText, ws);
         } 
 
         await axios.put('/MessagingSession/joinedAt/' + messagingSession.Id);
 
         await axios.put('/MessagingSession/sessionStatus/' + messagingSession.Id + "/ACTIVE");
+
+        ws.on('message', async (msg) => {
+            const messageInfo = {
+                type: 'message',
+                message: msg,
+                user: messagingSession.Username
+            };
+
+            await broadcastToRoom(chatroomId, messageInfo, ws);
+
+            var lastTime = Date.now();
+
+            await updateLastActiveTime(chatroomId, userId, lastTime);
+            
+            await axios.put('/MessagingSession/lastActiveAt/' + messagingSession.Id);
+        });
 
 
     } else {
