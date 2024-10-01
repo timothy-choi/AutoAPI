@@ -19,7 +19,7 @@ async function broadcastToRoom(roomId, message, sender) {
         const sessionData = JSON.parse(sessionInfo);
         const wsSession = sessionData.session;
 
-        if (wsSession && wsSession.readyState === WebSocket.OPEN && wsSession !== sender) {
+        if (wsSession && wsSession.readyState === WebSocket.OPEN) {
             wsSession.send(message);
         }
     }
@@ -49,7 +49,8 @@ wss.on('connection', async (ws, req) => {
 
             const joinedText = {
                 type: 'notification',
-                message: sessionInfo.user + ' has entered the chat'
+                message: sessionInfo.user + ' has entered the chat',
+                messageDate: Date.now()
             };
 
             await broadcastToRoom(chatroomId, joinedText, ws);
@@ -63,12 +64,13 @@ wss.on('connection', async (ws, req) => {
             const messageInfo = {
                 type: 'message',
                 message: msg,
-                user: messagingSession.Username
+                user: messagingSession.Username,
+                messageDate: Date.now()
             };
 
             await broadcastToRoom(chatroomId, messageInfo, ws);
 
-            var lastTime = Date.now();
+            var lastTime = messageInfo.messageDate;
 
             await updateLastActiveTime(chatroomId, userId, lastTime);
             
