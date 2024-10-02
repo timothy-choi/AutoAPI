@@ -118,9 +118,9 @@ wss.on('connection', async (ws, req) => {
 
 const sentUserStatusUpdates = (roomId) => {
     setInterval(async () => {
-        const activeUsers = getActiveUsers(roomId);
-        const inactiveUsers = getInactiveUsers(roomId);
-        const allCurrentUsers = (await activeUsers).concat(inactiveUsers);
+        const activeUsers = await getActiveUsers(roomId);
+        const inactiveUsers = await getInactiveUsers(roomId);
+        const allCurrentUsers = activeUsers.concat(inactiveUsers);
     
         const userStatus = {
             activeUsers,
@@ -136,5 +136,13 @@ const sentUserStatusUpdates = (roomId) => {
         producer.send(message, (err, data) => {
             if (err) console.error('Error publishing to Kafka:', err);
         });
+
+        for (let i = 0; i < allCurrentUsers.length; ++i) {
+            if (inactiveUsers.includes(allCurrentUsers[i])) {
+                const messagingSession = await axios.get('/MessagingSession/userId/' + allCurrentUsers[i]);
+
+                await axios.put('/MessagingSession/sessionStatus/' + messagingSession.Id + "/INACTIVE");
+            }
+        }
     }, 60000);
 }
