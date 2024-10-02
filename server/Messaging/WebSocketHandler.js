@@ -36,6 +36,33 @@ async function broadcastToRoom(roomId, message) {
     }
 }
 
+async function editMessage(roomId, messageId, editedMessage, userId) {
+    const messagingSession = await axios.get('/MessagingSession/userId/' + userId);
+
+    await axios.put('/Message/messageText/' + messageId, {
+        messageText: editedMessage
+    });
+
+    await axios.put('/MessagingSession/lastActiveAt/' + messagingSession.Id);
+
+    await axios.put('/MessagingSession/sessionStatus/' + messagingSession.Id + "/ACTIVE");
+
+    messagingSession = await axios.get('/MessagingSession/userId/' + userId);
+
+    const editMessageInfo = {
+        topic: `userStatus-${roomId}-${messageId}`,
+        message: editedMessage,
+        user: userId,
+        updatedTime: messagingSession.LastActiveAt
+    };
+
+    producer.send(editMessageInfo, (err, data) => {
+        if (err) console.error('Error publishing to Kafka:', err);
+    });
+
+    await updateLastActiveTime(chatroomId, userId, messagingSession.LastActiveAt);
+}
+
 wss.on('connection', async (ws, req) => {
     const { chatroomId, userId } = getParamsFromSession(req);
 
@@ -70,6 +97,8 @@ wss.on('connection', async (ws, req) => {
         await axios.put('/MessagingSession/joinedAt/' + messagingSession.Id);
 
         await axios.put('/MessagingSession/sessionStatus/' + messagingSession.Id + "/ACTIVE");
+
+        sentUserStatusUpdates(chatroomId);
 
         ws.on('message', async (msg) => {
             const messageInfo = {
