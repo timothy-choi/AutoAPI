@@ -1,10 +1,21 @@
 const WebSocket = require('ws');
 const axios = require('axios');
 const { parse } = require('querystring');
+const kafka = require('kafka-node');
+const { KafkaClient, Producer } = kafka;
 
 const { addSession, removeSession, getSessionInfo, getActiveSessions, getUserForSession, updateLastActiveTime, getActiveUsers, getInactiveUsers } = require('./MessagingSessionTracker');
 
 const wss = new WebSocket.server({port: 8020 });
+
+const kafkaClient = new KafkaClient({ kafkaHost: 'localhost:9092' });
+const producer = new Producer(kafkaClient);
+
+producer.on('ready', () => {});
+
+producer.on('error', (err) => {
+    console.error('Kafka Producer error:', err);
+});
 
 function getParamsFromSession(session) {
     const { query } = session.upgradeReq;
@@ -104,10 +115,26 @@ wss.on('connection', async (ws, req) => {
     }
 });
 
-setInterval(async () => {
-    const activeUsers = getActiveUsers();
-    const inactiveUsers = getInactiveUsers();
-    const allCurrentUsers = (await activeUsers).concat(inactiveUsers);
 
-
-}, 60000);
+const sentUserStatusUpdates = (roomId) => {
+    setInterval(async () => {
+        const activeUsers = getActiveUsers(roomId);
+        const inactiveUsers = getInactiveUsers(roomId);
+        const allCurrentUsers = (await activeUsers).concat(inactiveUsers);
+    
+        const userStatus = {
+            activeUsers,
+            inactiveUsers
+        };
+    
+        const message = {
+            topic: 'userStatus_' + roomId,
+            messages: JSON.stringify(userStatus),
+            partition: 0
+        };
+    
+        producer.send(message, (err, data) => {
+            if (err) console.error('Error publishing to Kafka:', err);
+        });
+    }, 60000);
+}
