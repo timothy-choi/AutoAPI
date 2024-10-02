@@ -77,6 +77,19 @@ wss.on('connection', async (ws, req) => {
             await axios.put('/MessagingSession/lastActiveAt/' + messagingSession.Id);
 
             await axios.put('/MessagingSession/sessionStatus/' + messagingSession.Id + "/ACTIVE");
+
+            var messageId = null;
+            
+            await axios.post('/Message/', {
+                SenderId: userId,
+                SenderUsername: messagingSession.Username,
+                ChatroomId: chatroomId,
+                MessageText: msg
+            }).then((response) => {
+                messageId = response.data.Id;
+            }).catch((err) => {});
+
+            await axios.put('/Messaging/message/add/' + chatroom.Id + "/" + messageId);
         });
 
         ws.on('closed', async () => {
@@ -96,5 +109,5 @@ setInterval(async () => {
     const inactiveUsers = getInactiveUsers();
     const allCurrentUsers = (await activeUsers).concat(inactiveUsers);
 
-    
+
 }, 60000);
