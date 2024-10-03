@@ -63,6 +63,31 @@ async function editMessage(roomId, messageId, editedMessage, userId) {
     await updateLastActiveTime(chatroomId, userId, messagingSession.LastActiveAt);
 }
 
+async function removeMessage(roomId, messagingId, messageId, userId) {
+    const messagingInfo = await axios.get('/Messaging/' + messagingId);
+
+    const messagingSession = await axios.get('/MessagingSession/userId/' + userId);
+
+    await axios.put('/Messaging/message/remove/' + messagingInfo.Id + "/" + messageId);
+
+    await axios.put('/MessagingSession/sessionStatus/' + messagingSession.Id + "/ACTIVE");
+
+    await axios.put('/MessagingSession/lastActiveAt/' + messagingSession.Id);
+
+    const removeMessageInfo = {
+        topic: `removeMessage-${roomId}-${messageId}`,
+        message: messageId
+    };
+
+    messagingSession = await axios.get('/MessagingSession/userId/' + userId);
+
+    producer.send(removeMessageInfo, (err, data) => {
+        if (err) console.error('Error publishing to Kafka:', err);
+    });
+
+    await updateLastActiveTime(roomId, userId, messagingSession.LastActiveAt);
+}
+
 wss.on('connection', async (ws, req) => {
     const { chatroomId, userId } = getParamsFromSession(req);
 
