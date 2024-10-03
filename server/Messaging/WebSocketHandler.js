@@ -88,6 +88,40 @@ async function removeMessage(roomId, messagingId, messageId, userId) {
     await updateLastActiveTime(roomId, userId, messagingSession.LastActiveAt);
 }
 
+async function createMessage(chatroomId, msg, userId) {
+    const messagingSession = await axios.get('/MessagingSession/userId/' + userId);
+
+    const messageInfo = {
+        type: 'message',
+        message: msg,
+        user: messagingSession.Username,
+        messageDate: Date.now()
+    };
+
+    await broadcastToRoom(chatroomId, messageInfo);
+
+    var lastTime = messageInfo.messageDate;
+
+    await updateLastActiveTime(chatroomId, userId, lastTime);
+    
+    await axios.put('/MessagingSession/lastActiveAt/' + messagingSession.Id);
+
+    await axios.put('/MessagingSession/sessionStatus/' + messagingSession.Id + "/ACTIVE");
+
+    var messageId = null;
+    
+    await axios.post('/Message/', {
+        SenderId: userId,
+        SenderUsername: messagingSession.Username,
+        ChatroomId: chatroomId,
+        MessageText: msg
+    }).then((response) => {
+        messageId = response.data.Id;
+    }).catch((err) => {});
+
+    await axios.put('/Messaging/message/add/' + chatroom.Id + "/" + messageId);
+}
+
 wss.on('connection', async (ws, req) => {
     const { chatroomId, userId } = getParamsFromSession(req);
 
