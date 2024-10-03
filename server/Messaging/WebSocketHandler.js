@@ -160,35 +160,15 @@ wss.on('connection', async (ws, req) => {
         sentUserStatusUpdates(chatroomId);
 
         ws.on('message', async (msg) => {
-            const messageInfo = {
-                type: 'message',
-                message: msg,
-                user: messagingSession.Username,
-                messageDate: Date.now()
-            };
+            const data = JSON.parse(msg);
 
-            await broadcastToRoom(chatroomId, messageInfo);
-
-            var lastTime = messageInfo.messageDate;
-
-            await updateLastActiveTime(chatroomId, userId, lastTime);
-            
-            await axios.put('/MessagingSession/lastActiveAt/' + messagingSession.Id);
-
-            await axios.put('/MessagingSession/sessionStatus/' + messagingSession.Id + "/ACTIVE");
-
-            var messageId = null;
-            
-            await axios.post('/Message/', {
-                SenderId: userId,
-                SenderUsername: messagingSession.Username,
-                ChatroomId: chatroomId,
-                MessageText: msg
-            }).then((response) => {
-                messageId = response.data.Id;
-            }).catch((err) => {});
-
-            await axios.put('/Messaging/message/add/' + chatroom.Id + "/" + messageId);
+            if (data.type == 'createMessage') {
+                await createMessage(charoomId, msg, userId);
+            } else if (data.type == 'editMessage') {
+                await editMessage(chatroomId, data.messageId, data.editedMessage, userId);
+            } else {
+                await removeMessage(chatroomId, chatroom.Id, data.messageId, userId);
+            }
         });
 
         ws.on('closed', async () => {
