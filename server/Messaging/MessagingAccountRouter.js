@@ -10,7 +10,7 @@ router.post('/', MessagingAccountController.CreateMessagingAccount);
 
 router.put('/chatroom/add/:messagingAccountId', MessagingAccountController.AddChatroom);
 
-router.put('/chatroom/remove/:messagingAccountId', MessagingAccountController.RemoveChatroom);
+router.put('/chatroom/remove/:messagingAccountId/:chatroomId', MessagingAccountController.RemoveChatroom);
 
 router.delete('/:messagingAccountId', MessagingAccountController.DeleteMessagingAccount);
 

@@ -154,6 +154,10 @@ const User = sequelize.define('User', {
         type: DataTypes.ARRAY(DateTypes.JSONB),
         allowNull: true,
         defaultValue: []
+    },
+    MessagingAccountId: {
+        type: DataTypes.UUID,
+        allowNull: true,
     }
 });
 
