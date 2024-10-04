@@ -122,6 +122,26 @@ async function createMessage(chatroomId, msg, userId) {
     await axios.put('/Messaging/message/add/' + chatroom.Id + "/" + messageId);
 }
 
+async function removeUser(roomId, userId, user, messagingId, ws, messagingSessionId) {
+    const messagingInfo = await axios.get('/Messaging/' + messagingId);
+
+    const leavingText = {
+        type: 'notification',
+        message: user + ' has left the chat',
+        messageDate: Date.now()
+    };
+
+    await broadcastToRoom(roomId, leavingText);
+
+    await axios.put("/Messaging/user/remove/" + messagingInfo.Id + "/" + userId);
+
+    await axios.put('/Messaging/session/remove/' + messagingSessionId);
+
+    await axios.delete('/MessagingSession/' + messagingSessionId);
+
+    ws.close();
+}
+
 wss.on('connection', async (ws, req) => {
     const { chatroomId, userId } = getParamsFromSession(req);
 
@@ -163,20 +183,22 @@ wss.on('connection', async (ws, req) => {
             const data = JSON.parse(msg);
 
             if (data.type == 'createMessage') {
-                await createMessage(charoomId, msg, userId);
+                await createMessage(chatroomId, msg, userId);
             } else if (data.type == 'editMessage') {
                 await editMessage(chatroomId, data.messageId, data.editedMessage, userId);
-            } else {
+            } else if (data.type == 'removeMessage') {
                 await removeMessage(chatroomId, chatroom.Id, data.messageId, userId);
+            } else {
+                await removeUser(chatroomId, userId, messagingSession.Username, chatroom.Id, ws, messagingSession.Id);
             }
         });
 
         ws.on('closed', async () => {
             await removeSession(messagingSession.Username, chatroomId, sessionInfo.sessionId);
 
-            await axios.put('/MessagingSession/closedChatAt/' + messagingSession.Id);
+            await axios.put('/MessagingSession/closedChatAt/' + messagingSession.Id).then((response) => {}).catch((err) => {});
 
-            await axios.put('/MessagingSession/sessionStatus/' + messagingSession.Id + "/CLOSED");
+            await axios.put('/MessagingSession/sessionStatus/' + messagingSession.Id + "/CLOSED").then((response) => {}).catch((err) => {});
         });
     } else {
         ws.close(1003, 'Bad Data');
