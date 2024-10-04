@@ -50,6 +50,26 @@ exports.RemoveChatroom = async (req, res) => {
     }
 }
 
+exports.AddChatroomsToJoin = async (req, res) => {
+    try {
+        await MessagingAccountService.AddChatroomToJoin(req.messagingAccountId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({error: error.message});
+    }
+}
+
+exports.RemoveChatroomsToJoin = async (req, res) => {
+    try {
+        await MessagingAccountService.RemoveChatroomToJoin(req.messagingAccountId, req.chatroomId);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({error: error.message});
+    }
+}
+
 exports.DeleteMessagingAccount = async (req, res) => {
     try {
         await MessagingAccountService.DeleteMessagingAccount(req.messagingAccountId);

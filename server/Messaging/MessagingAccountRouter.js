@@ -12,6 +12,10 @@ router.put('/chatroom/add/:messagingAccountId', MessagingAccountController.AddCh
 
 router.put('/chatroom/remove/:messagingAccountId/:chatroomId', MessagingAccountController.RemoveChatroom);
 
+router.put('/chatroomToJoin/add/:messagingAccountId', MessagingAccountController.AddChatroomsToJoin);
+
+router.put('/chatroomToJoin/remove/:messagingAccountId/:chatroomId', MessagingAccountController.RemoveChatroomsToJoin);
+
 router.delete('/:messagingAccountId', MessagingAccountController.DeleteMessagingAccount);
 
 module.exports = router;
