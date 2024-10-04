@@ -60,6 +60,38 @@ exports.RemoveChatroom = async (messagingAccountId, chatroomId) => {
     }
 }
 
+exports.AddChatroomToJoin = async (messagingAccountId, chatroomInfo) => {
+    try {
+        var messagingAcct = await getMessagingAccountById(messagingAccountId);
+
+        if (messagingAcct) {
+            throw new Error('account already exists');
+        }
+
+        messagingAcct.ChatroomsToJoin.push(chatroomInfo);
+
+        await messagingAcct.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.RemoveChatroomToJoin = async (messagingAccountId, chatroomId) => {
+    try {
+        var messagingAcct = await getMessagingAccountById(messagingAccountId);
+
+        if (messagingAcct) {
+            throw new Error('account already exists');
+        }
+
+        messagingAcct.ChatroomsToJoin.filter(obj => obj.RoomId !== chatroomId);
+
+        await messagingAcct.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.DeleteMessagingAccount = async (messagingAccountId) => {
     try {
         var messagingAcct = await getMessagingAccountById(messagingAccountId);

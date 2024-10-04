@@ -19,6 +19,11 @@ const MessagingAccount = sequelize.define('MessagingAccount', {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
         defaultValue: []
+    },
+    ChatroomsToJoin: { //chatrooms that the user is invited to join
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: []
     }
 });
 
