@@ -125,6 +125,8 @@ async function createMessage(chatroomId, msg, userId) {
 async function removeUser(roomId, userId, user, messagingId, ws, messagingSessionId) {
     const messagingInfo = await axios.get('/Messaging/' + messagingId);
 
+    const userInfo = await axios.get('/User/' + userId);
+
     const leavingText = {
         type: 'notification',
         message: user + ' has left the chat',
@@ -133,11 +135,13 @@ async function removeUser(roomId, userId, user, messagingId, ws, messagingSessio
 
     await broadcastToRoom(roomId, leavingText);
 
-    await axios.put("/Messaging/user/remove/" + messagingInfo.Id + "/" + userId);
+    await axios.put("/Messaging/user/remove/" + messagingInfo.data.Id + "/" + userId);
 
     await axios.put('/Messaging/session/remove/' + messagingSessionId);
 
     await axios.delete('/MessagingSession/' + messagingSessionId);
+
+    await axios.put('/MessagingAccount/chatroom/remove/' + userInfo.data.MessagingAccountId + "/" + roomId);
 
     ws.close();
 }
