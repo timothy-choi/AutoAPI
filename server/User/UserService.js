@@ -799,6 +799,22 @@ exports.RemoveFollowing = async (userId, followingInfo) => {
     }
 }
 
+exports.SetMessageAccountId = async (userId, messagingAccountId) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.MessagingAccountId = messagingAccountId;
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
 exports.DeleteUser = async (userId) => {
     try {
         var userInfo = await User.findByPk(userId);
