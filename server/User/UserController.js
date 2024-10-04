@@ -467,6 +467,16 @@ exports.RemoveFollowing = async (req, res) => {
     }
 }
 
+exports.SetMessagingAccountId = async (req, res) => {
+    try {
+        await UserService.SetMessageAccountId(req.userId, req.messagingAccountId);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteUser = async (req, res) => {
     try {
         var user = await UserService.GetUserById(req.userId);

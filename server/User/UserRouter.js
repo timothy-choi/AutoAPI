@@ -96,4 +96,6 @@ router.put("/following/add/:userId", UserController.AddFollowing);
 
 router.put("/following/remove/:userId", UserController.RemoveFollowing);
 
+router.put('/messagingAccountId/:userId/:messagingAccountId', UserController.SetMessagingAccountId);
+
 module.exports = router;
