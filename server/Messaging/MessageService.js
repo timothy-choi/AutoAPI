@@ -8,7 +8,7 @@ exports.GetMessageById = async (messageId) => {
 
 exports.CreateMessage = async (messageBody) => {
     try {
-        var message = await Message.create({SenderId: messageBody.userId, SenderUsername: messageBody.username, ChatroomId: messageBody.chatroomId, MessageText: messageBody.messageText, MessageCreated: Date.now()});
+        var message = await Message.create({SenderId: messageBody.userId, SenderUsername: messageBody.username, ChatroomId: messageBody.chatroomId, MessageText: messageBody.messageText, MessageCreated: Date.now(), MessageType: messageBody.messageType});
 
         return message;
     } catch (error) {

@@ -116,7 +116,8 @@ async function createMessage(chatroomId, msg, userId) {
         SenderId: userId,
         SenderUsername: messagingSession.Username,
         ChatroomId: chatroomId,
-        MessageText: msg
+        MessageText: msg,
+        MessageType: 'message'
     }).then((response) => {
         messageId = response.data.Id;
     }).catch((err) => {});
@@ -136,6 +137,16 @@ async function removeUser(roomId, userId, user, messagingId, ws, messagingSessio
     };
 
     await broadcastToRoom(roomId, leavingText);
+
+    await axios.post('/Message/', {
+        SenderId: userId,
+        SenderUsername: userInfo.data.Username,
+        ChatroomId: roomId,
+        MessageText: userInfo.data.Username + ' has left the chat',
+        MessageType: 'notification'
+    }).then((response) => {
+        messageId = response.data.Id;
+    }).catch((err) => {});
 
     await axios.put("/Messaging/user/remove/" + messagingInfo.data.Id + "/" + userId);
 
@@ -177,6 +188,17 @@ wss.on('connection', async (ws, req) => {
             };
 
             await broadcastToRoom(chatroomId, joinedText);
+
+            await axios.post('/Message/', {
+                SenderId: userId,
+                SenderUsername: messagingSession.Username,
+                ChatroomId: chatroomId,
+                MessageText: messagingSession.Username + ' has entered the chat',
+                MessageType: 'notification'
+            }).then((response) => {
+                messageId = response.data.Id;
+            }).catch((err) => {});
+        
         } 
 
         await axios.put('/MessagingSession/joinedAt/' + messagingSession.Id);
