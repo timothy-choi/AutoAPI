@@ -138,6 +138,8 @@ async function removeUser(roomId, userId, user, messagingId, ws, messagingSessio
 
     await broadcastToRoom(roomId, leavingText);
 
+    var messageId = null;
+
     await axios.post('/Message/', {
         SenderId: userId,
         SenderUsername: userInfo.data.Username,
@@ -155,6 +157,8 @@ async function removeUser(roomId, userId, user, messagingId, ws, messagingSessio
     await axios.delete('/MessagingSession/' + messagingSessionId);
 
     await axios.put('/MessagingAccount/chatroom/remove/' + userInfo.data.MessagingAccountId + "/" + roomId);
+
+    await axios.put('/Messaging/message/add/' + messagingId + "/" + messageId);
 
     ws.close();
 }
@@ -189,6 +193,8 @@ wss.on('connection', async (ws, req) => {
 
             await broadcastToRoom(chatroomId, joinedText);
 
+            var messageId = null;
+
             await axios.post('/Message/', {
                 SenderId: userId,
                 SenderUsername: messagingSession.Username,
@@ -198,7 +204,8 @@ wss.on('connection', async (ws, req) => {
             }).then((response) => {
                 messageId = response.data.Id;
             }).catch((err) => {});
-        
+
+            await axios.put('/Messaging/message/add/' + chatroom.data.Id + "/" + messageId);
         } 
 
         await axios.put('/MessagingSession/joinedAt/' + messagingSession.Id);
