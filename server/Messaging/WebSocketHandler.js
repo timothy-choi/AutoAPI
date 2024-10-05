@@ -86,6 +86,8 @@ async function removeMessage(roomId, messagingId, messageId, userId) {
     });
 
     await updateLastActiveTime(roomId, userId, messagingSession.LastActiveAt);
+
+    await axios.delete("/Message/" + messageId);
 }
 
 async function createMessage(chatroomId, msg, userId) {
