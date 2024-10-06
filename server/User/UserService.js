@@ -815,6 +815,86 @@ exports.SetMessageAccountId = async (userId, messagingAccountId) => {
     }
 }
 
+exports.SetFollowerRequestsOn = async (userId) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.FollowerRequestsOn = userInfo.FollowerRequestsOn ? false : true;
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.AddFollowerRequestSent = async (userId, followerRequest) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.FollowerRequestsSent.push(followerRequest);
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.RemoveFollowerRequestSent = async (userId, followerRequestId) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.FollowerRequestsSent.filter(followerRequest => followerRequest.Id !== followerRequestId);
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.AddFollowerRequestReceived = async (userId, followerRequest) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.FollowerRequestsReceived.push(followerRequest);
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.RemoveFollowerRequestReceived = async (userId, followerRequestId) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.FollowerRequestsReceived.filter(followerRequest => followerRequest.Id !== followerRequestId);
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
 exports.DeleteUser = async (userId) => {
     try {
         var userInfo = await User.findByPk(userId);
