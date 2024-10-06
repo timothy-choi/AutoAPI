@@ -158,6 +158,21 @@ const User = sequelize.define('User', {
     MessagingAccountId: {
         type: DataTypes.UUID,
         allowNull: true,
+    },
+    FollowerRequestsOn: {
+        type: DataTypes.BOOLEAN,
+        allowNull: true,
+        defaultValue: false,
+    },
+    FollowerRequestsSent: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: [],
+    },
+    FollowerRequestsReceived: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: [],
     }
 });
 
