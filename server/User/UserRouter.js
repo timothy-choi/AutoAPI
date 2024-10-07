@@ -98,4 +98,14 @@ router.put("/following/remove/:userId", UserController.RemoveFollowing);
 
 router.put('/messagingAccountId/:userId/:messagingAccountId', UserController.SetMessagingAccountId);
 
+router.put('/followerRequestsOn/:userId', UserController.SetFollowerRequestsOn);
+
+router.put('/followerRequestsSent/add/:userId', UserController.AddFollowerRequestSent);
+
+router.put('/followerRequestsSent/remove/:userId/:followerRequestId', UserController.RemoveFollowerRequestSent);
+
+router.put('/followerRequestsReceived/add/:userId', UserController.AddFollowerRequestReceived);
+
+router.put('/followerRequestsReceived/remove/:userId/:followerRequestId', UserController.RemoveFollowerRequestReceived);
+
 module.exports = router;
