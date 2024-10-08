@@ -34,6 +34,8 @@ router.put("/groupTag/remove/:groupId/:groupTag", GroupController.RemoveGroupTag
 
 router.put("/groupDescription/:groupId", GroupController.SetGroupDescription);
 
+router.put("/groupChatroomId/:groupId/:roomId", GroupController.SetGroupChatroomId);
+
 router.delete("/:groupId", GroupController.DeleteGroup);
 
 module.exports = router;

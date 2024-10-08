@@ -160,6 +160,16 @@ exports.SetGroupDescription = async (req, res) => {
     }
 }
 
+exports.SetGroupChatroomId = async (req, res) => {
+    try {
+        await GroupService.SetGroupChatroomId(req.groupId, req.roomId);
+        
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({error: error.message});
+    }
+}
+
 exports.DeleteGroup = async (req, res) => {
     try {
         await GroupService.DeleteGroup(req.groupId);
