@@ -206,19 +206,19 @@ wss.on('connection', async (ws, req) => {
             }).catch((err) => {});
 
             await axios.put('/Messaging/message/add/' + chatroom.data.Id + "/" + messageId);
+
+            var messageAccountInfo = await axios.get('/MessagingAccount/userId/' + userId);
+
+            var currChatroom = messageAccountInfo.data.AllChatroomsJoined.find(chat => chat.roomId == chatroomId);
+
+            await axios.put(`/MessagingAccount/chatroomToJoin/remove/${messageAccountInfo.data.Id}/${currChatroom.roomId}`);
+
+            await axios.put('/MessagingAccount/chatroom/add/' + messageAccountInfo.data.Id, currChatroom);
         } 
 
         await axios.put('/MessagingSession/joinedAt/' + messagingSession.Id);
 
         await axios.put('/MessagingSession/sessionStatus/' + messagingSession.Id + "/ACTIVE");
-
-        var messageAccountInfo = await axios.get('/MessagingAccount/userId/' + userId);
-
-        var currChatroom = messageAccountInfo.data.AllChatroomsJoined.find(chat => chat.roomId == chatroomId);
-
-        await axios.put(`/MessagingAccount/chatroomToJoin/remove/${messageAccountInfo.data.Id}/${currChatroom.roomId}`);
-
-        await axios.put('/MessagingAccount/chatroom/add/' + messageAccountInfo.data.Id, currChatroom);
 
         sentUserStatusUpdates(chatroomId);
 
