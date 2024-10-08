@@ -123,6 +123,12 @@ async function createMessage(chatroomId, msg, userId) {
     }).catch((err) => {});
 
     await axios.put('/Messaging/message/add/' + chatroom.Id + "/" + messageId);
+
+    await axios.post('/NotificationWorkflow/', {
+        UserId: userId,
+        topic: 'newMessage',
+        message: msg
+    }).then((res) => {}).catch((err) => {});
 }
 
 async function removeUser(roomId, userId, user, messagingId, ws, messagingSessionId) {
@@ -159,6 +165,12 @@ async function removeUser(roomId, userId, user, messagingId, ws, messagingSessio
     await axios.put('/MessagingAccount/chatroom/remove/' + userInfo.data.MessagingAccountId + "/" + roomId);
 
     await axios.put('/Messaging/message/add/' + messagingId + "/" + messageId);
+
+    await axios.post('/NotificationWorkflow/', {
+        UserId: userId,
+        topic: 'userLeft',
+        message: userInfo.data.Username + ' has left the chat'
+    }).then((res) => {}).catch((err) => {});
 
     ws.close();
 }
@@ -214,6 +226,12 @@ wss.on('connection', async (ws, req) => {
             await axios.put(`/MessagingAccount/chatroomToJoin/remove/${messageAccountInfo.data.Id}/${currChatroom.roomId}`);
 
             await axios.put('/MessagingAccount/chatroom/add/' + messageAccountInfo.data.Id, currChatroom);
+
+            await axios.post('/NotificationWorkflow/', {
+                UserId: userId,
+                topic: 'userJoined',
+                message: messagingSession.Username + ' has joined the chat'
+            }).then((res) => {}).catch((err) => {});
         } 
 
         await axios.put('/MessagingSession/joinedAt/' + messagingSession.Id);

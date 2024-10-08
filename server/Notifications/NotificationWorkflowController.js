@@ -7,7 +7,7 @@ exports.SendNotification = async (req, res) => {
 
         var notificationAccountId = null;
 
-        axios.get("/notificationAccounts/userId/" + req.userId)
+        axios.get("/notificationAccounts/userId/" + req.body.UserId)
             .then(response => {
                 if (!response.data.NotificationsOn) {
                     return res.status(404).json({'msg': 'user does not accept notifications'});
@@ -22,12 +22,12 @@ exports.SendNotification = async (req, res) => {
                 return res.status(500).json({'error': error.message});
             });
         
-        var userInfo = await axios.get("/user/" + req.userId);
+        var userInfo = await axios.get("/user/" + req.body.UserId);
 
         var notification = null;
 
         await axios.post("/notifications/", {
-            userId: req.userId,
+            userId: req.body.UserId,
             notificationType: userInfo.data.NotificationType,
             notificationTopic: req.body.topic,
             notificationMessage: req.body.message
@@ -40,7 +40,7 @@ exports.SendNotification = async (req, res) => {
         if (userInfo.data.NotificationType == 'email') {
             var emailNotification = null;
             await axios.post("/emailNotifications/", {
-                userId: req.userId,
+                userId: req.body.UserId,
                 emailRecipient: userInfo.data.email,
                 topic: req.body.topic,
                 message: req.body.message
