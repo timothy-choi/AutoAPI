@@ -64,7 +64,11 @@ const Group = sequelize.define('Group', {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
         allowNull: true
-    }
+    },
+    GroupChatroomId: {
+        type: DataTypes.UUID,
+        allowNull: true
+    },
 });
 
 module.exports = Group;

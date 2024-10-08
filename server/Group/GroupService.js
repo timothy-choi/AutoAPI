@@ -262,6 +262,24 @@ exports.SetGroupDescription = async (groupId, groupDesc) => {
     }
 }
 
+exports.SetGroupChatroomId = async (groupId, roomId) => {
+    try {
+        var groupInfo = await Group.findByPk(groupId);
+
+        if (!groupInfo) {
+            throw new Error('group does not exist');
+        } 
+
+        groupInfo.GroupChatroomId = roomId;
+
+        groupInfo.LastUpdatedAt = Date.now();
+
+        await groupInfo.save();
+    } catch (error) {
+        throw new Error('Could not modify group');
+    }
+}
+
 exports.DeleteGroup = async (groupId) => {
     try {
         var groupInfo = await Group.findByPk(groupId);
