@@ -49,7 +49,7 @@ const Project = sequelize.define('Project', {
         defaultValue: []
     },
     AllProjectModels: {
-        type: DataTypes.ARRAY(DataTypes.UUID),
+        type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
         defaultValue: []
     }
