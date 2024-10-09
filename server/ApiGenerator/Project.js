@@ -28,6 +28,21 @@ const Project = sequelize.define('Project', {
         defaultValue: DataTypes.NOW,
         allowNull: false
     },
+    UpdatedAt: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+        allowNull: true
+    },
+    GithubUrl: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: "",
+    },
+    IsAvailable: {
+        type: Boolean,
+        allowNull: true,
+        defaultValue: false,
+    },
 });
 
 module.exports = Project;
