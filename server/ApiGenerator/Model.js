@@ -20,6 +20,19 @@ const Model = sequelize.define('Model', {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: false,
     },
+    ModelUpdatedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        defaultValue: DataTypes.NOW,
+    },
+    ModelUpdatedBy: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    ModelDescription: {
+        type: DataTypes.STRING,
+        allowNull: false
+    }
 });
 
 module.exports = Model;
