@@ -28,7 +28,7 @@ const Project = sequelize.define('Project', {
         defaultValue: DataTypes.NOW,
         allowNull: false
     },
-    UpdatedAt: {
+    ModifiedAt: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
         allowNull: true
@@ -39,10 +39,20 @@ const Project = sequelize.define('Project', {
         defaultValue: "",
     },
     IsAvailable: {
-        type: Boolean,
+        type: DataTypes.BOOLEAN,
         allowNull: true,
         defaultValue: false,
     },
+    ProjectUpdates: { //list of "announcements" that describe updates/changes to api
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: []
+    },
+    AllProjectModels: {
+        type: DataTypes.ARRAY(DataTypes.UUID),
+        allowNull: true,
+        defaultValue: []
+    }
 });
 
 module.exports = Project;
