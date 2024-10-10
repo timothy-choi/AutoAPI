@@ -58,6 +58,11 @@ const Project = sequelize.define('Project', {
         allowNull: true,
         defaultValue: []
     },
+    AllDatabases: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: []
+    },
     AllProjectFileBucket: {
         type: DataTypes.STRING,
         allowNull: true
