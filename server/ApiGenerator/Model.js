@@ -16,6 +16,10 @@ const Model = sequelize.define('Model', {
         allowNull: false,
         defaultValue: DataTypes.NOW,
     },
+    ModelCreatedBy: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
     ModelAttributes: {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: false,
