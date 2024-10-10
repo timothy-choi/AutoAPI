@@ -6,6 +6,14 @@ const DatabaseSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
+    Type: {
+        type: String,
+        required: true
+    },
+    Version: {
+        type: String,
+        required: true
+    },
     Description: {
         type: String
     },
@@ -23,6 +31,10 @@ const DatabaseSchema = new mongoose.Schema({
     },
     UpdatedBy: {
         type: String
+    },
+    ModelsUsed: {
+        type: [String],
+        required: true
     }
 });
 
