@@ -11,6 +11,10 @@ const Project = sequelize.define('Project', {
         type: DataTypes.STRING,
         allowNull: false,
     },
+    ProjectApiType: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
     GroupProject: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
@@ -54,7 +58,7 @@ const Project = sequelize.define('Project', {
         defaultValue: []
     },
     AllEndpoints: {
-        type: DataTypes.ARRAY(DataTypes.JSONB),
+        type: DataTypes.JSONB,
         allowNull: true,
         defaultValue: []
     },
