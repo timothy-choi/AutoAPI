@@ -40,7 +40,11 @@ const Model = sequelize.define('Model', {
     ModelCreationFile: {
         type: DataTypes.JSONB,
         allowNull: true,
-    }
+    },
+    ModelDatabaseInfo: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+    },
 });
 
 module.exports = Model;
