@@ -32,6 +32,10 @@ const Model = sequelize.define('Model', {
     ModelDescription: {
         type: DataTypes.STRING,
         allowNull: false
+    },
+    ModelCreationFile: {
+        type: DataTypes.JSONB,
+        allowNull: true,
     }
 });
 
