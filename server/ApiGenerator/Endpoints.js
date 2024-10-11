@@ -34,7 +34,11 @@ const EndpointsModel = mongoose.Schema({
         type: Map,
         of: String
     },
-    AllEndpointImplemtationInfo: {
+    AllEndpointRequestInfo: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: false
+    },
+    AllEndpointImplementationInfo: {
         type: [mongoose.Schema.Types.Mixed],
         required: false
     }
