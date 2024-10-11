@@ -44,7 +44,15 @@ const DatabaseSchema = new mongoose.Schema({
         required: false
     },
     ModelDatabaseInstanceInfo: {
-        type: [mongoose.Schema.Types.Mixed],
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
+    HealthStatus: {
+        type: String,
+        required: false
+    },
+    Status: {
+        type: String,
         required: false
     }
 });

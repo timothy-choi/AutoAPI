@@ -60,7 +60,7 @@ const Project = sequelize.define('Project', {
     AllEndpoints: {
         type: DataTypes.JSONB,
         allowNull: true,
-        defaultValue: []
+        defaultValue: {}
     },
     AllDatabases: {
         type: DataTypes.ARRAY(DataTypes.JSONB),

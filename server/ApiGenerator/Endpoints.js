@@ -11,6 +11,10 @@ const EndpointsModel = mongoose.Schema({
         required: true,
         unique: true
     },
+    EndpointType: {
+        type: String,
+        required: true
+    },
     CreatedAt: {
         type: Date,
         required: true,
@@ -29,6 +33,10 @@ const EndpointsModel = mongoose.Schema({
     EndpointsCreationFile: {
         type: Map,
         of: String
+    },
+    AllEndpointImplemtationInfo: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: false
     }
 });
 
