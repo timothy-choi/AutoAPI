@@ -38,6 +38,14 @@ const DatabaseSchema = new mongoose.Schema({
     ModelsUsed: {
         type: [String],
         required: true
+    },
+    ModelTablesInfo: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: false
+    },
+    ModelDatabaseInstanceInfo: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: false
     }
 });
 
