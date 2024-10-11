@@ -24,6 +24,10 @@ const Model = sequelize.define('Model', {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: false,
     },
+    ModelDidUpdate: {
+        type: DataTypes.BOOLEAN,
+        allowNull: true,
+    },
     ModelUpdatedAt: {
         type: DataTypes.DATE,
         allowNull: true,

@@ -15,6 +15,9 @@ const EndpointsModel = mongoose.Schema({
         type: Date,
         required: true,
     },
+    DidUpdate: {
+        type: Boolean
+    },
     UpdatedAt: {
         type: Date,
         required: false,
@@ -23,6 +26,10 @@ const EndpointsModel = mongoose.Schema({
         type: String,
         required: false
     },
+    EndpointsCreationFile: {
+        type: Map,
+        of: String
+    }
 });
 
 const EndpointsDefinition = mongoose.model('EndpointsModel', EndpointsModel);

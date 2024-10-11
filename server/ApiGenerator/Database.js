@@ -17,6 +17,9 @@ const DatabaseSchema = new mongoose.Schema({
     Description: {
         type: String
     },
+    DidUpdate: {
+        type: Boolean
+    },
     CreatedBy: {
         type: String,
         required: true
