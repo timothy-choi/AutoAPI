@@ -15,6 +15,18 @@ const Project = sequelize.define('Project', {
         type: DataTypes.STRING,
         allowNull: false,
     },
+    IsPrivate: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+    },
+    ProjectStatus: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    ProjectHealthStatus: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
     GroupProject: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
@@ -81,6 +93,31 @@ const Project = sequelize.define('Project', {
         type: DataTypes.STRING,
         allowNull: true
     },
+    ProjectActivityLog: { //for projects with no groups
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        default: [],
+    },
+    ProjectUserRequestsHistory: { //history of all requests by project owner to any user
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        default: [],
+    },
+    AwaitingUserProjectUserRequests: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        default: [],
+    },
+    AssignedUserProjectUserRequests: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        default: [],
+    },
+    ProjectContributors: { //only for projects with no groups
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        default: [],
+    }
 });
 
 module.exports = Project;
