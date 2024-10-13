@@ -89,6 +89,11 @@ const Project = sequelize.define('Project', {
         allowNull: true,
         defaultValue: []
     },
+    ApiSecurityAuth: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {}
+    },
     AllProjectFileBucket: {
         type: DataTypes.STRING,
         allowNull: true
@@ -114,6 +119,11 @@ const Project = sequelize.define('Project', {
         default: [],
     },
     ProjectContributors: { //only for projects with no groups
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        default: [],
+    },
+    ProjectViewRequestsRecieved: {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
         default: [],
