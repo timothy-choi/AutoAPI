@@ -131,6 +131,10 @@ const Project = sequelize.define('Project', {
     ProjectStatsId: {
         type: DataTypes.UUID,
         allowNull: false,
+    },
+    ApiDocumentation: {
+        type: DataTypes.JSONB,
+        allowNull: true,
     }
 });
 
