@@ -11,6 +11,10 @@ const UserStats = sequelize.define('UserStats', {
         type: DataTypes.UUID,
         allowNull: false,
     },
+    ProjectsCreated: {
+        type: DataTypes.ARRAY(DataTypes.UUID),
+        allowNull: true,
+    },
     TotalNumberOfApisCreated: {
         type: DataTypes.INTEGER,
         allowNull: true,
@@ -31,6 +35,31 @@ const UserStats = sequelize.define('UserStats', {
         allowNull: true,
         defaultValue: 0,
     },
+    AverageErrorRate: {
+        type: DataTypes.DOUBLE,
+        allowNull: true,
+        defaultValue: 0.0,
+    },
+    AverageResponseTime: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: 0,
+    },
+    MostPopularApi: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {}
+    },
+    NumberOfContributors: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: 0,
+    },
+    ProjectsUsedStats: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: {}
+    }
 });
 
 module.exports = UserStats;
