@@ -50,6 +50,38 @@ const ProjectStats = sequelize.define('ProjectStats', {
     GeoDistribution: {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true
+    },
+    PeakTrafficTime: {
+        type: DataTypes.TIME,
+        allowNull: true
+    },
+    MaxResponseTime: {
+        type: DataTypes.FLOAT,
+        allowNull: true
+    },
+    MinResponseTime: {
+        type: DataTypes.FLOAT,
+        allowNull: true
+    },
+    TotalDataTransferred: {
+        type: DataTypes.BIGINT, 
+        allowNull: true,
+        defaultValue: 0
+    },
+    RequestTypeDistribution: {
+        type: DataTypes.JSONB, 
+        allowNull: true,
+        defaultValue: {}
+    },    
+    ActiveUsers: {
+        type: DataTypes.JSONB, 
+        allowNull: true,
+        defaultValue: {}
+    },
+    LatencyByRegion: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {}
     }
 });
 
