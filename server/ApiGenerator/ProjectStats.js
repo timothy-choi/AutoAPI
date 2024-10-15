@@ -30,6 +30,26 @@ const ProjectStats = sequelize.define('ProjectStats', {
         type: DataTypes.JSONB,
         allowNull: true,
         default: {},
+    },
+    AverageResponseTime: {
+        type: DataTypes.NUMBER,
+        allowNull: true
+    },
+    UptimePercentage: {
+        type: DataTypes.DOUBLE,
+        allowNull: true
+    },
+    ErrorRate: {
+        type: DataTypes.DOUBLE,
+        allowNull: true
+    },
+    TopErrorCodes: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true
+    },
+    GeoDistribution: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true
     }
 });
 
