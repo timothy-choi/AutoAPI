@@ -140,6 +140,10 @@ const Project = sequelize.define('Project', {
         type: DataTypes.JSONB,
         allowNull: true,
     },
+    ApiMonitoringInfo: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+    },
     ProjectUserFollowers: { 
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
