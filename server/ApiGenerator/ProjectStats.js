@@ -21,11 +21,16 @@ const ProjectStats = sequelize.define('ProjectStats', {
         allowNull: true,
         defaultValue: 0
     },
-    ApiEndpointUsage: {
+    ApiEndpointUsage: { //usage info about api endpoints
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
         default: [],
     },
+    ContributorStats: { //stats about contributors fore this project
+        type: DataTypes.JSONB,
+        allowNull: true,
+        default: {},
+    }
 });
 
 module.exports = ProjectStats;

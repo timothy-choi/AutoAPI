@@ -173,6 +173,11 @@ const User = sequelize.define('User', {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
         defaultValue: [],
+    },
+    ProjectFollowing: { //projects that the user is following
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: [],
     }
 });
 
