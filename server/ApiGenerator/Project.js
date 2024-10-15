@@ -11,6 +11,10 @@ const Project = sequelize.define('Project', {
         type: DataTypes.STRING,
         allowNull: false,
     },
+    ProjectVersion: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
     ProjectApiType: {
         type: DataTypes.STRING,
         allowNull: false,

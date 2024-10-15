@@ -15,6 +15,10 @@ const EndpointsModel = mongoose.Schema({
         type: String,
         required: true
     },
+    EndpointVersion: {
+        type: String,
+        required: false
+    },
     CreatedAt: {
         type: Date,
         required: true,

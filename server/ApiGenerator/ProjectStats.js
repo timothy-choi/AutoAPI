@@ -15,7 +15,17 @@ const ProjectStats = sequelize.define('ProjectStats', {
         type: DataTypes.NUMBER,
         allowNull: true,
         defaultValue: 0
-    }
+    },
+    NumberOfApiCallsSent: {
+        type: DataTypes.NUMBER,
+        allowNull: true,
+        defaultValue: 0
+    },
+    ApiEndpointUsage: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        default: [],
+    },
 });
 
 module.exports = ProjectStats;
