@@ -12,20 +12,38 @@ const ApiDeployment = sequelize.define('ApiDeployment', {
         allowNull: false,
     },
     Version: {
-        type: String, 
+        type: DataTypes.STRING, 
         allowNull: false
     },
     BaseUrl: {
-        type: String, 
+        type: DataTypes.STRING, 
         allowNull: false
     },
     CreatedAt: {
-        type: Date,
-        default: Date.now
+        type: DataTypes.DATE,
+        defaultValue: Date.now
     },
     UpdatedAt: {
-        type: Date,
-        default: Date.now
+        type: DataTypes.DATE,
+        defaultValue: Date.now
+    },
+    Status: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {}
+    },
+    Environment: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {}
+    },
+    DeployedAt: {
+        type:  DataTypes.DATE,
+        defaultValue: Date.now
+    },
+    DeployedDuration: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
     }
 });
 
