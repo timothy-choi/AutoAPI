@@ -44,6 +44,41 @@ const ApiDeployment = sequelize.define('ApiDeployment', {
     DeployedDuration: {
         type: DataTypes.INTEGER,
         allowNull: true,
+    },
+    AllApiModels: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: {}
+    },
+    AllApiEndpoints: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: {}
+    },
+    AllApiDatabases: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: {}
+    },
+    ApiAuthentication: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {}
+    },
+    ApiDocumentation: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {}
+    },
+    ApiMonitoring: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {}
+    },
+    ApiGateway: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {}
     }
 });
 
