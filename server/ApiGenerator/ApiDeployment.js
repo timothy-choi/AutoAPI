@@ -45,6 +45,21 @@ const ApiDeployment = sequelize.define('ApiDeployment', {
         type: DataTypes.INTEGER,
         allowNull: true,
     },
+    DeploymentTarget: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {}
+    },
+    DeploymentMetadata: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {}
+    },
+    RollbackInfo: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {}
+    },
     AllApiModels: {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
