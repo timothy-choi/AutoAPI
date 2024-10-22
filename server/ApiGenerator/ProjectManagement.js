@@ -23,6 +23,16 @@ const ProjectManagement = sequelize.define('ProjectManagement', {
         type: DataTypes.JSONB,
         allowNull: true,
         defaultValue: {}
+    },
+    CreatedAt: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+        allowNull: false
+    },
+    UpdatedAt: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+        allowNull: true
     }
 });
 

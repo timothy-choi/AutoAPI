@@ -27,9 +27,9 @@ const ProjectStats = sequelize.define('ProjectStats', {
         default: [],
     },
     ContributorStats: { //stats about contributors fore this project
-        type: DataTypes.JSONB,
+        type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
-        default: {},
+        default: [],
     },
     AverageResponseTime: {
         type: DataTypes.NUMBER,
