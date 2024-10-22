@@ -152,6 +152,10 @@ const Project = sequelize.define('Project', {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
         default: [],
+    },
+    ProjectManagementId: {
+        type: DataTypes.UUID,
+        allowNull: false,
     }
 });
 

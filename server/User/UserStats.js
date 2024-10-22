@@ -58,7 +58,12 @@ const UserStats = sequelize.define('UserStats', {
     ProjectsUsedStats: {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
-        defaultValue: {}
+        defaultValue: []
+    },
+    ProjectOwnedManagementInfo: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: []
     }
 });
 
