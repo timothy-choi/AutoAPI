@@ -20,7 +20,7 @@ exports.CreateProjectStats = async (projectStatsInfo) => {
             throw new Error('group already exists');
         }
 
-        const projectStats = await ProjectStats.create({ProjectId: projectStatsInfo['projectId']});
+        const projectStats = await ProjectStats.create({ProjectId: projectStatsInfo['projectId'], CreatedAt: Date.now()});
 
         return projectStats;
     } catch (error) {
@@ -55,6 +55,104 @@ exports.SetNumberOfApiCalls = async (projectStatsId) => {
         }
 
         projectStats.NumberOfApiCallsSent += 1;
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.AddApiEndpointUsage = async (projectStatsId, apiEndpointUsageInfo) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.ApiEndpointUsage.add(apiEndpointUsageInfo);
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.RemoveApiEndpointUsage = async (projectStatsId, apiEndpointUsageId) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.ApiEndpointUsage.filter(endpoint = endpoint.id != apiEndpointUsageId);
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.EditApiEndpointUsage = async (projectStatsId, apiEndpointUsageId, updatedInfo) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        var index = projectStats.ApiEndpointUsage.findIndex(endpoint = endpoint.id != apiEndpointUsageId);
+
+        projectStats.ApiEndpointUsage.splice(index, 1);
+
+        projectStats.ApiEndpointUsage.splice(index, 0, updatedInfo);
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.AddContributorStats = async (projectStatsId, contributorStats) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.ContributorStats.add(contributorStats);
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.EditContributorStats = async (projectStatsId, contributorStatsId, updatedInfo) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        var index = projectStats.ContributorStats.findIndex(contributor = contributor.id != contributorStatsId);
+
+        projectStats.ContributorStats.splice(index, 1);
+
+        projectStats.ContributorStats.splice(index, 0, updatedInfo);
 
         projectStats.UpdatedAt = Date.now();
 
