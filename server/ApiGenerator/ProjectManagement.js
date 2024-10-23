@@ -33,7 +33,22 @@ const ProjectManagement = sequelize.define('ProjectManagement', {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
         allowNull: true
-    }
+    },
+    AllUsers: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: []
+    },
+    ApiMonitoringLog: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: []
+    },
+    ErrorLog: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: []
+    },
 });
 
 
