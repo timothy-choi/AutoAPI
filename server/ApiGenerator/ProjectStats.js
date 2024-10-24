@@ -69,9 +69,9 @@ const ProjectStats = sequelize.define('ProjectStats', {
         defaultValue: 0
     },
     RequestTypeDistribution: {
-        type: DataTypes.JSONB, 
+        type: DataTypes.ARRAY(DataTypes.JSONB), 
         allowNull: true,
-        defaultValue: {}
+        defaultValue: []
     },    
     ActiveUsers: {
         type: DataTypes.ARRAY(DataTypes.JSON), 
@@ -79,9 +79,9 @@ const ProjectStats = sequelize.define('ProjectStats', {
         defaultValue: []
     },
     LatencyByRegion: {
-        type: DataTypes.JSONB,
+        type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
-        defaultValue: {}
+        defaultValue: []
     },
     CreatedAt: {
         type: DataTypes.DATE,

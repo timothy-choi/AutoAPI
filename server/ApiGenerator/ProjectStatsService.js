@@ -296,6 +296,78 @@ exports.SetGeoDistribution = async (projectStatsId ,geoDistId, updatedGeoDistInf
     }
 }
 
+exports.SetPeakTrafficTime = async (projectStatsId, peakTrafficTime) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.PeakTrafficTime = peakTrafficTime;
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.SetMaxResponseTime = async (projectStatsId, maxResponseTime) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.MaxResponseTime = maxResponseTime;
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.SetMinResponseTime = async (projectStatsId, minResponseTime) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.MinResponseTime = minResponseTime;
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.SetTotalDataTransferred = async (projectStatsId, totalDataTransferred) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.TotalDataTransferred = totalDataTransferred;
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
 exports.DeleteProjectStats = async (projectStatsId) => {
     try {
         var projectStats = await ProjectStats.findByPk(projectStatsId);
