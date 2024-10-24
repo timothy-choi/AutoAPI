@@ -148,7 +148,7 @@ exports.EditContributorStats = async (projectStatsId, contributorStatsId, update
             throw new Error('project stats does not exist');
         }
 
-        var index = projectStats.ContributorStats.findIndex(contributor = contributor.id != contributorStatsId);
+        var index = projectStats.ContributorStats.findIndex(contributor = contributor.id == contributorStatsId);
 
         projectStats.ContributorStats.splice(index, 1);
 
@@ -207,6 +207,86 @@ exports.SetErrorRate = async (projectStatsId, errorRate) => {
         }
 
         projectStats.ErrorRate = errorRate;
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.SetTopErrorCodes = async (projectStatsId, topErrorCodes) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.TopErrorCodes = topErrorCodes;
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.EditTopErrorCode = async (projectStatsId, topErrorCodeId, updatedErrorCodeInfo) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        var index = projectStats.TopErrorCodes.find(errorCode = errorCode.id == topErrorCodeId);
+
+        projectStats.TopErrorCodes.splice(index, 1);
+
+        projectStats.TopErrorCodes.splice(index, 0, updatedErrorCodeInfo);
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.AddGeoDistribution = async (projectStatsId, geoDistInfo) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.GeoDistribution.add(geoDistInfo);
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.SetGeoDistribution = async (projectStatsId ,geoDistId, updatedGeoDistInfo) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        var index = projectStats.GeoDistribution.find(geoDist = geoDist.id == geoDistId);
+
+        projectStats.GeoDistribution.splice(index, 1);
+
+        projectStats.GeoDistribution.splice(index, 0, updatedGeoDistInfo);
 
         projectStats.UpdatedAt = Date.now();
 
