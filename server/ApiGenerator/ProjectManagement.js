@@ -49,6 +49,26 @@ const ProjectManagement = sequelize.define('ProjectManagement', {
         allowNull: true,
         defaultValue: []
     },
+    SecurityIncidentLog: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: []
+    },
+    UserUsageHistory: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: []
+    },
+    UserErrorHistory: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: []
+    },
+    UserSecurityIncidentHistory: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: []
+    }
 });
 
 
