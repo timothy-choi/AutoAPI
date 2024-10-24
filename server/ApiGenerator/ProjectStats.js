@@ -74,9 +74,9 @@ const ProjectStats = sequelize.define('ProjectStats', {
         defaultValue: {}
     },    
     ActiveUsers: {
-        type: DataTypes.JSONB, 
+        type: DataTypes.ARRAY(DataTypes.JSON), 
         allowNull: true,
-        defaultValue: {}
+        defaultValue: []
     },
     LatencyByRegion: {
         type: DataTypes.JSONB,
