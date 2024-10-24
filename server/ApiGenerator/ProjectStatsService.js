@@ -162,7 +162,59 @@ exports.EditContributorStats = async (projectStatsId, contributorStatsId, update
     }
 }
 
+exports.SetAverageResponseTime = async (projectStatsId, avgResponseTime) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
 
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.AverageResponseTime = avgResponseTime;
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.SetUptimePercentage = async (projectStatsId, uptimePercentage) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.UptimePercentage = uptimePercentage;
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.SetErrorRate = async (projectStatsId, errorRate) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.ErrorRate = errorRate;
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
 
 exports.DeleteProjectStats = async (projectStatsId) => {
     try {
