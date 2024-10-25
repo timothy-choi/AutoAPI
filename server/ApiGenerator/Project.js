@@ -13,9 +13,13 @@ const Project = sequelize.define('Project', {
     },
     ProjectVersion: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
     },
     ProjectApiType: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    ProjectApiCloudProvider: {
         type: DataTypes.STRING,
         allowNull: false,
     },
