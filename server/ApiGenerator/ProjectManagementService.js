@@ -5,3 +5,10 @@ exports.GetProjectManagementById = async (projectManagementId) => {
 
     return projectManagement;
 }
+
+exports.GetProjectManagementByProjectId = async (projectId) => {
+    var projectManagement = await ProjectManagement.findOne({where: {ProjectId: projectId}});
+
+    return projectManagement;
+}
+
