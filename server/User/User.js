@@ -178,6 +178,11 @@ const User = sequelize.define('User', {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
         defaultValue: [],
+    },
+    ProjectQueryResponses: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: [],
     }
 });
 

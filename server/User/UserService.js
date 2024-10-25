@@ -895,6 +895,54 @@ exports.RemoveFollowerRequestReceived = async (userId, followerRequestId) => {
     }
 }
 
+exports.AddProjectsFollowing = async (userId, projectFollowingInfo) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.ProjectFollowing.push(projectFollowingInfo);
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.RemoveProjectsFollowing = async (userId, projectFollowingId) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.ProjectFollowing.filter(projectFollowing => projectFollowing.Id !== projectFollowingId);
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.AddProjectQueryResponses = async (userId, projectQueryResponse) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.ProjectQueryResponses.push(projectQueryResponse);
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
 exports.DeleteUser = async (userId) => {
     try {
         var userInfo = await User.findByPk(userId);

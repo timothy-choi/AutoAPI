@@ -527,6 +527,36 @@ exports.RemoveFollowerRequestReceived= async (req, res) => {
     }
 }
 
+exports.AddProjectsFollowing = async (req, res) => {
+    try {
+        await UserService.AddProjectsFollowing(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveProjectsFollowing = async (req, res) => {
+    try {
+        await UserService.RemoveProjectsFollowing(req.userId, req.projectsFollowingId);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddProjectQueryResponses = async (req, res) => {
+    try {
+        await UserService.AddProjectQueryResponses(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteUser = async (req, res) => {
     try {
         var user = await UserService.GetUserById(req.userId);

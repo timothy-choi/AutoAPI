@@ -49,6 +49,11 @@ const Model = sequelize.define('Model', {
         type: DataTypes.JSONB,
         allowNull: true,
     },
+    ModelChangelog: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: []
+    }
 });
 
 module.exports = Model;

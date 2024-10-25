@@ -68,6 +68,11 @@ const ProjectManagement = sequelize.define('ProjectManagement', {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
         defaultValue: []
+    },
+    CompleteApiChangelog: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: []
     }
 });
 

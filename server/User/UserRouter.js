@@ -108,4 +108,10 @@ router.put('/followerRequestsReceived/add/:userId', UserController.AddFollowerRe
 
 router.put('/followerRequestsReceived/remove/:userId/:followerRequestId', UserController.RemoveFollowerRequestReceived);
 
+router.put('/projectsFollowing/add/:userId', UserController.AddProjectsFollowing);
+
+router.put('/projectsFollowing/add/:userId/:projectsFollowingId', UserController.RemoveProjectsFollowing);
+
+router.put('/ProjectQueryResponses/:userId', UserController.AddProjectQueryResponses);
+
 module.exports = router;

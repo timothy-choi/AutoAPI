@@ -156,6 +156,21 @@ const Project = sequelize.define('Project', {
     ProjectManagementId: {
         type: DataTypes.UUID,
         allowNull: false,
+    },
+    UserFeedbackLog: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        default: [],
+    },
+    UserQueryLog: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        default: [],
+    },
+    UserQueryResponses: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        default: [],
     }
 });
 
