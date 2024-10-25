@@ -27,6 +27,10 @@ const ApiGatewaySchema = mongoose.Schema({
     Routes: {
         type: [mongoose.Schema.Types.Mixed],
         required: false
+    },
+    ApiGatewayInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
     }
 });
 

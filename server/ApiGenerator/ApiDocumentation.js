@@ -24,6 +24,10 @@ const ApiDocumentationSchema = mongoose.Schema({
     RateLimit: {
         type: Number,
         required: true
+    },
+    DocumentationInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
     }
 });
 
