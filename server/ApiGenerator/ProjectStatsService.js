@@ -368,6 +368,180 @@ exports.SetTotalDataTransferred = async (projectStatsId, totalDataTransferred) =
     }
 }
 
+exports.AddRequestTypeDistribution = async (projectStatsId, requestTypeDistInfo) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.RequestTypeDistribution.add(requestTypeDistribution);
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.RemoveRequestTypeDistribution = async (projectStatsId, requestTypeDistId) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.RequestTypeDistribution.filter(requestDist = requestDist.id != requestTypeDistId);
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.EditRequestTypeDistribution = async (projectStatsId, requestTypeDistId, updatedRequestDistInfo) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        var index = projectStats.RequestTypeDistribution.find(requestDistribution = requestDistribution.id == requestTypeDistId);
+
+        projectStats.RequestTypeDistribution.splice(index, 1);
+
+        projectStats.RequestTypeDistribution.splice(index, 0, updatedRequestDistInfo);
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.AddActiveUser = async (projectStatsId, activeUser) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.ActiveUsers.add(activeUser);
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.RemoveActiveUser = async (projectStatsId, activeUserId) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.ActiveUsers.filter(activeUser = activeUser.id != activeUserId);
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.EditActiveUser = async (projectStatsId, activeUserId, updatedActiveUser) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        var index = projectStats.ActiveUsers.find(activeUsers = activeUsers.id == activeUserId);
+
+        projectStats.ActiveUsers.splice(index, 1);
+
+        projectStats.ActiveUsers.splice(index, 0, updatedActiveUser);
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.AddLatencyByRegion = async (projectStatsId, latencyInfo) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.LatencyByRegion.add(latencyInfo);
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.RemoveLatencyByRegion = async (projectStatsId, latencyInfoId) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        projectStats.LatencyByRegion.filter(latencyInfo = latencyInfo.id != latencyInfoId);
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
+exports.EditLatencyByRegion = async (projectStatsId, latencyId, updatedLatency) => {
+    try {
+        var projectStats = await ProjectStats.findByPk(projectStatsId);
+
+        if (!projectStats) {
+            throw new Error('project stats does not exist');
+        }
+
+        var index = projectStats.LatencyByRegion.find(latencyInfo = latencyInfo.id == latencyId);
+
+        projectStats.LatencyByRegion.splice(index, 1);
+
+        projectStats.LatencyByRegion.splice(index, 0, updatedLatency);
+
+        projectStats.UpdatedAt = Date.now();
+
+        await projectStats.save();
+    } catch (error) {
+        throw new Error('could not set project stats');
+    }
+}
+
 exports.DeleteProjectStats = async (projectStatsId) => {
     try {
         var projectStats = await ProjectStats.findByPk(projectStatsId);
