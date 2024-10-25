@@ -1,18 +1,18 @@
 const Model = require('./Model');
 
-modules.GetModelById = async (modelId) => {
+exports.GetModelById = async (modelId) => {
     var model = await Model.findByPk(modelId);
 
     return model;
 };
 
-module.GetModelByName = async (modelName) => {
+exports.GetModelByName = async (modelName) => {
     var model = await Model.findOne({ where: { ModelName: modelName }});
 
     return model;
 }
 
-module.CreateModel = async (modelInfo) => {
+exports.CreateModel = async (modelInfo) => {
     var model = await GetModelByName(modelInfo.name);
 
     if (model) {
@@ -24,7 +24,99 @@ module.CreateModel = async (modelInfo) => {
     return model;
 }
 
-module.DeleteModel = async (modelId) => {
+exports.AddModelAttribute = async (modelId, modelAttributeInfo, username) => {
+    try {
+        var model = await GetModelById(modelId);
+
+        if (!model) {
+            throw new Error('Model does not exist');
+        } 
+
+        model.ModelAttributes.add(modelAttributeInfo);
+
+        model.ModelDidUpdate = true;
+
+        model.ModelUpdatedAt = Date.now();
+
+        model.ModelUpdatedBy = username;
+
+        await model.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
+
+exports.DeleteModelAttribute = async (modelId, modelAttributeId, username) => {
+    try {
+        var model = await GetModelById(modelId);
+
+        if (!model) {
+            throw new Error('Model does not exist');
+        } 
+
+        model.ModelAttributes.filter(modelAttribute => modelAttribute.id != modelAttributeId);
+
+        model.ModelDidUpdate = true;
+
+        model.ModelUpdatedAt = Date.now();
+
+        model.ModelUpdatedBy = username;
+
+        await model.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
+
+exports.EditModelAttribute = async (modelId, modelAttributeId, modelAttributeInfo, username) => {
+    try {
+        var model = await GetModelById(modelId);
+
+        if (!model) {
+            throw new Error('Model does not exist');
+        } 
+
+        var index = model.ModelAttributes.findIndex(modelAttributes = modelAttributes.id != modelAttributeId);
+
+        model.ModelAttributes.splice(index, 1);
+
+        model.ModelAttributes.splice(index, 0, modelAttributeInfo);
+
+        model.ModelDidUpdate = true;
+
+        model.ModelUpdatedAt = Date.now();
+
+        model.ModelUpdatedBy = username;
+
+        await model.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
+
+exports.EditModelDescription = async (modelId, modelDesc) => {
+    try {
+        var model = await GetModelById(modelId);
+
+        if (!model) {
+            throw new Error('Model does not exist');
+        } 
+
+        model.ModelDescription = modelDesc;
+
+        model.ModelDidUpdate = true;
+
+        model.ModelUpdatedAt = Date.now();
+
+        model.ModelUpdatedBy = username;
+
+        await model.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
+
+exports.DeleteModel = async (modelId) => {
     try {
         var model = await GetModelById(modelId);
 
