@@ -116,6 +116,72 @@ exports.EditModelDescription = async (modelId, modelDesc) => {
     }
 }
 
+exports.SetModelCreationFile = async (modelId, modelCreationFileInfo) => {
+    try {
+        var model = await GetModelById(modelId);
+
+        if (!model) {
+            throw new Error('Model does not exist');
+        } 
+
+        model.ModelCreationFile = modelCreationFileInfo;
+
+        model.ModelDidUpdate = true;
+
+        model.ModelUpdatedAt = Date.now();
+
+        model.ModelUpdatedBy = username;
+
+        await model.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
+
+exports.SetModelDatabaseInfo = async (modelId, modelDatabaseInfo) => {
+    try {
+        var model = await GetModelById(modelId);
+
+        if (!model) {
+            throw new Error('Model does not exist');
+        } 
+
+        model.ModelDatabaseInfo = modelDatabaseInfo;
+
+        model.ModelDidUpdate = true;
+
+        model.ModelUpdatedAt = Date.now();
+
+        model.ModelUpdatedBy = username;
+
+        await model.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
+
+exports.AddModelChangeLog = async (modelId, modelChangeLog) => {
+    try {
+        var model = await GetModelById(modelId);
+
+        if (!model) {
+            throw new Error('Model does not exist');
+        } 
+
+        model.ModelChangelog.push(modelChangeLog);
+
+        model.ModelDidUpdate = true;
+
+        model.ModelUpdatedAt = Date.now();
+
+        model.ModelUpdatedBy = username;
+
+        await model.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
+
 exports.DeleteModel = async (modelId) => {
     try {
         var model = await GetModelById(modelId);

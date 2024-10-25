@@ -175,6 +175,11 @@ const Project = sequelize.define('Project', {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
         default: [],
+    },
+    ProjectBucket: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {}
     }
 });
 
