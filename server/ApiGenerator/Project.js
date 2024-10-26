@@ -180,6 +180,11 @@ const Project = sequelize.define('Project', {
         type: DataTypes.JSONB,
         allowNull: true,
         defaultValue: {}
+    },
+    ApiTesting: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {}
     }
 });
 

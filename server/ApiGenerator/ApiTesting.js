@@ -95,6 +95,14 @@ const ApiTestingSchema = mongoose.Schema({
         type: [mongoose.Schema.Types.Mixed],
         required: true
     },
+    AllDatabases: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: true
+    },
+    AllServerlessFunctions: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: true
+    },
     PostmanApiInfo: {
         type: PostmanApiInfoSchema,
         required: true
@@ -113,6 +121,14 @@ const ApiTestingSchema = mongoose.Schema({
     },
     UpdatedAt: {
         type: Date,
+        required: false
+    },
+    Status: {
+        type: String,
+        required: false
+    },
+    TestingScore: {
+        type: mongoose.Schema.Types.Mixed,
         required: false
     }
 });
