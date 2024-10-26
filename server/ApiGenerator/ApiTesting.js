@@ -16,8 +16,43 @@ const PostmanApiInfoSchema = mongoose.Schema({
     MainCollectionId: {
         type: String,
         required: true
+    },
+    CreatedAt: {
+        type: Date,
+        required: true
+    },
+    UpdatedAt: {
+        type: Date,
+        required: false
     }
 });
+
+const PostmanApiCollectionSchema = mongoose.Schema({
+    TestingId: {
+        type: String,
+        required: true
+    },
+    PostmanCollectionId: {
+        type: String,
+        required: true
+    },
+    ProjectId: {
+        type: String,
+        required: true
+    },
+    EnvironmentId: {
+        type: String,
+        required: true
+    },
+    CreatedAt: {
+        type: Date,
+        required: true
+    },
+    UpdatedAt: {
+        type: Date,
+        required: false
+    }
+})
 
 const PostmanApiEnvironmentSchema = mongoose.Schema({
     TestingId: {
@@ -35,6 +70,14 @@ const PostmanApiEnvironmentSchema = mongoose.Schema({
     Variables: {
         type: [mongoose.Schema.Types.Mixed],
         required: true
+    },
+    CreatedAt: {
+        type: Date,
+        required: true
+    },
+    UpdatedAt: {
+        type: Date,
+        required: false
     }
 })
 
@@ -56,13 +99,25 @@ const ApiTestingSchema = mongoose.Schema({
         type: PostmanApiInfoSchema,
         required: true
     },
+    PostmanApiCollection: {
+        type: PostmanApiCollectionSchema,
+        required: true
+    },
     PostmanEnvironmentInfo: {
         type: PostmanApiEnvironmentSchema,
         required: true
+    },
+    CreatedAt: {
+        type: Date,
+        required: true
+    },
+    UpdatedAt: {
+        type: Date,
+        required: false
     }
 });
 
 const ApiTesting = mongoose.model('ApiTesting', ApiTestingSchema);
 
-module.exports = ApiSecurityAuth;
+module.exports = ApiTesting;
 
