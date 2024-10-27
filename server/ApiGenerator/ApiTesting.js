@@ -74,6 +74,10 @@ const PostmanApiFolderSchema = mongoose.Schema({
     UpdatedAt: {
         type: Date,
         required: false
+    },
+    TestCases: {
+        type: [ApiTestCase],
+        required: false
     }
 });
 
@@ -102,7 +106,43 @@ const PostmanApiEnvironmentSchema = mongoose.Schema({
         type: Date,
         required: false
     }
-})
+});
+
+const ApiTestCase = mongoose.Schema({
+    ProjectId: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    TestingId: {
+        type: String,
+        required: true,
+    },
+    MainCollectionId: {
+        type: String,
+        required: true,
+    },
+    FolderId: {
+        type: String,
+        required: false,
+    },
+    ModelsUsed: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: true,
+    },
+    EndpointsUsed: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: true,
+    },
+    DatabasesUsed: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: true,
+    },
+    ServerlessFunctionsUsed: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: true,
+    },
+});
 
 const ApiTestingSchema = mongoose.Schema({
     ProjectId: {
@@ -156,6 +196,10 @@ const ApiTestingSchema = mongoose.Schema({
     },
     ApiTestingFolders: {
         type: [PostmanApiFolderSchema],
+        required: false
+    },
+    AllTestCases: {
+        type: [ApiTestCase],
         required: false
     }
 });
