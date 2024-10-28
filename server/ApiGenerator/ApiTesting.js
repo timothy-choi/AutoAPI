@@ -126,6 +126,10 @@ const ApiTestRequest = mongoose.Schema({
         type: String,
         required: false
     },
+    ModelInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: true
+    },
     EndpointInfo: {
         type: mongoose.Schema.Types.Mixed,
         required: true
@@ -151,6 +155,90 @@ const ApiTestRequest = mongoose.Schema({
         required: true
     }
 });
+
+const ApiExpectedResponse = mongoose.Schema({
+    ProjectId: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    TestingId: {
+        type: String,
+        requird: true
+    },
+    MainCollectionId: {
+        type: String,
+        required: true
+    },
+    FolderId: {
+        type: String,
+        required: false
+    },
+    ExpectedCode: {
+        type: Number,
+        required: true
+    },
+    ExpectedResponseBody: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
+    ExpectedError: {
+        type: Boolean,
+        required: true
+    },
+    ExpectedErrorMessage: {
+        type: String,
+        required: false
+    },
+    TestRequest: {
+        type: mongoose.Schema.Types.Mixed,
+        required: true
+    }
+});
+
+const ApiTestResponse = mongoose.Schema({
+    ProjectId: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    TestingId: {
+        type: String,
+        requird: true
+    },
+    MainCollectionId: {
+        type: String,
+        required: true
+    },
+    FolderId: {
+        type: String,
+        required: false
+    },
+    ResponseCode: {
+        type: Number,
+        required: true
+    },
+    ResponseBody: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
+    TestRequest: {
+        type: mongoose.Schema.Types.Mixed,
+        required: true
+    },
+    Failed: {
+        type: Boolean,
+        required: true
+    },
+    Error: {
+        type: Boolean,
+        required: true
+    },
+    ErrorMessage: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    }
+})
 
 const ApiTestCase = mongoose.Schema({
     ProjectId: {
