@@ -108,6 +108,50 @@ const PostmanApiEnvironmentSchema = mongoose.Schema({
     }
 });
 
+const ApiTestRequest = mongoose.Schema({
+    ProjectId: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    TestingId: {
+        type: String,
+        requird: true
+    },
+    MainCollectionId: {
+        type: String,
+        required: true
+    },
+    FolderId: {
+        type: String,
+        required: false
+    },
+    EndpointInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: true
+    },
+    DatabaseInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: true
+    },
+    ServerlessFunctionInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: true
+    },
+    RequestBody: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
+    RequestParamInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
+    OrderNumber: {
+        type: Number,
+        required: true
+    }
+});
+
 const ApiTestCase = mongoose.Schema({
     ProjectId: {
         type: String,
