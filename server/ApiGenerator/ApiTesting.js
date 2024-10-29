@@ -21,10 +21,18 @@ const PostmanApiInfoSchema = mongoose.Schema({
         type: Date,
         required: true
     },
+    CreatedBy: {
+        type: String,
+        required: true
+    },
     UpdatedAt: {
         type: Date,
         required: false
-    }
+    },
+    UpdatedBy: {
+        type: String,
+        required: false
+    },
 });
 
 const PostmanApiCollectionSchema = mongoose.Schema({
@@ -48,10 +56,18 @@ const PostmanApiCollectionSchema = mongoose.Schema({
         type: Date,
         required: true
     },
+    CreatedBy: {
+        type: String,
+        required: true
+    },
     UpdatedAt: {
         type: Date,
         required: false
-    }
+    },
+    UpdatedBy: {
+        type: String,
+        required: false
+    },
 });
 
 const PostmanApiFolderSchema = mongoose.Schema({
@@ -71,8 +87,16 @@ const PostmanApiFolderSchema = mongoose.Schema({
         type: Date,
         required: true
     },
+    CreatedBy: {
+        type: String,
+        required: true
+    },
     UpdatedAt: {
         type: Date,
+        required: false
+    },
+    UpdatedBy: {
+        type: String,
         required: false
     },
     TestCases: {
@@ -102,8 +126,16 @@ const PostmanApiEnvironmentSchema = mongoose.Schema({
         type: Date,
         required: true
     },
+    CreatedBy: {
+        type: String,
+        required: true
+    },
     UpdatedAt: {
         type: Date,
+        required: false
+    },
+    UpdatedBy: {
+        type: String,
         required: false
     }
 });
@@ -153,6 +185,22 @@ const ApiTestRequest = mongoose.Schema({
     OrderNumber: {
         type: Number,
         required: true
+    },
+    CreatedAt: {
+        type: Date,
+        required: true
+    },
+    CreatedBy: {
+        type: String,
+        required: true
+    },
+    UpdatedAt: {
+        type: Date,
+        required: false
+    },
+    UpdatedBy: {
+        type: String,
+        required: false
     }
 });
 
@@ -193,6 +241,22 @@ const ApiExpectedResponse = mongoose.Schema({
     TestRequest: {
         type: mongoose.Schema.Types.Mixed,
         required: true
+    },
+    CreatedAt: {
+        type: Date,
+        required: true
+    },
+    CreatedBy: {
+        type: String,
+        required: true
+    },
+    UpdatedAt: {
+        type: Date,
+        required: false
+    },
+    UpdatedBy: {
+        type: String,
+        required: false
     }
 });
 
@@ -274,6 +338,34 @@ const ApiTestCase = mongoose.Schema({
         type: [mongoose.Schema.Types.Mixed],
         required: true,
     },
+    AllTestCaseRequests: {
+        type: [ApiTestRequest], 
+        required: true
+    },
+    AllExpectedResponses: {
+        type: [ApiExpectedResponse],
+        required: true
+    },
+    AllResponses: {
+        type: [ApiTestResponse],
+        required: false
+    },
+    CreatedAt: {
+        type: Date,
+        required: true
+    },
+    CreatedBy: {
+        type: String,
+        required: true
+    },
+    UpdatedAt: {
+        type: Date,
+        required: false
+    },
+    UpdatedBy: {
+        type: String,
+        required: false
+    }
 });
 
 const ApiTestingSchema = mongoose.Schema({
