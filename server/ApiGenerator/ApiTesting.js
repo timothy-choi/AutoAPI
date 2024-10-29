@@ -301,6 +301,10 @@ const ApiTestResponse = mongoose.Schema({
     ErrorMessage: {
         type: mongoose.Schema.Types.Mixed,
         required: false
+    },
+    ExpectedResponse: {
+        type: mongoose.Schema.Types.Mixed,
+        required: true
     }
 })
 
@@ -347,7 +351,7 @@ const ApiTestCase = mongoose.Schema({
         required: true
     },
     AllResponses: {
-        type: [ApiTestResponse],
+        type: [mongoose.Schema.Types.Mixed],
         required: false
     },
     CreatedAt: {
@@ -363,6 +367,49 @@ const ApiTestCase = mongoose.Schema({
         required: false
     },
     UpdatedBy: {
+        type: String,
+        required: false
+    }
+});
+
+const ApiTestRun = mongoose.Schema({
+    ProjectId: {
+        type: String,
+        required: true,
+    },
+    TestingId: {
+        type: String,
+        required: true,
+    },
+    MainCollectionId: {
+        type: String,
+        required: true,
+    },
+    FolderId: {
+        type: String,
+        required: false,
+    },
+    TestRequests: {
+        type: [ApiTestRequest],
+        required: true
+    },
+    ExpectedResponses: {
+        type: [ApiExpectedResponse],
+        required: true
+    },
+    ActualResponses: {
+        type: [ApiTestResponse],
+        required: false
+    },
+    TestCaseResult: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
+    TestCaseDurationTime: {
+        type: Number,
+        required: false
+    },
+    Status: {
         type: String,
         required: false
     }
@@ -424,6 +471,10 @@ const ApiTestingSchema = mongoose.Schema({
     },
     AllTestCases: {
         type: [ApiTestCase],
+        required: false
+    },
+    TestingChangeLog: {
+        type: [mongoose.Schema.Types.Mixed],
         required: false
     }
 });
