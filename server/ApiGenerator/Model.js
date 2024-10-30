@@ -11,6 +11,10 @@ const Model = sequelize.define('Model', {
         type: DataTypes.STRING,
         allowNull: false,
     },
+    ModelVersion: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
     ModelCreatedAt: {
         type: DataTypes.DATE,
         allowNull: false,

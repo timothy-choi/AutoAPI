@@ -19,9 +19,25 @@ exports.CreateModel = async (modelInfo) => {
         throw new Error("model already exists");
     }
 
-    model = await Model.Create({ModelName: modelInfo.name,  ModelCreatedAt: Date.now(), ModelCreatedBy: modelInfo.createdBy, ModelAttributes: modelInfo.modelAttributes, ModelDescription: modelInfo.ModelDescription});
+    model = await Model.Create({ModelName: modelInfo.name,  ModelVersion: "v1.0.0", ModelCreatedAt: Date.now(), ModelCreatedBy: modelInfo.createdBy, ModelAttributes: modelInfo.modelAttributes, ModelDescription: modelInfo.ModelDescription});
 
     return model;
+}
+
+exports.EditVersion = async (modelId, version) => {
+    try {
+        var model = await GetModelById(modelId);
+
+        if (!model) {
+            throw new Error('Model does not exist');
+        } 
+    
+        model.ModelVersion = version;
+    
+        await model.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
 }
 
 exports.AddModelAttribute = async (modelId, modelAttributeInfo, username) => {
