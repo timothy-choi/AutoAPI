@@ -44,6 +44,10 @@ const PostmanApiCollectionSchema = mongoose.Schema({
         type: String,
         required: true
     },
+    PostmanInfoId: {
+        type: String,
+        required: true
+    },
     ProjectId: {
         type: String,
         required: true
@@ -68,6 +72,10 @@ const PostmanApiCollectionSchema = mongoose.Schema({
         type: String,
         required: false
     },
+    ApiTestingFolders: {
+        type: [PostmanApiFolderSchema],
+        required: false
+    }
 });
 
 const PostmanApiFolderSchema = mongoose.Schema({
@@ -171,6 +179,10 @@ const ApiTestRequest = mongoose.Schema({
         required: true
     },
     ServerlessFunctionInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: true
+    },
+    RequestHeaders: {
         type: mongoose.Schema.Types.Mixed,
         required: true
     },
@@ -471,6 +483,10 @@ const ApiTestingSchema = mongoose.Schema({
     },
     AllTestCases: {
         type: [ApiTestCase],
+        required: false
+    },
+    AllTestCaseRuns: {
+        type: [ApiTestRun],
         required: false
     },
     TestingChangeLog: {

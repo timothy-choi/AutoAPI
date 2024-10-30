@@ -34,6 +34,22 @@ const EndpointsModel = mongoose.Schema({
         type: String,
         required: false
     },
+    EndpointHeaders: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: false
+    },
+    EndpointModels: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: false
+    },
+    EndpointDatabases: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: false
+    },
+    EndpointServerlessFunction: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
     EndpointsCreationFile: {
         type: Map,
         of: String
