@@ -61,6 +61,30 @@ const EndpointsModel = mongoose.Schema({
     AllEndpointImplementationInfo: {
         type: [mongoose.Schema.Types.Mixed],
         required: false
+    },
+    EndpointStatus: {
+        type: String,
+        required: true
+    },
+    EndpointDescription: {
+        type: String,
+        required: true
+    },
+    EndpointResponseSchema: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
+    EndpointResponseExample: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
+    LastAccessedAt: {
+        type: Date,
+        required: true
+    },
+    EndpointDependencies: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: false
     }
 });
 
