@@ -7,11 +7,13 @@ const PostmanApiInfoSchema = mongoose.Schema({
     },
     Name: {
         type: String,
-        required: true
+        required: true,
+        unique: true
     },
     BaseUrl: {
         type: String,
-        required: false
+        required: false,
+        unique: true
     },
     MainCollectionId: {
         type: String,
@@ -110,6 +112,14 @@ const PostmanApiFolderSchema = mongoose.Schema({
     TestCases: {
         type: [ApiTestCase],
         required: false
+    },
+    Status: {
+        type: String,
+        required: true
+    },
+    FolderDescription: {
+        type: String,
+        required: true
     }
 });
 
@@ -156,7 +166,7 @@ const ApiTestRequest = mongoose.Schema({
     },
     TestingId: {
         type: String,
-        requird: true
+        required: true
     },
     MainCollectionId: {
         type: String,
@@ -194,6 +204,10 @@ const ApiTestRequest = mongoose.Schema({
         type: mongoose.Schema.Types.Mixed,
         required: false
     },
+    AuthInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
     OrderNumber: {
         type: Number,
         required: true
@@ -224,7 +238,7 @@ const ApiExpectedResponse = mongoose.Schema({
     },
     TestingId: {
         type: String,
-        requird: true
+        required: true
     },
     MainCollectionId: {
         type: String,
@@ -233,6 +247,10 @@ const ApiExpectedResponse = mongoose.Schema({
     FolderId: {
         type: String,
         required: false
+    },
+    HeadersExpected: {
+        type: Boolean,
+        required: true
     },
     ExpectedCode: {
         type: Number,
@@ -269,6 +287,10 @@ const ApiExpectedResponse = mongoose.Schema({
     UpdatedBy: {
         type: String,
         required: false
+    },
+    IsCritical: {
+        type: Boolean,
+        required: true
     }
 });
 
@@ -289,6 +311,10 @@ const ApiTestResponse = mongoose.Schema({
     FolderId: {
         type: String,
         required: false
+    },
+    ResponseHeaders: {
+        type: mongoose.Schema.Types.Mixed,
+        required: true
     },
     ResponseCode: {
         type: Number,
@@ -317,6 +343,18 @@ const ApiTestResponse = mongoose.Schema({
     ExpectedResponse: {
         type: mongoose.Schema.Types.Mixed,
         required: true
+    },
+    ResponseTime: {
+        type: Number,
+        required: true
+    },
+    WarningMessages: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: false
+    },
+    AdditionalInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
     }
 })
 
@@ -381,6 +419,10 @@ const ApiTestCase = mongoose.Schema({
     UpdatedBy: {
         type: String,
         required: false
+    },
+    Description: {
+        type: String,
+        required: true
     }
 });
 
@@ -424,6 +466,14 @@ const ApiTestRun = mongoose.Schema({
     Status: {
         type: String,
         required: false
+    },
+    RunAt: {
+        type: Date,
+        required: true
+    },
+    RunBy: {
+        type: String,
+        required: true
     }
 });
 
@@ -432,6 +482,10 @@ const ApiTestingSchema = mongoose.Schema({
         type: String,
         required: true,
         unique: true
+    },
+    ApiVersion: {
+        type: String,
+        required: true
     },
     AllModels: {
         type: [mongoose.Schema.Types.Mixed],
