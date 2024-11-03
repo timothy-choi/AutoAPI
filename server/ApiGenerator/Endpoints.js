@@ -47,7 +47,7 @@ const EndpointsModel = mongoose.Schema({
         required: false
     },
     EndpointServerlessFunction: {
-        type: mongoose.Schema.Types.Mixed,
+        type: [mongoose.Schema.Types.Mixed],
         required: false
     },
     EndpointsCreationFile: {
@@ -71,11 +71,11 @@ const EndpointsModel = mongoose.Schema({
         required: true
     },
     EndpointResponseSchema: {
-        type: mongoose.Schema.Types.Mixed,
+        type: [mongoose.Schema.Types.Mixed],
         required: false
     },
     EndpointResponseExample: {
-        type: mongoose.Schema.Types.Mixed,
+        type: [mongoose.Schema.Types.Mixed],
         required: false
     },
     LastAccessedAt: {
@@ -83,6 +83,10 @@ const EndpointsModel = mongoose.Schema({
         required: true
     },
     EndpointDependencies: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: false
+    },
+    EndpointsVersionHistory: {
         type: [mongoose.Schema.Types.Mixed],
         required: false
     }
