@@ -54,6 +54,50 @@ exports.EditDescription = async (databaseId, desc, username) => {
     }
 }
 
+exports.addModelsUsed = async (databaseId, model, username) => {
+    try {
+        var database = await this.getDatabaseById(databaseId);
+
+        if (!database) {
+            throw new Exception('database does not exist');
+        }
+
+        database.ModelsUsed.push(model);
+
+        database.DidUpdate = true;
+
+        database.UpdatedAt = Date.now();
+
+        database.UpdatedBy = username;
+
+        await database.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
+
+exports.removeModelsUsed = async (databaseId, model, username) => {
+    try {
+        var database = await this.getDatabaseById(databaseId);
+
+        if (!database) {
+            throw new Exception('database does not exist');
+        }
+
+        database.ModelsUsed.splice(database.ModelsUsed.indexOf(model), 1);
+
+        database.DidUpdate = true;
+
+        database.UpdatedAt = Date.now();
+
+        database.UpdatedBy = username;
+
+        await database.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
+
 exports.DeleteDatabase = async (databaseId) => {
     try {
         var database = await this.getDatabaseById(databaseId);

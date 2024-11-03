@@ -62,7 +62,19 @@ const DatabaseSchema = new mongoose.Schema({
     DatabaseOperationsLog: {
         type: [mongoose.Schema.Types.Mixed],
         required: false
-    } 
+    },
+    DatabaseBackupInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
+    DatabaseVersionHistory: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: false
+    },
+    DatabaseCloudInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    }
 });
 
 const DatabaseDefinition = mongoose.model('DatabaseModel', DatabaseSchema);
