@@ -35,6 +35,14 @@ const PostmanApiInfoSchema = mongoose.Schema({
         type: String,
         required: false
     },
+    IsActive: {
+        type: Boolean,
+        required: true
+    },
+    LastTestRun: {
+        type: Date,
+        required: false
+    }
 });
 
 const PostmanApiCollectionSchema = mongoose.Schema({
@@ -76,6 +84,18 @@ const PostmanApiCollectionSchema = mongoose.Schema({
     },
     ApiTestingFolders: {
         type: [PostmanApiFolderSchema],
+        required: false
+    },
+    NumberOfRequests: {
+        type: Number,
+        required: false
+    },
+    AverageResponseTime: {
+        type: Number,
+        required: false
+    },
+    TotalTestCount: {
+        type: Number,
         required: false
     }
 });
@@ -120,6 +140,18 @@ const PostmanApiFolderSchema = mongoose.Schema({
     FolderDescription: {
         type: String,
         required: true
+    },
+    IsActive: {
+        type: Boolean,
+        required: true
+    },
+    LastTextExecuted: {
+        type: Date,
+        required: false
+    },
+    AverageResponseTime: {
+        type: Number, 
+        required: false
     }
 });
 
@@ -227,6 +259,14 @@ const ApiTestRequest = mongoose.Schema({
     UpdatedBy: {
         type: String,
         required: false
+    },
+    Timeout: {
+        type: Number,
+        required: true
+    },
+    IsCritical: {
+        type: Boolean,
+        required: true
     }
 });
 
