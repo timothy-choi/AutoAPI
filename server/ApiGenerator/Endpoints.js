@@ -64,7 +64,7 @@ const EndpointsModel = mongoose.Schema({
     },
     EndpointStatus: {
         type: String,
-        required: true
+        required: false
     },
     EndpointDescription: {
         type: String,
@@ -80,7 +80,7 @@ const EndpointsModel = mongoose.Schema({
     },
     LastAccessedAt: {
         type: Date,
-        required: true
+        required: false
     },
     EndpointDependencies: {
         type: [mongoose.Schema.Types.Mixed],
