@@ -98,6 +98,76 @@ exports.removeModelsUsed = async (databaseId, model, username) => {
     }
 }
 
+exports.addModelTableInfo = async (databaseId, modelTableInfo, username) => {
+    try {
+        var database = await this.getDatabaseById(databaseId);
+
+        if (!database) {
+            throw new Exception('database does not exist');
+        }
+
+        database.ModelTablesInfo.push(modelTableInfo);
+
+        database.DidUpdate = true;
+
+        database.UpdatedAt = Date.now();
+
+        database.UpdatedBy = username;
+
+        await database.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
+
+exports.removeModelTableInfoUsed = async (databaseId, modelTableInfo, username) => {
+    try {
+        var database = await this.getDatabaseById(databaseId);
+
+        if (!database) {
+            throw new Exception('database does not exist');
+        }
+
+        database.ModelTablesInfo.splice(database.ModelTablesInfo.indexOf(modelTableInfo), 1);
+
+        database.DidUpdate = true;
+
+        database.UpdatedAt = Date.now();
+
+        database.UpdatedBy = username;
+
+        await database.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
+
+exports.editModelTableInfo = async (databaseId, modelTableInfoId, updatedModelTableInfo, username) => {
+    try {
+        var database = await this.getDatabaseById(databaseId);
+
+        if (!database) {
+            throw new Error('Model does not exist');
+        } 
+
+        var index = model.ModelTablesInfo.findIndex(modelTableInfo = modelTableInfo.id != modelTableInfoId);
+
+        model.ModelTablesInfo.splice(index, 1);
+
+        model.ModelTablesInfo.splice(index, 0, updatedModelTableInfo);
+
+        model.ModelDidUpdate = true;
+
+        model.ModelUpdatedAt = Date.now();
+
+        model.ModelUpdatedBy = username;
+
+        await model.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
+
 exports.DeleteDatabase = async (databaseId) => {
     try {
         var database = await this.getDatabaseById(databaseId);
