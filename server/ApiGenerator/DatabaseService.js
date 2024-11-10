@@ -150,19 +150,85 @@ exports.editModelTableInfo = async (databaseId, modelTableInfoId, updatedModelTa
             throw new Error('Model does not exist');
         } 
 
-        var index = model.ModelTablesInfo.findIndex(modelTableInfo = modelTableInfo.id != modelTableInfoId);
+        var index = database.ModelTablesInfo.findIndex(modelTableInfo = modelTableInfo.id != modelTableInfoId);
 
-        model.ModelTablesInfo.splice(index, 1);
+        database.ModelTablesInfo.splice(index, 1);
 
-        model.ModelTablesInfo.splice(index, 0, updatedModelTableInfo);
+        database.ModelTablesInfo.splice(index, 0, updatedModelTableInfo);
 
-        model.ModelDidUpdate = true;
+        database.DidUpdate = true;
 
-        model.ModelUpdatedAt = Date.now();
+        database.UpdatedAt = Date.now();
 
-        model.ModelUpdatedBy = username;
+        database.UpdatedBy = username;
 
-        await model.save();
+        await database.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
+
+exports.ModifyDatabaseInstanceInfo = async (databaseId, databaseInstanceInfo, username) => {
+    try {
+        var database = await this.getDatabaseById(databaseId);
+
+        if (!database) {
+            throw new Error('Model does not exist');
+        } 
+
+        database.ModelDatabaseInstanceInfo = databaseInstanceInfo;
+
+        database.DidUpdate = true;
+
+        database.UpdatedAt = Date.now();
+
+        database.UpdatedBy = username;
+
+        await database.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
+
+exports.SetHealthStatus = async (databaseId, healthStatus, username) => {
+    try {
+        var database = await this.getDatabaseById(databaseId);
+
+        if (!database) {
+            throw new Error('Model does not exist');
+        } 
+
+        database.HealthStatus = healthStatus;
+
+        database.DidUpdate = true;
+
+        database.UpdatedAt = Date.now();
+
+        database.UpdatedBy = username;
+
+        await database.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
+
+exports.SetStatus = async (databaseId, databaseStatus, username) => {
+    try {
+        var database = await this.getDatabaseById(databaseId);
+
+        if (!database) {
+            throw new Error('Model does not exist');
+        } 
+
+        database.Status = databaseStatus;
+
+        database.DidUpdate = true;
+
+        database.UpdatedAt = Date.now();
+
+        database.UpdatedBy = username;
+
+        await database.save();
     } catch (error) {
         throw new Error('could not delete model');
     }
