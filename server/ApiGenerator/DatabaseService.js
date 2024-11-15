@@ -234,6 +234,116 @@ exports.SetStatus = async (databaseId, databaseStatus, username) => {
     }
 }
 
+exports.AddDatabaseChangeLog = async (databaseId, databaseChangeLog) => {
+    try {
+        var database = await this.getDatabaseById(databaseId);
+
+        if (!database) {
+            throw new Exception('database does not exist');
+        }
+
+        database.DatabaseChangeLog.push(databaseChangeLog);
+
+        database.DidUpdate = true;
+
+        database.UpdatedAt = Date.now();
+
+        database.UpdatedBy = username;
+
+        await database.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
+
+exports.AddDatabaseOperationsLog = async (databaseId, databaseOperationsLog) => {
+    try {
+        var database = await this.getDatabaseById(databaseId);
+
+        if (!database) {
+            throw new Exception('database does not exist');
+        }
+
+        database.DatabaseOperationsLog.push(databaseOperationsLog);
+
+        database.DidUpdate = true;
+
+        database.UpdatedAt = Date.now();
+
+        database.UpdatedBy = username;
+
+        await database.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
+
+exports.ModifyDatabaseBackupInfo = async (databaseId, databaseBackupInfo, username) => {
+    try {
+        var database = await this.getDatabaseById(databaseId);
+
+        if (!database) {
+            throw new Error('Model does not exist');
+        } 
+
+        database.DatabaseBackupInfo = databaseBackupInfo;
+
+        database.DidUpdate = true;
+
+        database.UpdatedAt = Date.now();
+
+        database.UpdatedBy = username;
+
+        await database.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
+
+exports.AddDatabaseOperationsLog = async (databaseId, databaseOperationsLog) => {
+    try {
+        var database = await this.getDatabaseById(databaseId);
+
+        if (!database) {
+            throw new Exception('database does not exist');
+        }
+
+        database.DatabaseOperationsLog.push(databaseOperationsLog);
+
+        database.DidUpdate = true;
+
+        database.UpdatedAt = Date.now();
+
+        database.UpdatedBy = username;
+
+        await database.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
+
+exports.ModifyDatabaseCloudInfo = async (databaseId, databaseCloudInfo, username) => {
+    try {
+        var database = await this.getDatabaseById(databaseId);
+
+        if (!database) {
+            throw new Error('Model does not exist');
+        } 
+
+        database.DatabaseCloudInfo = databaseCloudInfo;
+
+        database.DidUpdate = true;
+
+        database.UpdatedAt = Date.now();
+
+        database.UpdatedBy = username;
+
+        await database.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
+
 exports.DeleteDatabase = async (databaseId) => {
     try {
         var database = await this.getDatabaseById(databaseId);
