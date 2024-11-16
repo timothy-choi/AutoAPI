@@ -63,7 +63,7 @@ const EndpointsModel = mongoose.Schema({
         required: false
     },
     EndpointStatus: {
-        type: String,
+        type: [mongoose.Schema.Types.Mixed],
         required: false
     },
     EndpointDescription: {
@@ -88,6 +88,10 @@ const EndpointsModel = mongoose.Schema({
     },
     EndpointsVersionHistory: {
         type: [mongoose.Schema.Types.Mixed],
+        required: false
+    },
+    EndpointMetrics: {
+        type: mongoose.Schema.Types.Mixed,
         required: false
     }
 });
