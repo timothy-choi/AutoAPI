@@ -31,6 +31,14 @@ const ApiGatewaySchema = mongoose.Schema({
     ApiGatewayInfo: {
         type: mongoose.Schema.Types.Mixed,
         required: false
+    },
+    Metrics: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
+    SecurityInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
     }
 });
 
