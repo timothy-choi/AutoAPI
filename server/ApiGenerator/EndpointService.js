@@ -164,6 +164,50 @@ exports.AddEndpointRequestInfo = async (endpointId, endpointRequestInfo, usernam
     }
 }
 
+exports.AddEndpointImplementationInfo = async (endpointId, endpointImplementationInfo, username) => {
+    try {
+        var endpoint = await this.GetEndpointsById(endpointId);
+
+        if (!endpoint) {
+            throw new Exception('database does not exist');
+        }
+
+        endpoint.AllEndpointImplementationInfo.push(endpointImplementationInfo);
+
+        endpoint.DidUpdate = true;
+
+        endpoint.UpdatedAt = Date.now();
+
+        endpoint.UpdatedBy = username;
+
+        await endpoint.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
+
+exports.AddApiEndpointStatus = async (endpointId, apiEndpointStatus, username) => {
+    try {
+        var endpoint = await this.GetEndpointsById(endpointId);
+
+        if (!endpoint) {
+            throw new Exception('database does not exist');
+        }
+
+        endpoint.EndpointStatus.push(apiEndpointStatus);
+
+        endpoint.DidUpdate = true;
+
+        endpoint.UpdatedAt = Date.now();
+
+        endpoint.UpdatedBy = username;
+
+        await endpoint.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
+
 exports.DeleteEndpoints = async (endpointId) => {
     try {
         var endpoints = await this.GetEndpointsById(endpointId);
