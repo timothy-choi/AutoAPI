@@ -208,6 +208,117 @@ exports.AddApiEndpointStatus = async (endpointId, apiEndpointStatus, username) =
     }
 }
 
+exports.ModifyEndpointsDescription = async (endpointId, endpointsDescription, username) => {
+    try {
+        var endpoint = await this.GetEndpointsById(endpointId);
+
+        if (!endpoint) {
+            throw new Exception('database does not exist');
+        }
+
+        endpoint.EndpointsDescription = endpointsDescription;
+
+        endpoint.DidUpdate = true;
+
+        endpoint.UpdatedAt = Date.now();
+
+        endpoint.UpdatedBy = username;
+
+        await endpoint.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
+
+exports.AddEndpointResponseSchema = async (endpointId, endpointResponseSchema, username) => {
+    try {
+        var endpoint = await this.GetEndpointsById(endpointId);
+
+        if (!endpoint) {
+            throw new Exception('database does not exist');
+        }
+
+        endpoint.EndpointResponseSchema.push(endpointResponseSchema);
+
+        endpoint.DidUpdate = true;
+
+        endpoint.UpdatedAt = Date.now();
+
+        endpoint.UpdatedBy = username;
+
+        await endpoint.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
+
+exports.AddEndpointResponseExample = async (endpointId, endpointResponseExample, username) => {
+    try {
+        var endpoint = await this.GetEndpointsById(endpointId);
+
+        if (!endpoint) {
+            throw new Exception('database does not exist');
+        }
+
+        endpoint.EndpointResponseExample.push(endpointResponseExample);
+
+        endpoint.DidUpdate = true;
+
+        endpoint.UpdatedAt = Date.now();
+
+        endpoint.UpdatedBy = username;
+
+        await endpoint.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
+
+exports.AddEndpointDependencies = async (endpointId, endpointDependencies, username) => {
+    try {
+        var endpoint = await this.GetEndpointsById(endpointId);
+
+        if (!endpoint) {
+            throw new Exception('database does not exist');
+        }
+
+        endpoint.EndpointDependencies.push(endpointDependencies);
+
+        endpoint.DidUpdate = true;
+
+        endpoint.UpdatedAt = Date.now();
+
+        endpoint.UpdatedBy = username;
+
+        await endpoint.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
+
+exports.AddEndpointVersionHistory = async (endpointId, endpointVersionHistory, username) => {
+    try {
+        var endpoint = await this.GetEndpointsById(endpointId);
+
+        if (!endpoint) {
+            throw new Exception('database does not exist');
+        }
+
+        endpoint.EndpointVersionHistory.push(endpointVersionHistory);
+
+        endpoint.DidUpdate = true;
+
+        endpoint.UpdatedAt = Date.now();
+
+        endpoint.UpdatedBy = username;
+
+        await endpoint.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
+
+
 exports.DeleteEndpoints = async (endpointId) => {
     try {
         var endpoints = await this.GetEndpointsById(endpointId);
