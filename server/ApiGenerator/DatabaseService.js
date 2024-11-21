@@ -234,7 +234,7 @@ exports.SetStatus = async (databaseId, databaseStatus, username) => {
     }
 }
 
-exports.AddDatabaseChangeLog = async (databaseId, databaseChangeLog) => {
+exports.AddDatabaseChangeLog = async (databaseId, databaseChangeLog, username) => {
     try {
         var database = await this.getDatabaseById(databaseId);
 
@@ -256,7 +256,7 @@ exports.AddDatabaseChangeLog = async (databaseId, databaseChangeLog) => {
     }
 }
 
-exports.AddDatabaseOperationsLog = async (databaseId, databaseOperationsLog) => {
+exports.AddDatabaseOperationsLog = async (databaseId, databaseOperationsLog, username) => {
     try {
         var database = await this.getDatabaseById(databaseId);
 
@@ -300,7 +300,7 @@ exports.ModifyDatabaseBackupInfo = async (databaseId, databaseBackupInfo, userna
     }
 }
 
-exports.AddDatabaseOperationsLog = async (databaseId, databaseOperationsLog) => {
+exports.AddDatabaseOperationsLog = async (databaseId, databaseOperationsLog, username) => {
     try {
         var database = await this.getDatabaseById(databaseId);
 
@@ -341,6 +341,28 @@ exports.ModifyDatabaseCloudInfo = async (databaseId, databaseCloudInfo, username
         await database.save();
     } catch (error) {
         throw new Error('could not delete model');
+    }
+}
+
+exports.AddServerlessFunction = async (databaseId, serverlessFunctionInfo, username) => {
+    try {
+        var database = await this.getDatabaseById(databaseId);
+
+        if (!database) {
+            throw new Exception('database does not exist');
+        }
+
+        database.ServerlessFunctionsUsed.push(serverlessFunctionInfo);
+
+        database.DidUpdate = true;
+
+        database.UpdatedAt = Date.now();
+
+        database.UpdatedBy = username;
+
+        await database.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
     }
 }
 

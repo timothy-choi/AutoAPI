@@ -318,6 +318,28 @@ exports.AddEndpointVersionHistory = async (endpointId, endpointVersionHistory, u
     }
 }
 
+exports.ModifyEndpointMetrics = async (endpointId, endpointMetrics, username) => {
+    try {
+        var endpoint = await this.GetEndpointsById(endpointId);
+
+        if (!endpoint) {
+            throw new Exception('database does not exist');
+        }
+
+        endpoint.EndpointMetrics = endpointMetrics;
+
+        endpoint.DidUpdate = true;
+
+        endpoint.UpdatedAt = Date.now();
+
+        endpoint.UpdatedBy = username;
+
+        await endpoint.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
+
 
 exports.DeleteEndpoints = async (endpointId) => {
     try {

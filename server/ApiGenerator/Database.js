@@ -74,6 +74,10 @@ const DatabaseSchema = new mongoose.Schema({
     DatabaseCloudInfo: {
         type: mongoose.Schema.Types.Mixed,
         required: false
+    },
+    ServerlessFunctionsUsed: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: false
     }
 });
 
