@@ -366,6 +366,55 @@ exports.AddServerlessFunction = async (databaseId, serverlessFunctionInfo, usern
     }
 }
 
+exports.RemoveServerlessFunction = async (databaseId, serverlessFunctionInfo, username) => {
+    try {
+        var database = await this.getDatabaseById(databaseId);
+
+        if (!database) {
+            throw new Exception('database does not exist');
+        }
+
+        database.ServerlessFunctionsUsed.splice(database.ServerlessFunctionsUsed.indexOf(serverlessFunctionInfo), 1);
+
+        database.DidUpdate = true;
+
+        database.UpdatedAt = Date.now();
+
+        database.UpdatedBy = username;
+
+        await database.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
+
+exports.editServerlessFunction = async (databaseId, serverlessFunctionId, updatedServerlessFunction, username) => {
+    try {
+        var database = await this.getDatabaseById(databaseId);
+
+        if (!database) {
+            throw new Error('Model does not exist');
+        } 
+
+        var index = database.ServerlessFunctionsUsed.findIndex(serverlessFunction = serverlessFunction.id != serverlessFunctionId);
+
+        database.ModelTablesInfo.splice(index, 1);
+
+        database.ModelTablesInfo.splice(index, 0, updatedServerlessFunction);
+
+        database.DidUpdate = true;
+
+        database.UpdatedAt = Date.now();
+
+        database.UpdatedBy = username;
+
+        await database.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
+
+
 exports.DeleteDatabase = async (databaseId) => {
     try {
         var database = await this.getDatabaseById(databaseId);
