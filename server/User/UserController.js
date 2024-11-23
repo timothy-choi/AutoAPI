@@ -561,8 +561,8 @@ exports.DeleteUser = async (req, res) => {
     try {
         var user = await UserService.GetUserById(req.userId);
 
-        if (user) {
-            return res.status(500).json({ error: 'User already exists'});
+        if (!user) {
+            return res.status(500).json({ error: 'User does not exist'});
         }
 
         await UserService.DeleteUser(req.userId);
