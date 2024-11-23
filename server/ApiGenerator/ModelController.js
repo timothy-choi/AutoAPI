@@ -30,7 +30,57 @@ exports.CreateModel = async (req, res) => {
 
         var modelInfo = await ModelService.CreateModel(req.body);
 
-        return res.status(201).json(userInfo);
+        return res.status(201).json(modelInfo);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditVersion = async (req, res) => {
+    try {
+        await ModelService.EditVersion(req.modelId, req.version);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddModelAttribute = async (req, res) => {
+    try {
+        await ModelService.AddModelAttribute(req.modelId, req.body, req.username);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.DeleteModelAttribute = async (req, res) => {
+    try {
+        await ModelService.DeleteModelAttribute(req.modelId, req.modeAttributeId, req.username);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditModelAttribute = async (req, res) => {
+    try {
+        await ModelService.EditModelAttribute(req.modelId, req.modeAttributeId, req.body, req.username);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditModelDescription = async (req, res) => {
+    try {
+        await ModelService.EditModelDescription(req.modelId, req.body.modelDesc);
+
+        return res.status(200).json(null);
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }
