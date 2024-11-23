@@ -86,6 +86,36 @@ exports.EditModelDescription = async (req, res) => {
     }
 }
 
+exports.SetModelCreationFile = async (req, res) => {
+    try {
+        await ModelService.SetModelCreationFile(req.modelId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.SetModelDatabaseInfo = async (req, res) => {
+    try {
+        await ModelService.SetModelDatabaseInfo(req.modelId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddModelChangelog = async (req, res) => {
+    try {
+        await ModelService.AddModelChangeLog(req.modelId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteModel = async (req, res) => {
     try {
         var model = await ModelService.GetModelById(req.modelId);
