@@ -300,7 +300,7 @@ exports.ModifyDatabaseBackupInfo = async (databaseId, databaseBackupInfo, userna
     }
 }
 
-exports.AddDatabaseOperationsLog = async (databaseId, databaseOperationsLog, username) => {
+exports.AddDatabaseVersionHistory = async (databaseId, databaseVersionLog, username) => {
     try {
         var database = await this.getDatabaseById(databaseId);
 
@@ -308,7 +308,7 @@ exports.AddDatabaseOperationsLog = async (databaseId, databaseOperationsLog, use
             throw new Exception('database does not exist');
         }
 
-        database.DatabaseOperationsLog.push(databaseOperationsLog);
+        database.DatabaseVersionHistory.push(databaseVersionLog);
 
         database.DidUpdate = true;
 
