@@ -50,3 +50,33 @@ exports.EditModelToProject = async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 }
+
+exports.AddDatabaseToProject = async (req, res) => {
+    try {
+        await ProjectService.AddDatabaseToProject(req.projectId, req.body);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveDatabaseFromProject = async (req, res) => {
+    try {
+        await ProjectService.RemoveDatabaseFromProject(req.projectId, req.databaseInfoId);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditDatabaseInfo = async (req, res) => {
+    try {
+        await ProjectService.EditDatabaseInfo(req.projectId, req.databaseInfoId, req.body);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
