@@ -120,6 +120,46 @@ exports.EditEndpointDatabase = async (req, res) => {
     }
 }
 
+exports.AddEndpointServerlessFunction = async (req, res) => {
+    try {
+        await EndpointService.AddEndpointServerlessFunctions(req.endpointId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveEndpointServerlessFunction = async (req, res) => {
+    try {
+        await EndpointService.RemoveEndpointServerlessFunctions(req.endpointId, req.endpointServerlessFunctionId, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditEndpointServerlessFunction = async (req, res) => {
+    try {
+        await EndpointService.EditEndpointServerlessFunction(req.endpointId, req.endpointServerlessFunctionId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.ModifyEndpointCreationFile = async (req, res) => {
+    try {
+        await EndpointService.ModifyEndpointCreationFile(req.endpointId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteEndpoints = async (req, res) => {
     try {
         await EndpointService.DeleteEndpoints(req.endpointId);
