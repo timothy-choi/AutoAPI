@@ -160,6 +160,96 @@ exports.ModifyEndpointCreationFile = async (req, res) => {
     }
 }
 
+exports.AddEndpointRequestInfo = async (req, res) => {
+    try {
+        await EndpointService.AddEndpointRequestInfo(req.endpointId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveEndpointRequestInfo = async (req, res) => {
+    try {
+        await EndpointService.RemoveEndpointRequestInfo(req.endpointId, req.endpointRequestInfoId, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditEndpointRequestInfo = async (req, res) => {
+    try {
+        await EndpointService.EditEndpointRequestInfo(req.endpointId, req.endpointRequestInfoId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddEndpointImplementationInfo = async (req, res) => {
+    try {
+        await EndpointService.AddEndpointImplementationInfo(req.endpointId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveEndpointImplementationInfo = async (req, res) => {
+    try {
+        await EndpointService.RemoveEndpointImplementationInfo(req.endpointId, req.endpointImplementationInfoId, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditEndpointImplementationInfo = async (req, res) => {
+    try {
+        await EndpointService.EditEndpointImplementationInfo(req.endpointId, req.endpointImplementationInfoId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddApiEndpointsStatus = async (req, res) => {
+    try {
+        await EndpointService.AddApiEndpointStatus(req.endpointId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditApiEndpointsStatus = async (req, res) => {
+    try {
+        await EndpointService.EditApiEndpointStatus(req.endpointId, req.endpointStatusId, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.ModifyEndpointsDescription = async (req, res) => {
+    try {
+        await EndpointService.ModifyEndpointsDescription(req.endpointId, req.body.endpointsDescription, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteEndpoints = async (req, res) => {
     try {
         await EndpointService.DeleteEndpoints(req.endpointId);
