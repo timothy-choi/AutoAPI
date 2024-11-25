@@ -310,6 +310,56 @@ exports.EditEndpointResponseExample = async (req, res) => {
     }
 }
 
+exports.AddEndpointDependency = async (req, res) => {
+    try {
+        await EndpointService.AddEndpointDependencies(req.endpointId, req.endpointResponseSchemaId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveEndpointDependency = async (req, res) => {
+    try {
+        await EndpointService.RemoveApiEndpointDependency(req.endpointId, req.endpointDependencyId, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditEndpointDependency = async (req, res) => {
+    try {
+        await EndpointService.EditApiEndpointDependency(req.endpointId, req.endpointDependencyId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.ModifyEndpointMetrics = async (req, res) => {
+    try {
+        await EndpointService.ModifyEndpointMetrics(req.endpointId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddEndpointVersionHistory = async (req, reds) => {
+    try {
+        await EndpointService.AddEndpointVersionHistory(req.endpointId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteEndpoints = async (req, res) => {
     try {
         await EndpointService.DeleteEndpoints(req.endpointId);
