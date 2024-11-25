@@ -250,6 +250,66 @@ exports.ModifyEndpointsDescription = async (req, res) => {
     }
 }
 
+exports.AddEndpointResponseSchema = async (req, res) => {
+    try {
+        await EndpointService.AddEndpointResponseSchema(req.endpointId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveEndpointResponseSchema = async (req, res) => {
+    try {
+        await EndpointService.RemoveApiEndpointResponseSchema(req.endpointId, req.endpointResponseSchemaId, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditEndpointResponseSchema = async (req, res) => {
+    try {
+        await EndpointService.EditApiEndpointResponseSchema(req.endpointId, req.endpointResponseSchemaId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddEndpointResponseExample = async (req, res) => {
+    try {
+        await EndpointService.AddEndpointResponseExample(req.endpointId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveEndpointResponseExample = async (req, res) => {
+    try {
+        await EndpointService.RemoveApiEndpointResponseExample(req.endpointId, req.endpointResponseExampleId, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditEndpointResponseExample = async (req, res) => {
+    try {
+        await EndpointService.EditApiEndpointResponseExample(req.endpointId, req.endpointResponseExampleId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteEndpoints = async (req, res) => {
     try {
         await EndpointService.DeleteEndpoints(req.endpointId);
