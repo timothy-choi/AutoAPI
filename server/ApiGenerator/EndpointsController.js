@@ -30,6 +30,36 @@ exports.CreateEndpoints = async (req, res) => {
     }
 }
 
+exports.AddEndpointHeader = async (req, res) => {
+    try {
+        await EndpointService.AddEndpointHeader(req.endpointId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveEndpointHeader = async (req, res) => {
+    try {
+        await EndpointService.RemoveEndpointHeader(req.endpointId, req.endpointHeaderId, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditEndpointHeader = async (req, res) => {
+    try {
+        await EndpointService.EditEndpointHeader(req.endpointId, req.endpointHeaderId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteEndpoints = async (req, res) => {
     try {
         await EndpointService.DeleteEndpoints(req.endpointId);
