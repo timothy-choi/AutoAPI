@@ -96,7 +96,7 @@ exports.EditEndpointHeader = async (endpointId, endpointHeaderId, updatedEndpoin
 
         endpoint.UpdatedBy = username;
 
-        await model.save();
+        await endpoint.save();
     } catch (error) {
         throw new Error('could not delete model');
     }
@@ -121,6 +121,54 @@ exports.AddEndpointModel = async (endpointId, endpointModel, username) => {
         await endpoint.save();
     } catch (error) {
         throw new Exception('Can not edit database');
+    }
+}
+
+exports.RemoveEndpointModel = async (endpointId, endpointModelId, username) => {
+    try {
+        var endpoint = await this.GetEndpointsById(endpointId);
+
+        if (!endpoint) {
+            throw new Error('endpoint does not exist');
+        } 
+
+        endpoint.EndpointModels.filter(endpointModel => endpointModel.id != endpointModelId);
+
+        endpoint.DidUpdate = true;
+
+        endpoint.UpdatedAt = Date.now();
+
+        endpoint.UpdatedBy = username;
+
+        await endpoint.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
+
+exports.EditEndpointModel = async (endpointId, endpointModelId, updatedEndpointModel, username) => {
+    try {
+        var endpoint = await this.GetEndpointsById(endpointId);
+
+        if (!endpoint) {
+            throw new Error('Model does not exist');
+        } 
+
+        var index = endpoint.EndpointModels.findIndex(endpointModel = endpointModel.id != endpointModelId);
+
+        endpoint.EndpointModels.splice(index, 1);
+
+        endpoint.EndpointModels.splice(index, 0, updatedEndpointModel);
+
+        endpoint.DidUpdate = true;
+
+        endpoint.UpdatedAt = Date.now();
+
+        endpoint.UpdatedBy = username;
+
+        await endpoint.save();
+    } catch (error) {
+        throw new Error('could not delete model');
     }
 }
 
