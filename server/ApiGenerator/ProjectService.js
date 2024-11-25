@@ -127,3 +127,21 @@ exports.EditDatabaseInfo = async (projectId, databaseInfoId, updatedDatabaseInfo
         throw new Error('could not delete model');
     }
 }
+
+exports.ModifyProjectEndpoints = async (projectId, endpointsInfo) => {
+    try {
+        var project = await GetProjectById(projectId);
+
+        if (!project) {
+            throw new Error('Model does not exist');
+        } 
+
+        project.AllEndpoints = endpointsInfo;
+
+        project.ModifiedAt = Date.now();
+
+        await project.save();
+    } catch (error) {
+        throw new Exception('Can not edit project');
+    }
+}
