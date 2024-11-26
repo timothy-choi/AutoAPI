@@ -10,6 +10,10 @@ const ApiServerlessFunctionSchema = mongoose.Schema({
         type: String,
         required: true,
     },
+    Version: {
+        type: String,
+        required: true,
+    },
     Routes: {
         type: [mongoose.Schema.Types.Mixed],
         required: true
@@ -23,6 +27,10 @@ const ApiServerlessFunctionSchema = mongoose.Schema({
         default: Date.now
     },
     Status: {
+        type: String,
+        required: false
+    },
+    HealthStatus: {
         type: String,
         required: false
     },
@@ -44,6 +52,22 @@ const ApiServerlessFunctionSchema = mongoose.Schema({
         required: false
     },
     ServerlessFunctionInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
+    MetricsInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
+    ErrorHandlingInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
+    ServerlessFunctionVersionLog: {
+        type: [mongoose.Schema.Types.Mixed],
+        required: false
+    },
+    IntegrationInfo: {
         type: mongoose.Schema.Types.Mixed,
         required: false
     }
