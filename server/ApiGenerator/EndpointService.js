@@ -26,7 +26,8 @@ exports.CreateEndpoints = async (endpointsInfo) => {
         ProjectName: endpointsInfo.projectName,
         EndpointType: endpointsInfo.type,
         CreatedAt: Date.now,
-        EndpointDescription: endpointsInfo.description
+        EndpointDescription: endpointsInfo.description,
+        ServerlessFunctionMode: endpointsInfo.servelessFunctionMode
     });
 
     return endpoints;

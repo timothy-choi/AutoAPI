@@ -34,6 +34,10 @@ const EndpointsModel = mongoose.Schema({
         type: String,
         required: false
     },
+    ServerlessFunctionMode: {
+        type: String,
+        required: true
+    },
     EndpointHeaders: {
         type: [mongoose.Schema.Types.Mixed],
         required: false
