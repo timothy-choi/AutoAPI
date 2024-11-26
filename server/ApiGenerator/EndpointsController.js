@@ -360,6 +360,16 @@ exports.AddEndpointVersionHistory = async (req, reds) => {
     }
 }
 
+exports.ModifyServerlessFunctionFile = async (req, res) => {
+    try {
+        await EndpointService.ModifyServerlessFunctionFile(req.endpointId, req.body, req.username);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteEndpoints = async (req, res) => {
     try {
         await EndpointService.DeleteEndpoints(req.endpointId);

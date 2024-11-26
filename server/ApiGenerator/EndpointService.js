@@ -800,6 +800,27 @@ exports.ModifyEndpointMetrics = async (endpointId, endpointMetrics, username) =>
     }
 }
 
+exports.ModifyServerlessFunctionFile = async (endpointId, serverlessFunctionFile, username) => {
+    try {
+        var endpoint = await this.GetEndpointsById(endpointId);
+
+        if (!endpoint) {
+            throw new Exception('database does not exist');
+        }
+
+        endpoint.EndpointServerlessFunctionFile = serverlessFunctionFile;
+
+        endpoint.DidUpdate = true;
+
+        endpoint.UpdatedAt = Date.now();
+
+        endpoint.UpdatedBy = username;
+
+        await endpoint.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
 
 exports.DeleteEndpoints = async (endpointId) => {
     try {

@@ -93,6 +93,10 @@ const EndpointsModel = mongoose.Schema({
     EndpointMetrics: {
         type: mongoose.Schema.Types.Mixed,
         required: false
+    },
+    EndpointServerlessFunctionFile: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
     }
 });
 
