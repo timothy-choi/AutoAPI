@@ -16,7 +16,7 @@ const ApiServerlessFunctionSchema = mongoose.Schema({
     },
     Routes: {
         type: [mongoose.Schema.Types.Mixed],
-        required: true
+        required: false
     },
     CreatedAt: {
         type: Date,
