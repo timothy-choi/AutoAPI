@@ -186,6 +186,62 @@ exports.ModifyServerlessFunctionInfo = async (serverlessFunctionId, functionInfo
     await serverlessFunction.save();
 }
 
+exports.ModifyMetricsInfo = async (serverlessFunctionId, metricsInfo) => {
+    var serverlessFunction = await GetServerlessFunctionById(serverlessFunctionId);
+
+    if (!serverlessFunction) {
+        throw new Exception("function does not exist");
+    }
+
+    serverlessFunction.MetricsInfo = metricsInfo;
+
+    serverlessFunction.UpdatedAt = Date.now();
+
+    await serverlessFunction.save();
+}
+
+exports.ModifyErrorHandlingInfo = async (serverlessFunctionId, errorHandlingInfo) => {
+    var serverlessFunction = await GetServerlessFunctionById(serverlessFunctionId);
+
+    if (!serverlessFunction) {
+        throw new Exception("function does not exist");
+    }
+
+    serverlessFunction.ErrorHandlingInfo = errorHandlingInfo;
+
+    serverlessFunction.UpdatedAt = Date.now();
+
+    await serverlessFunction.save();
+}
+
+exports.AddServerlessFunctionVersionLog = async (serverlessFunctionId, functionVersionLogEntry) => {
+    var serverlessFunction = await GetServerlessFunctionById(serverlessFunctionId);
+
+    if (!serverlessFunction) {
+        throw new Exception("function does not exist");
+    }
+
+    serverlessFunction.ServerlessFunctionVersionLog.push(functionVersionLogEntry);
+
+    serverlessFunction.UpdatedAt = Date.now();
+
+    await serverlessFunction.save();
+}
+
+exports.ModifyIntegrationInfo = async (serverlessFunctionId, integrationInfo) => {
+    var serverlessFunction = await GetServerlessFunctionById(serverlessFunctionId);
+
+    if (!serverlessFunction) {
+        throw new Exception("function does not exist");
+    }
+
+    serverlessFunction.IntegrationInfo = integrationInfo;
+
+    serverlessFunction.UpdatedAt = Date.now();
+
+    await serverlessFunction.save();
+}
+
 exports.DeleteServerlessFunction = async (serverlessFunctionId) => {
     var serverlessFunction = await GetServerlessFunctionById(serverlessFunctionId);
 
