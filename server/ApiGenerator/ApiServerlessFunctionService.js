@@ -32,6 +32,66 @@ exports.CreateServerlessFunction = async (serverlessFunctionInfo) => {
     return serverlessFunction;
 }
 
+exports.SetFunctionVersion = async (serverlessFunctionId, versionValue) => {
+    var serverlessFunction = await GetServerlessFunctionById(serverlessFunctionId);
+
+    if (!serverlessFunction) {
+        throw new Exception("function does not exist");
+    }
+
+    serverlessFunction.Version = versionValue;
+
+    serverlessFunction.UpdatedAt = Date.now;
+
+    await serverlessFunction.save();
+}
+
+exports.AddRoute = async (serverlessFunctionId, routeInfo) => {
+    var serverlessFunction = await GetServerlessFunctionById(serverlessFunctionId);
+
+    if (!serverlessFunction) {
+        throw new Exception("function does not exist");
+    }
+
+    serverlessFunction.Routes.push(routeInfo);
+
+    serverlessFunction.UpdatedAt = Date.now();
+
+    await serverlessFunction.save();
+}
+
+exports.RemoveRoute = async (serverlessFunctionId, serverlessFunctionRouteInfo) => {
+    var serverlessFunction = await GetServerlessFunctionById(serverlessFunctionId);
+
+    if (!serverlessFunction) {
+        throw new Exception("function does not exist");
+    }
+
+    serverlessFunction.Routes.splice(serverlessFunction.Routes.indexOf(serverlessFunctionRouteInfo), 1);
+
+    serverlessFunction.UpdatedAt = Date.now();
+
+    await serverlessFunction.save();
+}
+
+exports.EditRoute = async (serverlessFunctionId, serverlessFunctionRouteInfoId, updatedServerlessFunctionRouteInfo) => {
+    var serverlessFunction = await GetServerlessFunctionById(serverlessFunctionId);
+
+    if (!serverlessFunction) {
+        throw new Exception("function does not exist");
+    }
+
+    var index = serverlessFunction.Routes.findIndex(serverlessFunctionRouteInfo = serverlessFunctionRouteInfo.id != serverlessFunctionRouteInfoId);
+
+    serverlessFunction.Routes.splice(index, 1);
+
+    serverlessFunction.Routes.splice(index, 0, updatedServerlessFunctionRouteInfo);
+
+    serverlessFunction.UpdatedAt = Date.now();
+
+    await serverlessFunction.save();
+}
+
 exports.DeleteServerlessFunction = async (serverlessFunctionId) => {
     var serverlessFunction = await GetServerlessFunctionById(serverlessFunctionId);
 
