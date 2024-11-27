@@ -90,6 +90,96 @@ exports.SetHealthStatus = async (req, res) => {
     }
 }
 
+exports.SetTimeout = async (req, res) => {
+    try {
+        await ServerlessFunctionService.EditTimeout(req.serverlessFunctionId, req.timeoutVal);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.SetDeployedUrl = async (req, res) => {
+    try {
+        await ServerlessFunctionService.SetDeployedUrl(req.serverlessFunctionId, req.deployedUrl);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.ModifyEnvironmentVariables = async (req, res) => {
+    try {
+        await ServerlessFunctionService.ModifyEnvironmentVariables(req.serverlessFunctionId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddServerlessFunctionLog = async (req, res) => {
+    try {
+        await ServerlessFunctionService.AddServerlessFunctionLog(req.serverlessFunctionId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.ModifyServerlessFunctionInfo = async (req, res) => {
+    try {
+        await ServerlessFunctionService.ModifyServerlessFunctionInfo(req.serverlessFunctionId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.ModifyMetricsInfo = async (req, res) => {
+    try {
+        await ServerlessFunctionService.ModifyMetricsInfo(req.serverlessFunctionId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.ModifyErrorHandlingInfo = async (req, res) => {
+    try {
+        await ServerlessFunctionService.ModifyErrorHandlingInfo(req.serverlessFunctionId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddServerlessFunctionVersionLog = async (req, res) => {
+    try {
+        await ServerlessFunctionService.AddServerlessFunctionVersionLog(req.serverlessFunctionId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.ModifyIntegrationInfo = async (req, res) => {
+    try {
+        await ServerlessFunctionService.ModifyIntegrationInfo(req.serverlessFunctionId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteServerlessFunction = async (req, res) => {
     try {
         await ServerlessFunctionService.DeleteServerlessFunction(req.serverlessFunctionId);
