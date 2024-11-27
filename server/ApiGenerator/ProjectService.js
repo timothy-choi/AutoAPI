@@ -145,3 +145,62 @@ exports.ModifyProjectEndpoints = async (projectId, endpointsInfo) => {
         throw new Exception('Can not edit project');
     }
 }
+
+exports.AddServerlessFunction = async (projectId, serverlessFunctionInfo) => {
+    try {
+        var project = await Project.findByPk(projectId);
+
+        if (!project) {
+            throw new Exception('Can not get project');
+        }
+
+        project.ApiServerlessFunctions.push(serverlessFunctionInfo);
+
+        project.ModifiedAt = Date.now;
+
+        await project.save();
+    } catch (error) {
+        throw new Exception('Can not edit project');
+    }
+}
+
+exports.RemoveServerlessFunction = async (projectId, serverlessFunctionInfoId) => {
+    try {
+        var project = await GetProjectById(projectId);
+
+        if (!project) {
+            throw new Error('Project does not exist');
+        } 
+
+        project.ApiServerlessFunctions.filter(serverlessFunctionInfo => serverlessFunctionInfo.id != serverlessFunctionInfoId);
+
+        project.ModifiedAt = Date.now();
+
+        await project.save();
+    } catch (error) {
+        throw new Exception('Can not edit project');
+    }
+}
+
+exports.EditServerlessFunctionInfo = async (projectId, serverlessFunctionInfoId, updatedServerlessFunctionInfo) => {
+    try {
+        var project = await GetProjectById(projectId);
+
+        if (!project) {
+            throw new Error('Model does not exist');
+        } 
+
+        var index = project.ApiServerlessFunctions.findIndex(serverlessFunctionInfo = serverlessFunctionInfo.id != serverlessFunctionInfoId);
+
+        project.ApiServerlessFunctions.splice(index, 1);
+
+        project.ApiServerlessFunctions.splice(index, 0, updatedServerlessFunctionInfo);
+
+        project.ModifiedAt = Date.now();
+
+        await project.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
+
