@@ -120,3 +120,44 @@ exports.EditServerlessFunctionInfo = async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 }
+
+exports.EditCloudProvider = async (req, res) => {
+    try {
+        await ProjectService.EditCloudProviderInfo(req.projectId, req.cloudProvider);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditIsPrivate = async (req, res) => {
+    try {
+        await ProjectService.EditIsPrivate(req.projectId, req.isPrivate);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditProjectStatus = async (req, res) => {
+    try {
+        await ProjectService.EditProjectStatus(req.projectId, req.projectStatus);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditProjectHealthStatus = async (req, res) => {
+    try {
+        await ProjectService.EditProjectHealthStatus(req.projectId, req.projectHealthStatus);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
