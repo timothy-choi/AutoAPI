@@ -90,3 +90,33 @@ exports.EditProjectEndpoints = async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 }
+
+exports.AddServerlessFunction = async (req, res) => {
+    try {
+        await ProjectService.AddServerlessFunction(req.projectId, req.body);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveServerlessFunction = async (req, res) => {
+    try {
+        await ProjectService.RemoveServerlessFunction(req.projectId, req.serverlessFunctionInfoId);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditServerlessFunctionInfo = async (req, res) => {
+    try {
+        await ProjectService.EditServerlessFunctionInfo(req.projectId, req.serverlessFunctionInfoId, req.body);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
