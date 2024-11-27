@@ -92,6 +92,44 @@ exports.EditRoute = async (serverlessFunctionId, serverlessFunctionRouteInfoId, 
     await serverlessFunction.save();
 }
 
+exports.EditStatus = async (serverlessFunctionId, statusValue) => {
+    var serverlessFunction = await GetServerlessFunctionById(serverlessFunctionId);
+
+    if (!serverlessFunction) {
+        throw new Exception("function does not exist");
+    }
+
+    serverlessFunction.Status = statusValue;
+
+    await serverlessFunction.save();
+}
+
+exports.EditHealthStatus = async (serverlessFunctionId, healthStatusValue) => {
+    var serverlessFunction = await GetServerlessFunctionById(serverlessFunctionId);
+
+    if (!serverlessFunction) {
+        throw new Exception("function does not exist");
+    }
+
+    serverlessFunction.HealthStatus = healthStatusValue;
+
+    await serverlessFunction.save();
+}
+
+exports.EditTimeout = async (serverlessFunctionId, timeoutVal) => {
+    var serverlessFunction = await GetServerlessFunctionById(serverlessFunctionId);
+
+    if (!serverlessFunction) {
+        throw new Exception("function does not exist");
+    }
+
+    serverlessFunction.Timeout = timeoutVal;
+
+    serverlessFunction.UpdatedAt = Date.now();
+
+    await serverlessFunction.save();
+}
+
 exports.DeleteServerlessFunction = async (serverlessFunctionId) => {
     var serverlessFunction = await GetServerlessFunctionById(serverlessFunctionId);
 
