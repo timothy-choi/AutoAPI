@@ -104,4 +104,32 @@ exports.deleteFile = async (bucketName, key) => {
     }
 };
 
+exports.checkFileExists = async (bucketName, key) => {
+    try {
+        await s3.headObject({ Bucket: bucketName, Key: key }).promise();
+
+        return true;
+    } catch (error) {
+        if (error.code === 'NotFound') {
+            return false;
+        }
+        throw new Error('Error checking if file exists:', error);
+    }
+};
+
+exports.updateFile = async (bucketName, key, updatedContent) => {
+    const params = {
+        Bucket: bucketName,
+        Key: key,
+        Body: updatedContent,
+        ContentType: 'application/octet-stream'
+    };
+    
+    try {
+        await s3.putObject(params).promise();
+    } catch (error) {
+        throw new Error('Error updating file:', error);
+    }
+}
+
 
