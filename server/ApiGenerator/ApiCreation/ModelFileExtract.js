@@ -89,3 +89,21 @@ const parseAndCheckFile = (jsonFileContent, databaseType) => {
 
     return allAttributes;
 }
+
+const readModelFile = (filename) => {
+    fs.readFile(filename, 'utf8', (err, jsonString) => {
+        if (err) {
+          console.error('Error reading file:', err);
+          return;
+        }
+
+        try {
+            const data = JSON.parse(jsonString);
+            
+            return data;
+        } catch (err) {
+            console.error('Error parsing JSON:', err);
+        }
+    });
+
+}
