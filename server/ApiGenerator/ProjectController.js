@@ -161,3 +161,13 @@ exports.EditProjectHealthStatus = async (req, res) => {
     }
 }
 
+exports.SetIsAvailable = async (req, res) => {
+    try {
+        await ProjectService.SetIsAvailable(req.projectId);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
