@@ -48,7 +48,7 @@ exports.deleteBucket = async (bucketName) => {
     }
 }; 
 
-const bucketExists = async (bucketName) => {
+exports.bucketExists = async (bucketName) => {
     try {
       await s3.headBucket({ Bucket: bucketName }).promise();
 
@@ -61,5 +61,47 @@ const bucketExists = async (bucketName) => {
       }
     }
   };
+
+exports.uploadFile = async (bucketName, key, fileContent) => {
+    const params = {
+        Bucket: bucketName,
+        Key: key,
+        Body: fileContent,
+        ContentType: 'application/octet-stream'
+    };
+
+    try {
+        await s3.upload(params).promise();
+    } catch (error) {
+        throw new Error('Error uploading file:', error);
+    }
+};
+
+exports.downloadFile = async (bucketName, key) => {
+    const params = {
+        Bucket: bucketName,
+        Key: key
+    };
   
+    try {
+        const data = await s3.getObject(params).promise();
+        return data.Body; 
+    } catch (error) {
+        throw new Error('Error downloading file:', error);
+    }
+};
+
+exports.deleteFile = async (bucketName, key) => {
+    const params = {
+        Bucket: bucketName,
+        Key: key
+    };
+  
+    try {
+        await s3.deleteObject(params).promise();
+    } catch (error) {
+        throw new Error('Error deleting file:', error);
+    }
+};
+
 
