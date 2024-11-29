@@ -200,3 +200,13 @@ exports.EditProjectUpdate = async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 }
+
+exports.SetProjectBucket = async (req, res) => {
+    try {
+        await ProjectService.SetProjectBucket(req.projectId, req.projectFileBucket);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}

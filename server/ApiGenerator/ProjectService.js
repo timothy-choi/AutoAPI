@@ -351,3 +351,21 @@ exports.EditProjectUpdate = async (projectId, projectUpdateId, updatedProjectUpd
         throw new Error('could not delete model');
     }
 }
+
+exports.SetProjectBucket = async (projectId, projectFileBucket) => {
+    try {
+        var project = await Project.findByPk(projectId);
+
+        if (!project) {
+            throw new Exception('Can not get project');
+        }
+
+        project.AllProjectFileBucket = projectFileBucket;
+
+        project.ModifiedAt = Date.now;
+
+        await project.save();
+    } catch (error) {
+        throw new Exception('Can not edit project');
+    }
+}
