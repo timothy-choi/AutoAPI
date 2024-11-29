@@ -1,4 +1,5 @@
 const fs = require('fs');
+const awsHelper = require('../../aws-helper');
 
 const databaseTypes = {
     MySQL: [
@@ -43,7 +44,7 @@ const databaseTypes = {
 
 
 const parseAndCheckFile = (jsonFileContent, databaseType) => {
-    const data = JSON.parse(jsonFileContent);
+    const data = jsonFileContent;
 
     var allAttributes = [];
 
@@ -93,8 +94,7 @@ const parseAndCheckFile = (jsonFileContent, databaseType) => {
 const readModelFile = (filename) => {
     fs.readFile(filename, 'utf8', (err, jsonString) => {
         if (err) {
-          console.error('Error reading file:', err);
-          return;
+          throw new Error('Error reading file:', err);
         }
 
         try {
@@ -102,8 +102,34 @@ const readModelFile = (filename) => {
             
             return data;
         } catch (err) {
-            console.error('Error parsing JSON:', err);
+            throw new Error('Error parsing JSON:', err);
         }
     });
 
+}
+
+exports.ProcessModelCreationFile = async (req, res) => {
+    try {
+        if (!awsHelper.checkFileExists(req.body.bucketName, req.body.key)) {
+            return res.status(404).json({ msg: "Not Found" });
+        }
+
+        var allInputModelAttributes = [];
+
+        if (req.body.localDownload) {
+            var filePath = await awsHelper.localDownloadFile(req.body.bucketName, req.body.key, req.body.filename);
+
+            allInputModelAttributes = readModelFile(filePath);
+        } else {
+            var data = await awsHelper.downloadFile(req.body.bucketName, req.body.key);
+
+            allInputModelAttributes = JSON.parse(data);
+        }
+
+        var allModelAttributes = parseAndCheckFile(allInputModelAttributes);
+
+        return res.status(201).body(allModelAttributes);
+    } catch (err) {
+        return res.status(500).json({ error: error.message });
+    }
 }

@@ -1,5 +1,6 @@
 const AWS = require('aws-sdk');
 const fs = require('fs');
+const path = require('path');
 
 const s3 = new AWS.S3({
     region: 'us-west-1', 
@@ -140,7 +141,21 @@ exports.localDownloadFile = async (bucketName, key, filename) => {
         const localFilePath = path.join(__dirname, filename);
     
         fs.writeFileSync(localFilePath, fileContent);
+
+        return localFilePath;
     } catch (error) {
         throw new Error('Error downloading or saving the file:', error);
     }
 }
+
+exports.checkFileExists = async (bucketName, key) => {
+    try {
+      await s3.headObject({ Bucket: bucketName, Key: key }).promise();
+      return true; 
+    } catch (error) {
+      if (error.code === 'NotFound') {
+        return false; 
+      }
+      throw new Error('Error checking file existence:', error);
+    }
+  };
