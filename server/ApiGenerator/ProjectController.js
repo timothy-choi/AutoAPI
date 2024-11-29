@@ -171,3 +171,32 @@ exports.SetIsAvailable = async (req, res) => {
     }
 }
 
+exports.SetGithubUrl = async (req, res) => {
+    try {
+        await ProjectService.SetGithubUrl(req.projectId, req.body.githubUrl);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.AddProjectUpdate = async (req, res) => {
+    try {
+        await ProjectService.AddProjectUpdate(req.projectId, req.body);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditProjectUpdate = async (req, res) => {
+    try {
+        await ProjectService.EditProjectUpdate(req.projectId, req.projectUpdateId, req.body);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}

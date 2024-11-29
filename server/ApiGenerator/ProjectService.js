@@ -294,3 +294,60 @@ exports.SetIsAvailable = async (projectId) => {
     }
 }
 
+exports.SetGithubUrl = async (projectId, githubUrl) => {
+    try {
+        var project = await Project.findByPk(projectId);
+
+        if (!project) {
+            throw new Exception('Can not get project');
+        }
+
+        project.GithubUrl = githubUrl;
+
+        project.ModifiedAt = Date.now;
+
+        await project.save();
+    } catch (error) {
+        throw new Exception('Can not edit project');
+    }
+}
+
+exports.AddProjectUpdate = async (projectId, projectUpdate) => {
+    try {
+        var project = await Project.findByPk(projectId);
+
+        if (!project) {
+            throw new Exception('Can not get project');
+        }
+
+        project.ProjectUpdates.push(projectUpdate);
+
+        project.ModifiedAt = Date.now;
+
+        await project.save();
+    } catch (error) {
+        throw new Exception('Can not edit project');
+    }
+}
+
+exports.EditProjectUpdate = async (projectId, projectUpdateId, updatedProjectUpdate) => {
+    try {
+        var project = await GetProjectById(projectId);
+
+        if (!project) {
+            throw new Error('Model does not exist');
+        } 
+
+        var index = project.ProjectUpdates.findIndex(projectUpdate = projectUpdate.id != projectUpdateId);
+
+        project.ProjectUpdates.splice(index, 1);
+
+        project.ProjectUpdates.splice(index, 0, updatedProjectUpdate);
+
+        project.ModifiedAt = Date.now();
+
+        await project.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
