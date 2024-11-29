@@ -1,4 +1,5 @@
 const AWS = require('aws-sdk');
+const fs = require('fs');
 
 const s3 = new AWS.S3({
     region: 'us-west-1', 
@@ -132,4 +133,14 @@ exports.updateFile = async (bucketName, key, updatedContent) => {
     }
 }
 
-
+exports.localDownloadFile = async (bucketName, key, filename) => {
+    try {
+        const fileContent = await s3.getObject({Bucket: bucketName, Key: key}).promise();
+    
+        const localFilePath = path.join(__dirname, filename);
+    
+        fs.writeFileSync(localFilePath, fileContent);
+    } catch (error) {
+        throw new Error('Error downloading or saving the file:', error);
+    }
+}
