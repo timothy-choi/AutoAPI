@@ -11,13 +11,13 @@ exports.UpdateFileContent = async (req, res) => {
       return res.status(404).json({ msg: "Bucket not found." });
     }
 
-    const fileExists = await AwsHelper.checkFileExists(req.body.bucketName, req.body.key);
-    if (!fileExists) {
-      return res.status(404).json({ msg: "File not found in the specified bucket." });
-    }
-
     try {
-        await AwsHelper.updateFile(req.body.bucketName, req.body.key, req.body.updatedContent).promise();
+        const fileExists = await AwsHelper.checkFileExists(req.body.bucketName, req.body.key);
+        if (!fileExists) {
+            await AwsHelper.uploadFile(req.body.bucketName, req.body.key, req.body.updatedContent);
+        } else {
+            await AwsHelper.updateFile(req.body.bucketName, req.body.key, req.body.updatedContent);
+        }
 
         return res.status(200).body(null);
     } catch (err) {
