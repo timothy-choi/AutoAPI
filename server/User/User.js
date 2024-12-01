@@ -183,6 +183,11 @@ const User = sequelize.define('User', {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
         defaultValue: [],
+    },
+    UserPaymentMethodInfo: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: [],
     }
 });
 

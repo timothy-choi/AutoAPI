@@ -557,6 +557,26 @@ exports.AddProjectQueryResponses = async (req, res) => {
     }
 }
 
+exports.AddPaymentInfo = async (req, res) => {
+    try {
+        await UserService.AddPaymentInfo(req.userId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemovePaymentInfo = async (req, res) => {
+    try {
+        await UserService.RemovePaymentInfo(req.userId, req.paymentInfoId);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteUser = async (req, res) => {
     try {
         var user = await UserService.GetUserById(req.userId);

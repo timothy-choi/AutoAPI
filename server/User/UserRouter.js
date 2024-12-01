@@ -114,4 +114,8 @@ router.put('/projectsFollowing/add/:userId/:projectsFollowingId', UserController
 
 router.put('/ProjectQueryResponses/:userId', UserController.AddProjectQueryResponses);
 
+router.put('/PaymentInfo/add/:userId', UserController.AddPaymentInfo);
+
+router.put('/PaymentInfo/remove/:userId/:paymentInfoId', UserController.RemovePaymentInfo);
+
 module.exports = router;

@@ -943,6 +943,38 @@ exports.AddProjectQueryResponses = async (userId, projectQueryResponse) => {
     }
 }
 
+exports.AddPaymentInfo = async (userId, paymentInfo) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.UserPaymentMethodInfo.push(paymentInfo);
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
+exports.RemovePaymentInfo = async (userId, paymentInfoId) => {
+    try {
+        var userInfo = await User.findByPk(userId);
+
+        if (!userInfo) {
+            throw new Error("Error with finding user");
+        }
+
+        userInfo.UserPaymentMethodInfo.filter(paymentMethodInfo => paymentMethodInfo.Id !== paymentInfoId);
+
+        await userInfo.save();
+    } catch (error) {
+        throw new Error("Error with deleting user");
+    }
+}
+
 exports.DeleteUser = async (userId) => {
     try {
         var userInfo = await User.findByPk(userId);
