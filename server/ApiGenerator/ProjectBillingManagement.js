@@ -50,6 +50,22 @@ const ProjectBilling = sequelize.define('ProjectBilling',  {
     ServiceUsageReportInfo: {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
+    },
+    Currency: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    PaymentPlatform: {
+        type: DataTypes.ENUM('STRIPE', 'PAYPAL'),
+        allowNull: true,
+    },
+    AutomaticPayment: {
+        type: DataTypes.BOOLEAN,
+        allowNull: true,
+    },
+    ManualServiceControl: { //indicates if owner of project wants to use their cloud account to create services there or not. If so, payment will be made toward owner's account
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
     }
 });
 
