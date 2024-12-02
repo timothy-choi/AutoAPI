@@ -200,6 +200,26 @@ exports.editServerlessFunction = async (req, res) => {
     }
 }
 
+exports.editDatabaseUsageInfo = async (req, res) => {
+    try {
+        await DatabaseService.EditDatabaseUsageInfo(req.databaseId, req.body, req.username);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.editDatabaseBillingInfo = async (req, res) => {
+    try {
+        await DatabaseService.EditDatabaseBillingInfo(req.databaseId, req.body, req.username);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.deleteDatabase = async (req, res) => {
     try {
         await DatabaseService.DeleteDatabase(req.databaseId);
