@@ -70,6 +70,14 @@ const ApiServerlessFunctionSchema = mongoose.Schema({
     IntegrationInfo: {
         type: mongoose.Schema.Types.Mixed,
         required: false
+    },
+    ServerlessFunctionUsageInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
+    ServerlessFunctionBillingInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
     }
 });
 

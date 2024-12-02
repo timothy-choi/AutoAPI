@@ -180,6 +180,26 @@ exports.ModifyIntegrationInfo = async (req, res) => {
     }
 }
 
+exports.SetServerlessFunctionUsageInfo = async (req, res) => {
+    try {
+        await ServerlessFunctionService.EditServerlessFunctionUsageInfo(req.serverlessFunctionId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.SetServerlessFunctionBillingInfo = async (req, res) => {
+    try {
+        await ServerlessFunctionService.EditServerlessFunctionBillingInfo(req.serverlessFunctionId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteServerlessFunction = async (req, res) => {
     try {
         await ServerlessFunctionService.DeleteServerlessFunction(req.serverlessFunctionId);

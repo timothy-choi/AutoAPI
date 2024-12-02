@@ -242,6 +242,34 @@ exports.ModifyIntegrationInfo = async (serverlessFunctionId, integrationInfo) =>
     await serverlessFunction.save();
 }
 
+exports.EditServerlessFunctionUsageInfo = async (serverlessFunctionId, serverlessFunctionUsageInfo) => {
+    var serverlessFunction = await GetServerlessFunctionById(serverlessFunctionId);
+
+    if (!serverlessFunction) {
+        throw new Exception("function does not exist");
+    }
+
+    serverlessFunction.ServerlessFunctionUsageInfo = serverlessFunctionUsageInfo;
+
+    serverlessFunction.UpdatedAt = Date.now();
+
+    await serverlessFunction.save();
+}
+
+exports.EditServerlessFunctionBillingInfo = async (serverlessFunctionId, serverlessFunctionBillingInfo) => {
+    var serverlessFunction = await GetServerlessFunctionById(serverlessFunctionId);
+
+    if (!serverlessFunction) {
+        throw new Exception("function does not exist");
+    }
+
+    serverlessFunction.ServerlessFunctionBillingInfo = serverlessFunctionBillingInfo;
+
+    serverlessFunction.UpdatedAt = Date.now();
+
+    await serverlessFunction.save();
+}
+
 exports.DeleteServerlessFunction = async (serverlessFunctionId) => {
     var serverlessFunction = await GetServerlessFunctionById(serverlessFunctionId);
 
