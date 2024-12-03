@@ -30,6 +30,36 @@ exports.CreateBillingInfo = async (req, res) => {
     }
 }
 
+exports.AddGroupUser = async (req, res) => {
+    try {
+        await BillingService.AddGroupUser(req.billingId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveGroupUser = async (req, res) => {
+    try {
+        await BillingService.RemoveGroupUser(req.billingId, req.groupUserId);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditGroupUser = async (req, res) => {
+    try {
+        await BillingService.EditGroupUser(req.billingId, req.groupUserId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteBillingInfo = async (req, res) => {
     try {
         await BillingService.DeleteBillingManagementInfo(req.billingId);

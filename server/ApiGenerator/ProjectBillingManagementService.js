@@ -31,6 +31,46 @@ exports.CreateBillingManagementInfo = async (billingInfo) => {
     return billingManagmentInstance;
 }
 
+exports.AddGroupUser = async (billingId, groupUser) => {
+    var billingManagmentInstance = await this.GetBillingManagementById(billingId);
+
+    if (billingManagmentInstance) {
+        throw new Error('Instance already exists');
+    }
+
+    billingManagmentInstance.GroupUsers.push(groupUser);
+
+    await billingManagmentInstance.save();
+}
+
+exports.RemoveGroupUser = async (billingId, groupUserId) => {
+    var billingManagmentInstance = await this.GetBillingManagementById(billingId);
+
+    if (billingManagmentInstance) {
+        throw new Error('Instance already exists');
+    }
+
+    billingManagmentInstance.GroupUsers.filter(billingInstance => billingInstance.id != groupUserId);
+
+    await billingManagmentInstance.save();
+}
+
+exports.EditGroupUser = async (billingId, groupUserId, updatedGroupUser) => {
+    var billingManagmentInstance = await this.GetBillingManagementById(billingId);
+
+    if (billingManagmentInstance) {
+        throw new Error('Instance already exists');
+    }
+
+    var index = billingManagmentInstance.GroupUsers.findIndex(groupUser = groupUser.id != groupUserId);
+
+    billingManagmentInstance.GroupUsers.splice(index, 1);
+
+    billingManagmentInstance.GroupUsers.splice(index, 0, updatedGroupUser);
+
+    await billingManagmentInstance.save();
+}
+
 exports.DeleteBillingManagementInfo = async (billingId) => {
     var billingManagmentInstance = await GetBillingManagementById(billingId);
 
