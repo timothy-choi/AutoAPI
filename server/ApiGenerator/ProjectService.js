@@ -445,3 +445,61 @@ exports.EditProjectUserRequestsHistoryEntry = async (projectId, projectRequestId
         throw new Error('could not delete model');
     }
 }
+
+exports.AddAssignedUserProjectUserRequests = async (projectId, projectUserRequest) => {
+    try {
+        var project = await Project.findByPk(projectId);
+
+        if (!project) {
+            throw new Exception('Can not get project');
+        }
+
+        project.AssignedUserProjectUserRequests.push(projectUserRequest);
+
+        project.ModifiedAt = Date.now;
+
+        await project.save();
+    } catch (error) {
+        throw new Exception('Can not edit project');
+    }
+}
+
+exports.RemoveAssignedUserProjectUserRequests = async (projectId, projectUserRequestId) => {
+    try {
+        var project = await GetProjectById(projectId);
+
+        if (!project) {
+            throw new Error('Project does not exist');
+        } 
+
+        project.AssignedUserProjectUserRequests.filter(userRequest => userRequest.id != projectUserRequestId);
+
+        project.ModifiedAt = Date.now();
+
+        await project.save();
+    } catch (error) {
+        throw new Exception('Can not edit project');
+    }
+}
+
+exports.EditAssignedUserProjectUserRequests = async (projectId, projectUserRequestId, updatedUserRequest) => {
+    try {
+        var project = await GetProjectById(projectId);
+
+        if (!project) {
+            throw new Error('Model does not exist');
+        } 
+
+        var index = project.AssignedUserProjectUserRequests.findIndex(userRequest = userRequest.id != projectUserRequestId);
+
+        project.AssignedUserProjectUserRequests.splice(index, 1);
+
+        project.AssignedUserProjectUserRequests.splice(index, 0, updatedUserRequest);
+
+        project.ModifiedAt = Date.now();
+
+        await project.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
