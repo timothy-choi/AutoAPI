@@ -110,6 +110,16 @@ exports.SetNextBillingDate = async (req, res) => {
     }
 }
 
+exports.SetCurrentBillingPayment = async (req, res) => {
+    try {
+        await BillingService.SetCurrentBillingPayment(req.billingId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteBillingInfo = async (req, res) => {
     try {
         await BillingService.DeleteBillingManagementInfo(req.billingId);

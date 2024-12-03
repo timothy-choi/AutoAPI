@@ -131,6 +131,18 @@ exports.SetNextBillingDate = async (billingId, nextBillingDate) => {
     await billingManagmentInstance.save();
 }
 
+exports.SetCurrentBillingPayment = async (billingId, currentBillingPayment) => {
+    var billingManagmentInstance = await this.GetBillingManagementById(billingId);
+
+    if (billingManagmentInstance) {
+        throw new Error('Instance already exists');
+    }
+
+    billingManagmentInstance.CurrentBillingPayment = currentBillingPayment;
+
+    await billingManagmentInstance.save();
+}
+
 exports.DeleteBillingManagementInfo = async (billingId) => {
     var billingManagmentInstance = await GetBillingManagementById(billingId);
 
