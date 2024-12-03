@@ -71,6 +71,30 @@ exports.EditGroupUser = async (billingId, groupUserId, updatedGroupUser) => {
     await billingManagmentInstance.save();
 }
 
+exports.ModifyProjectUser = async (billingId, updatedProjectUserInfo) => {
+    var billingManagmentInstance = await this.GetBillingManagementById(billingId);
+
+    if (billingManagmentInstance) {
+        throw new Error('Instance already exists');
+    }
+
+    billingManagmentInstance.ProjectUser = updatedProjectUserInfo;
+
+    await billingManagmentInstance.save();
+}
+
+exports.SetGroupPaymentType = async (billingId, groupPaymentType) => {
+    var billingManagmentInstance = await this.GetBillingManagementById(billingId);
+
+    if (billingManagmentInstance) {
+        throw new Error('Instance already exists');
+    }
+
+    billingManagmentInstance.GroupPaymentType = groupPaymentType;
+
+    await billingManagmentInstance.save();
+}
+
 exports.DeleteBillingManagementInfo = async (billingId) => {
     var billingManagmentInstance = await GetBillingManagementById(billingId);
 

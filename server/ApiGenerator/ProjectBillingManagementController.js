@@ -60,6 +60,26 @@ exports.EditGroupUser = async (req, res) => {
     }
 }
 
+exports.ModifyProjectUser = async (req, res) => {
+    try {
+        await BillingService.ModifyProjectUser(req.billingId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.ModifyGroupPaymentType = async (req, res) => {
+    try {
+        await BillingService.SetGroupPaymentType(req.billingId, req.groupPaymentType);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteBillingInfo = async (req, res) => {
     try {
         await BillingService.DeleteBillingManagementInfo(req.billingId);
