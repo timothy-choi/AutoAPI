@@ -143,6 +143,46 @@ exports.SetCurrentBillingPayment = async (billingId, currentBillingPayment) => {
     await billingManagmentInstance.save();
 }
 
+exports.AddServiceUsageReportInfoEntry = async (billingId, serviceUsageReportInfoEntry) => {
+    var billingManagmentInstance = await this.GetBillingManagementById(billingId);
+
+    if (billingManagmentInstance) {
+        throw new Error('Instance already exists');
+    }
+
+    billingManagmentInstance.ServiceUsageReportInfo.push(serviceUsageReportInfoEntry);
+
+    await billingManagmentInstance.save();
+}
+
+exports.RemoveServiceUsageReportInfoEntry = async (billingId, serviceUsageReportInfoId) => {
+    var billingManagmentInstance = await this.GetBillingManagementById(billingId);
+
+    if (billingManagmentInstance) {
+        throw new Error('Instance already exists');
+    }
+
+    billingManagmentInstance.ServiceUsageReportInfo.filter(serviceReport => serviceReport.id != serviceUsageReportInfoId);
+
+    await billingManagmentInstance.save();
+}
+
+exports.EditServiceUsageReportInfoEntry = async (billingId, serviceUsageReportInfoId, updatedReportInfo) => {
+    var billingManagmentInstance = await this.GetBillingManagementById(billingId);
+
+    if (billingManagmentInstance) {
+        throw new Error('Instance already exists');
+    }
+
+    var index = billingManagmentInstance.ServiceUsageReportInfo.findIndex(serviceInfo = serviceInfo.id != serviceUsageReportInfoId);
+
+    billingManagmentInstance.ServiceUsageReportInfo.splice(index, 1);
+
+    billingManagmentInstance.ServiceUsageReportInfo.splice(index, 0, updatedReportInfo);
+
+    await billingManagmentInstance.save();
+}
+
 exports.DeleteBillingManagementInfo = async (billingId) => {
     var billingManagmentInstance = await GetBillingManagementById(billingId);
 

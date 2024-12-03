@@ -120,6 +120,36 @@ exports.SetCurrentBillingPayment = async (req, res) => {
     }
 }
 
+exports.AddServiceUsageReportInfo = async (req, res) => {
+    try {
+        await BillingService.AddServiceUsageReportInfoEntry(req.billingId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveServiceUsageReportInfo = async (req, res) => {
+    try {
+        await BillingService.RemoveServiceUsageReportInfoEntry(req.billingId, req.serviceUsageReportInfoId);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditServiceUsageReportInfo = async (req, res) => {
+    try {
+        await BillingService.EditServiceUsageReportInfoEntry(req.billingId, req.serviceUsageReportInfoId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteBillingInfo = async (req, res) => {
     try {
         await BillingService.DeleteBillingManagementInfo(req.billingId);
