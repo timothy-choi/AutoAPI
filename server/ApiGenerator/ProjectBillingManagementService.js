@@ -95,6 +95,18 @@ exports.SetGroupPaymentType = async (billingId, groupPaymentType) => {
     await billingManagmentInstance.save();
 }
 
+exports.SetCurrentBill = async (billingId, currentBill) => {
+    var billingManagmentInstance = await this.GetBillingManagementById(billingId);
+
+    if (billingManagmentInstance) {
+        throw new Error('Instance already exists');
+    }
+
+    billingManagmentInstance.CurrentBill = currentBill;
+
+    await billingManagmentInstance.save();
+}
+
 exports.DeleteBillingManagementInfo = async (billingId) => {
     var billingManagmentInstance = await GetBillingManagementById(billingId);
 
