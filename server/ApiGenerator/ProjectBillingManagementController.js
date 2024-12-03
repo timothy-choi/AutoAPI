@@ -90,6 +90,26 @@ exports.SetCurrentBill = async (req, res) => {
     }
 }
 
+exports.AddBillingHistoryEntry = async (req, res) => {
+    try {
+        await BillingService.AddBillingHistoryEntry(req.billingId, req.body);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.SetNextBillingDate = async (req, res) => {
+    try {
+        await BillingService.SetNextBillingDate(req.billingId, req.billingDate);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteBillingInfo = async (req, res) => {
     try {
         await BillingService.DeleteBillingManagementInfo(req.billingId);

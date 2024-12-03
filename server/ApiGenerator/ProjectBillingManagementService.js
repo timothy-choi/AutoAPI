@@ -107,6 +107,30 @@ exports.SetCurrentBill = async (billingId, currentBill) => {
     await billingManagmentInstance.save();
 }
 
+exports.AddBillingHistoryEntry = async (billingId, billingHistoryEntry) => {
+    var billingManagmentInstance = await this.GetBillingManagementById(billingId);
+
+    if (billingManagmentInstance) {
+        throw new Error('Instance already exists');
+    }
+
+    billingManagmentInstance.ProjectBillingHistory.push(billingHistoryEntry);
+
+    await billingManagmentInstance.save();
+}
+
+exports.SetNextBillingDate = async (billingId, nextBillingDate) => {
+    var billingManagmentInstance = await this.GetBillingManagementById(billingId);
+
+    if (billingManagmentInstance) {
+        throw new Error('Instance already exists');
+    }
+
+    billingManagmentInstance.NextBillingDate = nextBillingDate;
+
+    await billingManagmentInstance.save();
+}
+
 exports.DeleteBillingManagementInfo = async (billingId) => {
     var billingManagmentInstance = await GetBillingManagementById(billingId);
 
