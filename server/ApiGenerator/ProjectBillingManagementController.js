@@ -150,6 +150,26 @@ exports.EditServiceUsageReportInfo = async (req, res) => {
     }
 }
 
+exports.SetBillingCurrency = async (req, res) => {
+    try {
+        await BillingService.SetBillingCurrency(req.billingId, req.currency);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.SetAutomaticPayment = async (req, res) => {
+    try {
+        await BillingService.SetAutomaticPayment(req.billingId);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.DeleteBillingInfo = async (req, res) => {
     try {
         await BillingService.DeleteBillingManagementInfo(req.billingId);

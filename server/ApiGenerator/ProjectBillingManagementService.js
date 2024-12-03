@@ -183,6 +183,30 @@ exports.EditServiceUsageReportInfoEntry = async (billingId, serviceUsageReportIn
     await billingManagmentInstance.save();
 }
 
+exports.SetBillingCurrency = async (billingId, currency) => {
+    var billingManagmentInstance = await this.GetBillingManagementById(billingId);
+
+    if (billingManagmentInstance) {
+        throw new Error('Instance already exists');
+    }
+
+    billingManagmentInstance.Currency = currency;
+
+    await billingManagmentInstance.save();
+}
+
+exports.SetAutomaticPayment = async (billingId) => {
+    var billingManagmentInstance = await this.GetBillingManagementById(billingId);
+
+    if (billingManagmentInstance) {
+        throw new Error('Instance already exists');
+    }
+
+    billingManagmentInstance.AutomaticPayment = billingManagmentInstance.AutomaticPayment ? false : true;
+
+    await billingManagmentInstance.save();
+}
+
 exports.DeleteBillingManagementInfo = async (billingId) => {
     var billingManagmentInstance = await GetBillingManagementById(billingId);
 
