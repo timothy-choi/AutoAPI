@@ -57,7 +57,7 @@ const ProjectBilling = sequelize.define('ProjectBilling',  {
     },
     PaymentPlatform: {
         type: DataTypes.ENUM('STRIPE', 'PAYPAL'),
-        allowNull: true,
+        allowNull: false,
     },
     AutomaticPayment: {
         type: DataTypes.BOOLEAN,
