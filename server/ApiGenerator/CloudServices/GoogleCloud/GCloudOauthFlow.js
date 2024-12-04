@@ -5,9 +5,9 @@ require('dotenv').config();
 const GCLOUD_CLIENT_ID = process.env.GCLOUD_CLIENT_ID;
 const GCLOUD_CLIENT_SECRET = process.env.GCLOUD_CLIENT_SECRET;
 const GCLOUD_REDIRECT_URL = process.env.GCLOUD_REDIRECT_URL;
-const GCLOUD_SCOPES = process.env.GCLOUD_SCOPES;
+const GCLOUD_SCOPES = process.env.GCLOUD_SCOPES.split(',').map(scope => scope.trim());
 
-const oauth2Client = OAuth2Client(
+const oauth2Client = new OAuth2Client(
     GCLOUD_CLIENT_ID,
     GCLOUD_CLIENT_SECRET,
     GCLOUD_REDIRECT_URL
@@ -17,6 +17,7 @@ exports.LoginToGCloud = async (req, res) => {
     const url = oauth2Client.generateAuthUrl({
         access_type: 'offline', 
         scope: GCLOUD_SCOPES,
+        prompt: 'consent'
     });
 
     res.redirect(url);
@@ -39,9 +40,9 @@ exports.GCloudOAuthCallback = async (req, res) => {
 }
 
 exports.RefreshAccessToken = async (refreshToken) => {
-    oauth2Client.setCredentials({ refresh_token: refreshToken });
-
     try {
+        oauth2Client.setCredentials({ refresh_token: refreshToken });
+
         const { token: newAccessToken, res } = await oauth2Client.getAccessToken();
 
         const newRefreshToken = res.data.refresh_token || refreshToken;
@@ -51,7 +52,6 @@ exports.RefreshAccessToken = async (refreshToken) => {
             refreshToken: newRefreshToken,
         };
     } catch (error) {
-        console.error('Error refreshing access token:', error);
-        throw error;
+        throw new Error(error.Message);
     }
 }
