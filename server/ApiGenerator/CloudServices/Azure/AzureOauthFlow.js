@@ -33,7 +33,7 @@ exports.CallbackOAuth = async (req, res) => {
 
     try {
         const response = await axios.post(
-            process.env.TOKEN_URL,
+            AZURE_TOKEN_URL,
             querystring.stringify({
               client_id: AZURE_CLIENT_ID,
               client_secret: AZURE_CLIENT_SECRET,
@@ -47,5 +47,24 @@ exports.CallbackOAuth = async (req, res) => {
         return res.status(200).send({"accessToken": response.data.access_token, "refreshToken": response.data.refresh_token});
     } catch (error) {
         return res.status(500).send("Failed to authenticate.");
+    }
+}
+
+exports.RefreshAccessToken = async (refreshToken) => {
+    try {
+        const response = await axios.post(
+            AZURE_TOKEN_URL,
+            querystring.stringify({
+              client_id: AZURE_CLIENT_ID,
+              client_secret: AZURE_CLIENT_SECRET,
+              grant_type: "refresh_token",
+              refresh_token: refreshToken,
+            }),
+            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+        );
+
+        return response.data;
+    } catch (error) {
+        throw new Error(error.message);
     }
 }
