@@ -10,6 +10,8 @@ const AZURE_SCOPES = process.env.AZURE_SCOPES;
 
 const axios = require('axios');
 
+const querystring = require('querystring');
+
 exports.LoginToAzure = async (req, res) => {
     const params = querystring.stringify({
         client_id: AZURE_CLIENT_ID,
@@ -44,6 +46,10 @@ exports.CallbackOAuth = async (req, res) => {
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
 
+        if (!response.data.access_token || !response.data.refresh_token) {
+            return res.status(500).send("Failed to authenticate.");
+        }
+
         return res.status(200).send({"accessToken": response.data.access_token, "refreshToken": response.data.refresh_token});
     } catch (error) {
         return res.status(500).send("Failed to authenticate.");
@@ -62,6 +68,10 @@ exports.RefreshAccessToken = async (refreshToken) => {
             }),
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
+
+        if (!response.data.access_token) {
+            throw new Error('Access Token not created');
+        }
 
         return response.data;
     } catch (error) {
