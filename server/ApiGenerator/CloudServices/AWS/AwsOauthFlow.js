@@ -5,13 +5,14 @@ const AWS_CLIENT_SECRET = process.env.CLIENT_SECRET;
 const AWS_REDIRECT_URI = process.env.REDIRECT_URI;
 const AWS_AUTH_URL = process.env.AUTH_URL;
 const AWS_TOKEN_URL = process.env.TOKEN_URL;
+const AWS_SCOPES = process.env.AWS_SCOPES.split(',').map(scope => scope.trim());
 
 const axios = require('axios');
 
 exports.LoginToAWS = async (req, res) => {
     const authorizationUrl = `${AWS_AUTH_URL}?response_type=code&client_id=${AWS_CLIENT_ID}&redirect_uri=${encodeURIComponent(
         AWS_REDIRECT_URI
-      )}&scope=openid email profile`;
+      )}&scope=${AWS_SCOPES}`;
     
     res.redirect(authorizationUrl);
 }
@@ -35,6 +36,10 @@ exports.GetTokenFromAWS = async (req, res) => {
             }),
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
+        
+        if (!tokenResponse.data.access_token || !tokenResponse.data.refresh_token) {
+            return res.status(500).send("Failed to authenticate");
+        }
 
         return res.status(200).send({"AccessToken": tokenResponse.data.access_token, "RefreshToken": tokenResponse.data.refresh_token});
     } catch (error) {
@@ -45,7 +50,7 @@ exports.GetTokenFromAWS = async (req, res) => {
 exports.refreshAccessToken = async (refreshToken) => {
     try {
         const response = await axios.post(
-            process.env.TOKEN_URL,
+            AWS_TOKEN_URL,
             new URLSearchParams({
               grant_type: "refresh_token",
               refresh_token: refreshToken,
@@ -54,6 +59,10 @@ exports.refreshAccessToken = async (refreshToken) => {
             }),
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
+
+        if (!response.data.access_token) {
+            throw new Error("Could not get new token");
+        }
 
         return response.data;
     } catch (error) {
