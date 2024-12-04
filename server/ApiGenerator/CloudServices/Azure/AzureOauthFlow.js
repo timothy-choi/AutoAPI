@@ -23,3 +23,29 @@ exports.LoginToAzure = async (req, res) => {
 
     res.redirect(authUrl);
 }
+
+exports.CallbackOAuth = async (req, res) => {
+    const { code } = req.query;
+
+    if (!code) {
+        return res.status(400).send("Authorization code not found.");
+    }
+
+    try {
+        const response = await axios.post(
+            process.env.TOKEN_URL,
+            querystring.stringify({
+              client_id: AZURE_CLIENT_ID,
+              client_secret: AZURE_CLIENT_SECRET,
+              grant_type: "authorization_code",
+              code: code,
+              redirect_uri: AZURE_REDIRECT_URI,
+            }),
+            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+        );
+
+        return res.status(200).send({"accessToken": response.data.access_token, "refreshToken": response.data.refresh_token});
+    } catch (error) {
+        return res.status(500).send("Failed to authenticate.");
+    }
+}
