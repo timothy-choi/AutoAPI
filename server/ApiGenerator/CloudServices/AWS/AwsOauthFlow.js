@@ -41,3 +41,22 @@ exports.GetTokenFromAWS = async (req, res) => {
         return res.status(500).send("Failed to authenticate");
       }
 }
+
+exports.refreshAccessToken = async (refreshToken) => {
+    try {
+        const response = await axios.post(
+            process.env.TOKEN_URL,
+            new URLSearchParams({
+              grant_type: "refresh_token",
+              refresh_token: refreshToken,
+              client_id: process.env.CLIENT_ID,
+              client_secret: process.env.CLIENT_SECRET,
+            }),
+            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+        );
+
+        return response.data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
