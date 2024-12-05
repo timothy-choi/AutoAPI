@@ -29,3 +29,23 @@ const createVPC = async (cidrBlock, vpcName) => {
 
     return vpcId;
 }
+
+const createSecurityGroup = async (vpcId, groupName, groupDesc, inboundRules) => {
+    const createGroupParams = {
+        Description: groupDesc, 
+        GroupName: groupName, 
+    };
+
+    if (vpcId) {
+        createGroupParams.VpcId = vpcId;
+    }
+
+    const createGroupResponse = await ec2.createSecurityGroup(createGroupParams).promise();
+    const securityGroupId = createGroupResponse.GroupId;
+
+    if (inboundRules) {
+        await ec2.authorizeSecurityGroupIngress(inboundRules).promise();
+    }
+
+    return securityGroupId;
+}
