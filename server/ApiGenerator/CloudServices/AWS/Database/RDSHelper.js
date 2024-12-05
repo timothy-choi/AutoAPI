@@ -102,9 +102,25 @@ exports.rebootRDSInstance = async (currDbId, userCredentials, userRegion) => {
         region: userRegion
     });
 
-    const data = await rds.rebootDBInstance({DBInstanceIdentifier: currDbId}).promise();
+    try {
+        const rebootData = await rds.rebootDBInstance({DBInstanceIdentifier: currDbId}).promise();
 
-    return data;
+        let isRebooting = true;
+        while (isRebooting) {
+            const data = await rds.describeDBInstances({ DBInstanceIdentifier: dbInstanceIdentifier }).promise();
+            const status = data.DBInstances[0].DBInstanceStatus;
+    
+            if (status === 'available') {
+                isRebooting = false;
+            } else {
+                await new Promise(res => setTimeout(res, 15000)); 
+            }
+        }
+
+        return rebootData;
+    } catch (error) {
+        throw new Error(error.Message);
+    }
 }
 
 exports.createRDSBackup = async (currDbId, snapshotId, userCredentials, userRegion) => {
@@ -118,9 +134,27 @@ exports.createRDSBackup = async (currDbId, snapshotId, userCredentials, userRegi
         DBSnapshotIdentifier: snapshotId
     };
 
-    const data = await rds.createDBSnapshot(params).promise();
+    try {
+        const snapshotData = await rds.createDBSnapshot(params).promise();
 
-    return data;
+        let isCreating = true;
+        while (isCreating) {
+            const data = await rds.describeDBSnapshots({
+                DBInstanceIdentifier: dbInstanceIdentifier,
+                DBSnapshotIdentifier: snapshotName,
+            }).promise();
+            const status = data.DBSnapshots[0].Status;
+    
+            if (status === 'available') {
+                isCreating = false;
+            } else {
+                await new Promise(res => setTimeout(res, 15000)); 
+            }
+        }
+        return snapshotData;
+    } catch (error) {
+        throw new Error(error.Message);
+    }
 }
 
 exports.restoreRDSBackup = async (newCurrDbId, snapshotId, instanceClass, publiclyAccessible = false, userCredentials, userRegion) => {
@@ -136,7 +170,25 @@ exports.restoreRDSBackup = async (newCurrDbId, snapshotId, instanceClass, public
         PubliclyAccessible: publiclyAccessible
     };
 
-    await rds.restoreDBInstanceFromDBSnapshot(params).promise();
+    try {
+        await rds.restoreDBInstanceFromDBSnapshot(params).promise();
+
+        let isRestoring = true;
+        while (isRestoring) {
+            const data = await rds.describeDBInstances({
+                DBInstanceIdentifier: newDbInstanceIdentifier,
+            }).promise();
+            const status = data.DBInstances[0].DBInstanceStatus;
+    
+            if (status === 'available') {
+                isRestoring = false;
+            } else {
+                await new Promise(res => setTimeout(res, 15000)); // Wait 15 seconds before polling again
+            }
+        }
+    } catch (error) {
+        throw new Error(error.Message);
+    }
 }
 
 
