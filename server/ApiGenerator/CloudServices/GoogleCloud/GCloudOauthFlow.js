@@ -2,6 +2,8 @@ const {OAuth2Client} = require('google-auth-library');
 
 require('dotenv').config();
 
+const crypto = require('crypto');
+
 const GCLOUD_CLIENT_ID = process.env.GCLOUD_CLIENT_ID;
 const GCLOUD_CLIENT_SECRET = process.env.GCLOUD_CLIENT_SECRET;
 const GCLOUD_REDIRECT_URL = process.env.GCLOUD_REDIRECT_URL;
@@ -13,20 +15,34 @@ const oauth2Client = new OAuth2Client(
     GCLOUD_REDIRECT_URL
 );
 
-exports.LoginToGCloud = async (req, res) => {
-    const url = oauth2Client.generateAuthUrl({
-        access_type: 'offline', 
-        scope: GCLOUD_SCOPES,
-        prompt: 'consent'
-    });
+const generateState = () => crypto.randomBytes(16).toString('hex');
 
-    res.redirect(url);
+exports.LoginToGCloud = async (req, res) => {
+    try {
+        const state = generateState();
+        req.session.state = state; 
+
+        const url = oauth2Client.generateAuthUrl({
+            access_type: 'offline', 
+            scope: GCLOUD_SCOPES,
+            prompt: 'consent',
+            state: state,
+        });
+    
+        res.redirect(url);
+    } catch (error) {
+        return res.status(500).send({ error: 'Failed to initiate login.', details: error.message });
+    }
 }
 
 exports.GCloudOAuthCallback = async (req, res) => {
-    const code = req.query.code;
+    const {code, state} = req.query;
     if (!code) {
         return res.status(400).send('No code returned from Google');
+    }
+
+    if (state !== req.session.state) {
+        return res.status(400).send({ error: 'Invalid state parameter. Potential CSRF attack.' });
     }
 
     try {
