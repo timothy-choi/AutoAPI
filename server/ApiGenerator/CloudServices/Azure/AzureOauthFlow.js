@@ -12,11 +12,36 @@ const axios = require('axios');
 const crypto = require("crypto");
 
 const querystring = require('querystring');
+const jwt = require('jsonwebtoken');
 
 const generateState = () => crypto.randomBytes(16).toString("hex");
 
+const validateToken = async (token) => {
+    try {
+      const decoded = jwt.decode(token, { complete: true });
+      if (!decoded?.header?.kid) throw new Error("Invalid token structure");
+  
+      const keysUrl = `https://login.microsoftonline.com/${AZURE_TENANT_ID}/discovery/v2.0/keys`;
+      const { data } = await axios.get(keysUrl);
+  
+      const key = data.keys.find((k) => k.kid === decoded.header.kid);
+      if (!key) throw new Error("Key not found for token validation");
+  
+      const publicKey = `-----BEGIN CERTIFICATE-----\n${key.x5c[0]}\n-----END CERTIFICATE-----`;
+      return jwt.verify(token, publicKey, {
+        algorithms: ["RS256"],
+        audience: AZURE_CLIENT_ID,
+        issuer: `https://login.microsoftonline.com/${AZURE_TENANT_ID}/v2.0`,
+      });
+    } catch (error) {
+      throw new Error(`Token validation failed: ${error.message}`);
+    }
+  };
+  
 exports.LoginToAzure = async (req, res) => {
     try {
+        if (!req.session) throw new Error("Session not available");
+
         const state = generateState();
         req.session.state = state; 
 
@@ -65,10 +90,11 @@ exports.CallbackOAuth = async (req, res) => {
             return res.status(500).send("Failed to authenticate.");
         }
 
+        const user = await validateToken(id_token);
         req.session.accessToken = response.data.access_token;
         req.session.refreshToken = response.data.refresh_token;
 
-        return res.status(200).send({"accessToken": response.data.access_token, "refreshToken": response.data.refresh_token, "id_token": response.data.id_token});
+        return res.status(200).send({"accessToken": response.data.access_token, "refreshToken": response.data.refresh_token, "id_token": response.data.id_token, "token_verification": user});
     } catch (error) {
         return res.status(500).send("Failed to authenticate.");
     }
