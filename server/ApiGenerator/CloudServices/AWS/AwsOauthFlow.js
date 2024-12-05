@@ -97,13 +97,10 @@ exports.getAWSCredentials = async (user_region, idToken) => {
           },
         })
         .promise();
-
-      AWS.config.update({
-        region: user_region,
-        credentials: credentialsResponse.Credentials
-      });
-
-      return credentialsResponse.Credentials;
+    
+      var creds = credentialsResponse.Credentials;
+      
+      return {region , creds};
     } catch (error) {
       throw new Error("Could not get AWS credentials:", error);
     }

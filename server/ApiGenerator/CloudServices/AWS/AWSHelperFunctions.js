@@ -1,10 +1,13 @@
 const AWS = require('aws-sdk');
 
-const ec2 = new AWS.EC2();
-
 const axios = require('axios');
 
-exports.createVPC = async (cidrBlock, vpcName) => {
+exports.createVPC = async (cidrBlock, vpcName, userCredentials, userRegion) => {
+    const ec2 = new AWS.EC2({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
     const vpcResponse = await ec2.createVpc({CidrBlock: cidrBlock});
 
     const vpcId = vpcResponse.Vpc.VpcId;
@@ -32,7 +35,12 @@ exports.createVPC = async (cidrBlock, vpcName) => {
     return vpcId;
 }
 
-exports.createSecurityGroup = async (vpcId, groupName, groupDesc, inboundRules) => {
+exports.createSecurityGroup = async (vpcId, groupName, groupDesc, inboundRules, userCredentials, userRegion) => {
+    const ec2 = new AWS.EC2({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
     const createGroupParams = {
         Description: groupDesc, 
         GroupName: groupName, 

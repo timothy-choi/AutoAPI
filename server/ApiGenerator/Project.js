@@ -189,6 +189,11 @@ const Project = sequelize.define('Project', {
     ManualServiceControl: { //indicates if owner of project wants to use their cloud account to create services there or not. If so, payment will be made toward owner's account
         type: DataTypes.BOOLEAN,
         allowNull: false,
+    },
+    ProjectCloudInfo: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {}
     }
 });
 

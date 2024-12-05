@@ -1,20 +1,33 @@
 const AWS = require('aws-sdk');
 
-const rds = new AWS.RDS();
+exports.createRDSInstance = async (dbInstanceInfo, userCredentials, userRegion) => {
+    const rds = new AWS.RDS({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
 
-exports.createRDSInstance = async (dbInstanceInfo) => {
     const data = await rds.createDBInstance(dbInstanceInfo).promise();
 
     return data;
 }
 
-exports.describeRDSInstance = async (currDbId) => {
+exports.describeRDSInstance = async (currDbId, userCredentials, userRegion) => {
+    const rds = new AWS.RDS({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+    
     const data = await rds.describeDBInstances({DBInstanceIdentifier: currDbId}).promise();
 
     return data.DBInstances[0];
 }
 
-exports.deleteRDSInstance = async (dbId, skipFinalSnapshot = true) => {
+exports.deleteRDSInstance = async (dbId, skipFinalSnapshot = true, userCredentials, userRegion) => {
+    const rds = new AWS.RDS({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+    
     const params = {
         DBInstanceIdentifier: dbId,
         SkipFinalSnapshot: skipFinalSnapshot 
