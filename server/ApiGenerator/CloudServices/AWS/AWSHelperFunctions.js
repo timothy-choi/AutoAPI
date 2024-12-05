@@ -2,7 +2,9 @@ const AWS = require('aws-sdk');
 
 const ec2 = new AWS.EC2();
 
-const createVPC = async (cidrBlock, vpcName) => {
+const axios = require('axios');
+
+exports.createVPC = async (cidrBlock, vpcName) => {
     const vpcResponse = await ec2.createVpc({CidrBlock: cidrBlock});
 
     const vpcId = vpcResponse.Vpc.VpcId;
@@ -30,7 +32,7 @@ const createVPC = async (cidrBlock, vpcName) => {
     return vpcId;
 }
 
-const createSecurityGroup = async (vpcId, groupName, groupDesc, inboundRules) => {
+exports.createSecurityGroup = async (vpcId, groupName, groupDesc, inboundRules) => {
     const createGroupParams = {
         Description: groupDesc, 
         GroupName: groupName, 
@@ -48,4 +50,16 @@ const createSecurityGroup = async (vpcId, groupName, groupDesc, inboundRules) =>
     }
 
     return securityGroupId;
+}
+
+exports.getRegionFromIP = async (ip_addr) => {
+    const response = await axios.get('https://ip-ranges.amazonaws.com/ip-ranges.json');
+
+    for (const range of response.data.prefixes) {
+        if (ip_addr.startsWith(range.ip_prefix.split('/')[0])) {
+            return range.region;
+        }
+    }
+
+    return null;
 }
