@@ -6,8 +6,12 @@ const AWS_REDIRECT_URI = process.env.REDIRECT_URI;
 const AWS_AUTH_URL = process.env.AUTH_URL;
 const AWS_TOKEN_URL = process.env.TOKEN_URL;
 const AWS_SCOPES = process.env.AWS_SCOPES.split(',').map(scope => scope.trim());
+const AWS_IDENTITY_POOL_ID = process.env.AWS_IDENTITY_POOL_ID;
+const AWS_COGNITO_USER_POOL = process.env.AWS_COGNITO_USER_POOL;
 
 const axios = require('axios');
+
+const AWS = require('aws-sdk');
 
 exports.LoginToAWS = async (req, res) => {
     const authorizationUrl = `${AWS_AUTH_URL}?response_type=code&client_id=${AWS_CLIENT_ID}&redirect_uri=${encodeURIComponent(
@@ -37,11 +41,11 @@ exports.GetTokenFromAWS = async (req, res) => {
             { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
         );
         
-        if (!tokenResponse.data.access_token || !tokenResponse.data.refresh_token) {
+        if (!tokenResponse.data.access_token || !tokenResponse.data.refresh_token || !tokenResponse.data.id_token) {
             return res.status(500).send("Failed to authenticate");
         }
 
-        return res.status(200).send({"AccessToken": tokenResponse.data.access_token, "RefreshToken": tokenResponse.data.refresh_token});
+        return res.status(200).send({"AccessToken": tokenResponse.data.access_token, "RefreshToken": tokenResponse.data.refresh_token, "id_token": tokenResponse.data.id_token});
     } catch (error) {
         return res.status(500).send("Failed to authenticate");
       }
@@ -67,5 +71,40 @@ exports.refreshAccessToken = async (refreshToken) => {
         return response.data;
     } catch (error) {
         throw new Error(error.message);
+    }
+}
+
+exports.getAWSCredentials = async (user_region, idToken) => {
+    const cognitoIdentity = new AWS.CognitoIdentity();
+
+    try {
+      const identityResponse = await cognitoIdentity
+        .getId({
+          IdentityPoolId: AWS_IDENTITY_POOL_ID,
+          Logins: {
+            [`cognito-idp.${user_region}.amazonaws.com/${AWS_COGNITO_USER_POOL}`]: idToken,
+          },
+        })
+        .promise();
+  
+      const { IdentityId } = identityResponse;
+  
+      const credentialsResponse = await cognitoIdentity
+        .getCredentialsForIdentity({
+          IdentityId,
+          Logins: {
+            [`cognito-idp.${user_region}.amazonaws.com/${AWS_COGNITO_USER_POOL}`]: idToken,
+          },
+        })
+        .promise();
+
+      AWS.config.update({
+        region: user_region,
+        credentials: credentialsResponse.Credentials
+      });
+
+      return credentialsResponse.Credentials;
+    } catch (error) {
+      throw new Error("Could not get AWS credentials:", error);
     }
 }
