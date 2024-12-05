@@ -22,6 +22,33 @@ exports.describeRDSInstance = async (currDbId, userCredentials, userRegion) => {
     return data.DBInstances[0];
 }
 
+exports.startRDSInstance = async (currDbId, userCredentials, userRegion) => {
+    const rds = new AWS.RDS({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    const params = {
+        DBInstanceIdentifier: currDbId
+    };
+
+    await rds.startDBInstance(params).promise();
+}
+
+exports.stopRDSInstance = async (currDbId, userCredentials, userRegion) => {
+    const rds = new AWS.RDS({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    const params = {
+        DBInstanceIdentifier: currDbId
+    };
+
+    await rds.stopDBInstance(params).promise();
+}
+
+
 exports.deleteRDSInstance = async (dbId, skipFinalSnapshot = true, userCredentials, userRegion) => {
     const rds = new AWS.RDS({
         credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
