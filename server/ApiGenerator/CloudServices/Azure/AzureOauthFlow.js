@@ -7,6 +7,7 @@ const AZURE_REDIRECT_URI = process.env.AZURE_REDIRECT_URI;
 const AZURE_AUTH_URL = process.env.AZURE_AUTH_URL;
 const AZURE_TOKEN_URL = process.env.AZURE_TOKEN_URL;
 const AZURE_SCOPES = process.env.AZURE_SCOPES;
+const AZURE_POST_LOGOUT_URI = proces.env.AZURE_POST_LOGOUT_URI;
 
 const axios = require('axios');
 const crypto = require("crypto");
@@ -56,7 +57,7 @@ exports.LoginToAzure = async (req, res) => {
 
         const authUrl = `${AZURE_AUTH_URL}?${params}`;
 
-        res.redirect(authUrl);
+        return res.redirect(authUrl);
     } catch (error) {
         return res.status(500).send("Failed to authenticate.");
     } 
@@ -144,4 +145,26 @@ exports.RefreshAccessToken = async (req, res) => {
     } catch (error) {
         return res.status(500).send("Failed to get new access token.");
     }
+}
+
+exports.LogoutFromAzure = async (req, res) => {
+    if (!req.session) {
+        return res.status(400).send({ error: "Session not available" });
+    }
+
+    const tenant = AZURE_TENANT_ID || "common"; 
+    const logoutUrl = `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/logout?post_logout_redirect_uri=${encodeURIComponent(
+        POST_LOGOUT_REDIRECT_URI
+    )}`;
+
+    req.session.destroy((err) => {
+        if (err) {
+          return res.status(500).send({ error: "Failed to log out", details: err.message });
+        }
+    
+        res.clearCookie("connect.sid");
+    
+        return res.redirect(logoutUrl);
+    });
+
 }

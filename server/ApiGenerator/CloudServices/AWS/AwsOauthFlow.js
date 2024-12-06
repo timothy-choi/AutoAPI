@@ -8,6 +8,8 @@ const AWS_TOKEN_URL = process.env.TOKEN_URL;
 const AWS_SCOPES = process.env.AWS_SCOPES.split(',').map(scope => scope.trim());
 const AWS_IDENTITY_POOL_ID = process.env.AWS_IDENTITY_POOL_ID;
 const AWS_COGNITO_USER_POOL = process.env.AWS_COGNITO_USER_POOL;
+const AWS_LOGOUT_REDIRECT_URI = process.env.AWS_LOGOUT_REDIRECT_URI;
+const AWS_COGNITO_DOMAIN = process.env.AWS_COGNITO_DOMAIN;
 
 const axios = require('axios');
 
@@ -18,7 +20,7 @@ exports.LoginToAWS = async (req, res) => {
         AWS_REDIRECT_URI
       )}&scope=${AWS_SCOPES}`;
     
-    res.redirect(authorizationUrl);
+    return res.redirect(authorizationUrl);
 }
 
 exports.GetTokenFromAWS = async (req, res) => {
@@ -103,5 +105,32 @@ exports.getAWSCredentials = async (user_region, idToken) => {
       return {region , creds};
     } catch (error) {
       throw new Error("Could not get AWS credentials:", error);
+    }
+}
+
+exports.LogoutFromAWS = async (req, res) => {
+    const { accessToken, idToken } = req.body;
+
+    const cognitoIdentity = new AWS.CognitoIdentityServiceProvider();
+
+    try {
+        if (accessToken) {
+            await cognitoIdentity.globalSignOut({ AccessToken: accessToken }).promise();
+        } else {
+            return res.status(400).send("Logout Failed. No access token provided.");
+        }
+
+        if (idToken) {
+            const cognitoDomain = AWS_COGNITO_DOMAIN; 
+            const logoutRedirectUri = AWS_LOGOUT_REDIRECT_URI; 
+
+            const logoutUrl = `https://${cognitoDomain}/logout?client_id=${process.env.CLIENT_ID}&logout_uri=${encodeURIComponent(logoutRedirectUri)}`;
+
+            return res.redirect(logoutUrl);
+        }
+
+        return res.status(200).send({ message: "User logged out successfully." });
+    } catch (error) {
+        return res.status(500).send({ message: "Logout failed.", error: error.message });
     }
 }

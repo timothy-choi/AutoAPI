@@ -29,7 +29,7 @@ exports.LoginToGCloud = async (req, res) => {
             state: state,
         });
     
-        res.redirect(url);
+        return res.redirect(url);
     } catch (error) {
         return res.status(500).send({ error: 'Failed to initiate login.', details: error.message });
     }
@@ -69,5 +69,21 @@ exports.RefreshAccessToken = async (refreshToken) => {
         };
     } catch (error) {
         throw new Error(error.Message);
+    }
+}
+
+exports.LogoutOfGCloud = async (req, res) => {
+    try {
+        const accessToken = req.session.accessToken;
+        if (!accessToken) {
+            return res.status(400).send({ error: 'No access token found in session.' });
+        }
+
+        await oauth2Client.revokeToken(accessToken);
+
+        req.session.destroy();
+        return res.status(200).send({ message: 'Logged out successfully.' });
+    } catch (error) {
+        return res.status(500).send({ error: 'Failed to log out.', details: error.message });
     }
 }
