@@ -220,6 +220,16 @@ exports.editDatabaseBillingInfo = async (req, res) => {
     }
 }
 
+exports.setDatabaseStartTime = async (req, res) => {
+    try {
+        await DatabaseService.SetDatabaseStartTime(req.databaseId, req.body.startTime);
+
+        return res.status(200).json(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.deleteDatabase = async (req, res) => {
     try {
         await DatabaseService.DeleteDatabase(req.databaseId);

@@ -72,6 +72,8 @@ router.put("/Database/:databaseId/DatabaseUsageInfo/:username", DatabaseControll
 
 router.put("/Database/:databaseId/DatabaseBillingInfo/:username", DatabaseController.editDatabaseBillingInfo);
 
+router.put("/Database/:databaseId/StartedAt", DatabaseController.setDatabaseStartTime);
+
 router.delete("/Database/:databaseId", DatabaseController.deleteDatabase);
 
 

@@ -458,6 +458,22 @@ exports.EditDatabaseBillingInfo = async (databaseId, databaseBillingInfo, userna
     }
 }
 
+exports.SetDatabaseStartTime = async (databaseId, startTime) => {
+    try {
+        var database = await this.getDatabaseById(databaseId);
+
+        if (!database) {
+            throw new Error('Model does not exist');
+        } 
+
+        database.StartedAt = startTime;
+
+        await database.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}
+
 exports.DeleteDatabase = async (databaseId) => {
     try {
         var database = await this.getDatabaseById(databaseId);

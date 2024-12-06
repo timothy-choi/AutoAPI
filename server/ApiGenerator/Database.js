@@ -86,6 +86,10 @@ const DatabaseSchema = new mongoose.Schema({
     DatabaseBillingInfo: {
         type: mongoose.Schema.Types.Mixed,
         required: false
+    },
+    StartedAt: {
+        type: Date,
+        default: Date.now
     }
 });
 
