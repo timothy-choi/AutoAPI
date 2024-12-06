@@ -93,7 +93,13 @@ exports.modifyRDSInstance = async (changedDbAttributes, userCredentials, userReg
         region: userRegion
     });
 
-    await rds.modifyDBInstance(params).promise();
+    try {
+        await rds.modifyDBInstance(changedDbAttributes).promise();
+
+        await rds.waitFor("dBInstanceAvailable", { DBInstanceIdentifier: changedDbAttributes.DBInstanceIdentifier }).promise();
+    } catch (error) {
+        throw new Error(error.message);
+    }
 }
 
 exports.rebootRDSInstance = async (currDbId, userCredentials, userRegion) => {
