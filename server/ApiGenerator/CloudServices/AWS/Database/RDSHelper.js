@@ -9,10 +9,20 @@ exports.createRDSInstance = async (dbInstanceInfo, userCredentials, userRegion) 
     const instanceData = await rds.createDBInstance(dbInstanceInfo).promise();
 
     let status = "creating";
-    while (status === "creating") {
+    const MAX_WAIT_TIME = 30 * 60 * 1000; 
+    let elapsedTime = 0;
+    const POLLING_INTERVAL = 15000;
+
+    while (status === "creating" && elapsedTime < MAX_WAIT_TIME) {
         await new Promise((resolve) => setTimeout(resolve, 15000));
+        elapsedTime += POLLING_INTERVAL;
+
         const data = await rds.describeDBInstances({ DBInstanceIdentifier:  dbInstanceInfo.DBInstanceIdentifier}).promise();
         status = data.DBInstances[0].DBInstanceStatus;
+    }
+
+    if (elapsedTime >= MAX_WAIT_TIME) {
+        throw new Error("Creating the instance is taking too long. Timeout exceeded.");
     }
 
     if (status === "available") {
@@ -71,11 +81,20 @@ exports.startRDSInstance = async (currDbId, userCredentials, userRegion) => {
         await rds.startDBInstance(params).promise();
 
         let instanceStatus = "";
+        const MAX_WAIT_TIME = 30 * 60 * 1000; // 30 minutes
+        let elapsedTime = 0;
+        const POLLING_INTERVAL = 15000;
+
         do {
             const data = await rds.describeDBInstances({ DBInstanceIdentifier: dbId }).promise();
             instanceStatus = data.DBInstances[0].DBInstanceStatus;
             if (instanceStatus !== "available") {
-                await new Promise((resolve) => setTimeout(resolve, 15000)); 
+                await new Promise((resolve) => setTimeout(resolve, 15000));
+                elapsedTime += POLLING_INTERVAL; 
+
+                if (elapsedTime >= MAX_WAIT_TIME) {
+                    throw new Error("Starting the instance is taking too long. Timeout exceeded.");
+                }
             }
         } while (instanceStatus !== "available");
 
@@ -98,11 +117,20 @@ exports.stopRDSInstance = async (currDbId, userCredentials, userRegion) => {
         await rds.stopDBInstance(params).promise();
 
         let instanceStatus = "";
+        const MAX_WAIT_TIME = 30 * 60 * 1000; 
+        const POLLING_INTERVAL = 15000; 
+        let elapsedTime = 0;
+
         do {
             const data = await rds.describeDBInstances({ DBInstanceIdentifier: dbId }).promise();
             instanceStatus = data.DBInstances[0].DBInstanceStatus;
             if (instanceStatus !== "stopped") {
-                await new Promise((resolve) => setTimeout(resolve, 15000)); 
+                await new Promise((resolve) => setTimeout(resolve, 15000));
+                elapsedTime += POLLING_INTERVAL;
+                
+                if (elapsedTime >= MAX_WAIT_TIME) {
+                    throw new Error("Stopping the instance is taking too long. Timeout exceeded.");
+                }
             }
         } while (instanceStatus !== "stopped");
 
@@ -136,17 +164,25 @@ exports.rebootRDSInstance = async (currDbId, userCredentials, userRegion) => {
         const rebootData = await rds.rebootDBInstance({DBInstanceIdentifier: currDbId}).promise();
 
         let isRebooting = true;
-        while (isRebooting) {
+        const MAX_WAIT_TIME = 30 * 60 * 1000; // 30 minutes
+        let elapsedTime = 0;
+        const POLLING_INTERVAL = 15000;
+
+        while (isRebooting && elapsedTime < MAX_WAIT_TIME) {
+            await new Promise(res => setTimeout(res, 15000)); 
+            elapsedTime += POLLING_INTERVAL;
+
             const data = await rds.describeDBInstances({ DBInstanceIdentifier: dbInstanceIdentifier }).promise();
             const status = data.DBInstances[0].DBInstanceStatus;
     
             if (status === 'available') {
                 isRebooting = false;
-            } else {
-                await new Promise(res => setTimeout(res, 15000)); 
-            }
+            } 
         }
 
+        if (elapsedTime >= MAX_WAIT_TIME) {
+            throw new Error('Backup creation timed out');
+        }
         return rebootData;
     } catch (error) {
         throw new Error(error.Message);
@@ -168,7 +204,14 @@ exports.createRDSBackup = async (currDbId, snapshotId, userCredentials, userRegi
         const snapshotData = await rds.createDBSnapshot(params).promise();
 
         let isCreating = true;
-        while (isCreating) {
+        const MAX_WAIT_TIME = 30 * 60 * 1000; 
+        let elapsedTime = 0;
+        const POLLING_INTERVAL = 15000;
+
+        while (isCreating && elapsedTime < MAX_WAIT_TIME) {
+            await new Promise(res => setTimeout(res, 15000));
+            elapsedTime += POLLING_INTERVAL;
+
             const data = await rds.describeDBSnapshots({
                 DBInstanceIdentifier: dbInstanceIdentifier,
                 DBSnapshotIdentifier: snapshotName,
@@ -177,9 +220,11 @@ exports.createRDSBackup = async (currDbId, snapshotId, userCredentials, userRegi
     
             if (status === 'available') {
                 isCreating = false;
-            } else {
-                await new Promise(res => setTimeout(res, 15000)); 
-            }
+            } 
+        }
+
+        if (elapsedTime >= MAX_WAIT_TIME) {
+            throw new Error('Backup creation timed out');
         }
         return snapshotData;
     } catch (error) {
@@ -204,7 +249,14 @@ exports.restoreRDSBackup = async (newCurrDbId, snapshotId, instanceClass, public
         await rds.restoreDBInstanceFromDBSnapshot(params).promise();
 
         let isRestoring = true;
-        while (isRestoring) {
+        const MAX_WAIT_TIME = 30 * 60 * 1000; 
+        let elapsedTime = 0;
+        const POLLING_INTERVAL = 15000;
+
+        while (isRestoring && elapsedTime < MAX_WAIT_TIME) {
+            await new Promise(res => setTimeout(res, 15000));
+            elapsedTime += POLLING_INTERVAL;
+
             const data = await rds.describeDBInstances({
                 DBInstanceIdentifier: newDbInstanceIdentifier,
             }).promise();
@@ -212,9 +264,11 @@ exports.restoreRDSBackup = async (newCurrDbId, snapshotId, instanceClass, public
     
             if (status === 'available') {
                 isRestoring = false;
-            } else {
-                await new Promise(res => setTimeout(res, 15000)); // Wait 15 seconds before polling again
             }
+        }
+
+        if (elapsedTime >= MAX_WAIT_TIME) {
+            throw new Error('Backup creation timed out');
         }
     } catch (error) {
         throw new Error(error.Message);
@@ -240,9 +294,15 @@ exports.deleteRDSInstance = async (dbId, skipFinalSnapshot = true, userCredentia
     await rds.deleteDBInstance(params).promise();
 
     let isDeleted = false;
-    while (!isDeleted) {
+    const MAX_WAIT_TIME = 30 * 60 * 1000; // 30 minutes
+    let elapsedTime = 0;
+    const POLLING_INTERVAL = 15000;
+
+    while (!isDeleted && elapsedTime < MAX_WAIT_TIME) {
         try {
             await new Promise((resolve) => setTimeout(resolve, 15000)); 
+            elapsedTime += POLLING_INTERVAL;
+
             const data = await rds.describeDBInstances({ DBInstanceIdentifier: instanceId }).promise();
         } catch (error) {
             if (error.code === "DBInstanceNotFound") {
@@ -251,5 +311,9 @@ exports.deleteRDSInstance = async (dbId, skipFinalSnapshot = true, userCredentia
                 throw new Error(error.Message);
             }
         }
+    }
+
+    if (elapsedTime >= MAX_WAIT_TIME) {
+        throw new Error('Backup creation timed out');
     }
 }
