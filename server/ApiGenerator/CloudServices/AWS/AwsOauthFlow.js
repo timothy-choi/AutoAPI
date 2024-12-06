@@ -76,7 +76,7 @@ exports.refreshAccessToken = async (refreshToken) => {
     }
 }
 
-exports.getAWSCredentials = async (user_region, idToken) => {
+exports.getAWSCredentials = async (username, user_region, idToken) => {
     const cognitoIdentity = new AWS.CognitoIdentity();
 
     try {
@@ -101,6 +101,23 @@ exports.getAWSCredentials = async (user_region, idToken) => {
         .promise();
     
       var creds = credentialsResponse.Credentials;
+
+      const secretsManager = new AWS.SecretsManager();
+
+      var entryExists = await secretsManager.getSecretValue({SecretId: `${username}_credentials`}).promise();
+
+      if (entryExists) {
+            await secretsManager.updateSecret({
+                SecretId: `${username}_credentials`, 
+                SecretString: JSON.stringify(credentialsResponse.Credentials) 
+            }).promise();
+      } else {
+            await secretsManager.createSecret({
+                Name: `${username}_credentials`,
+                Description: 'AWS credentials for my application',
+                SecretString: JSON.stringify(credentialsResponse.Credentials) 
+            }).promise();
+      }
       
       return {region , creds};
     } catch (error) {
