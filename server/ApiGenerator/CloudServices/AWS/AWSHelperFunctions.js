@@ -71,3 +71,21 @@ exports.getRegionFromIP = async (ip_addr) => {
 
     return null;
 }
+
+exports.createScheduledEvent = async (ruleParams, lambdaPermissionParams, targetParams, userCredentials, userRegion) => {
+    const eventBridge = new AWS.EventBridge({ credentials: userCredentials, region: userRegion });
+
+    const lambda = new AWS.Lambda({ credentials: userCredentials, region: userRegion });
+
+    try {
+        const ruleResponse = await eventBridge.putRule(ruleParams).promise();
+
+        lambdaPermissionParams.SourceArn = ruleResponse.RuleArn;
+
+        await lambda.addPermission(lambdaPermissionParams).promise();
+
+        await eventBridge.putTargets(targetParams).promise();
+    } catch (error) {
+        throw new Error("Error setting up scheduled event:", error);
+    }
+};

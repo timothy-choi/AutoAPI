@@ -33,7 +33,7 @@ exports.handler = async (event) => {
                 }
             ],
             StartTime: newStartDate,
-            Period: 60, 
+            Period: event.minutes * 60, 
             Statistics: event.dataStatistics 
         };
 
