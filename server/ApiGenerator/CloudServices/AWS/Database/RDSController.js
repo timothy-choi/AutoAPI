@@ -34,3 +34,20 @@ exports.createRDSInstance = async (req, res) => {
         return res.status(500).send("Error creating RDS instance: " + error);
     }
 }
+
+exports.deleteRDSInstance = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        await RDSHelper.deleteRDSInstance(req.body.currDbId, req.body.skipSnapshot, userCredentials, req.body.userRegion);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send("Error creating RDS instance: " + error);
+    }
+}
