@@ -67,6 +67,26 @@ exports.checkRDSInstanceAvailability = async (currDbId, userCredentials, userReg
     }
 }
 
+exports.GetRDSInstanceStatus = async (currDbId, userCredentials, userRegion) => {
+    const rds = new AWS.RDS({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    try {
+        const response = await rds
+            .describeDBInstances({ DBInstanceIdentifier: currDbId })
+            .promise();
+
+        const dbInstance = response.DBInstances[0];
+        const status = dbInstance.DBInstanceStatus;
+
+        return status; 
+    } catch (error) {
+        throw new Error(`Error getting RDS instance status: ${error.message}`);
+    }
+}
+
 exports.startRDSInstance = async (currDbId, userCredentials, userRegion) => {
     const rds = new AWS.RDS({
         credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),

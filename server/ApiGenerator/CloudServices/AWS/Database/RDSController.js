@@ -18,6 +18,23 @@ exports.getRDSInstanceAvailability = async (req, res) => {
     }
 }
 
+exports.GetRDSInstanceStatus = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var status = await RDSHelper.GetRDSInstanceStatus(req.currDbId, userCredentials, req.body.userRegion);
+
+        return res.status(200).send({"status": status});
+    } catch (error) {
+        return res.status(500).send("Error getting RDS instance availability: " + error);
+    }
+}
+
 exports.createRDSInstance = async (req, res) => {
     try {
         let userCredentials = {};
