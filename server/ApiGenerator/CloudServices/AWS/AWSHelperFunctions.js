@@ -89,3 +89,26 @@ exports.createScheduledEvent = async (ruleParams, lambdaPermissionParams, target
         throw new Error("Error setting up scheduled event:", error);
     }
 };
+
+exports.getAWSCredentials = async (secretName) => {
+    const secretsManager = new AWS.SecretsManager();
+
+    const keyInfo = await secretsManager.getSecretValue({ SecretId: secretName }).promise();
+
+    let secret;
+    if (keyInfo.SecretString) {
+        secret = JSON.parse(keyInfo.SecretString);
+    } else {
+        secret = JSON.parse(Buffer.from(keyInfo.SecretBinary, 'base64').toString('utf-8'));
+    }
+
+    const accessKey = secret.aws_access_key_id;
+    const secretKey = secret.aws_secret_access_key;
+    const sessionToken = secret.aws_session_token;
+
+    return {
+        accessKeyVal: accessKey,
+        secretKeyVal: secretKey,
+        sessionTokenVal: sessionToken
+    };
+}
