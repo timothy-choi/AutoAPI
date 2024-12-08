@@ -41,23 +41,60 @@ const getRDSMetrics = async (metricsInfo, secretName) => {
         var newStartDate = new Date(metricsInfo.startDate);
         newStartDate.setMinutes(metricsInfo.startDate.getMinutes() - 2);
 
-        const params = {
-            Namespace: "AWS/RDS",
-            MetricName: metricsInfo.metricName,
-            Dimensions: [
-                {
-                    Name: "DBInstanceIdentifier",
-                    Value: metricsInfo.currDbId
-                }
-            ],
-            StartTime: newStartDate,
-            Period: metricsInfo.minutes * 60, 
-            Statistics: metricsInfo.dataStatistics 
+        var metrics_stats_list = [];
+
+        for (let i = 0; i < metricsInfo.metricNames.length; ++i) {
+            const params = {
+                Namespace: "AWS/RDS",
+                MetricName: metricsInfo.metricNames[i],
+                Dimensions: [
+                    {
+                        Name: "DBInstanceIdentifier",
+                        Value: metricsInfo.currDbId
+                    }
+                ],
+                StartTime: newStartDate,
+                Period: metricsInfo.minutes * 60, 
+                Statistics: metricsInfo.dataStatistics 
+            };
+
+            const metricStatistics = await cloudwatch.getMetricStatistics(params).promise();
+
+            metrics_stats_list.push(metricStatistics);
+        }
+
+        const dataMetricsRequest = {
+            StartTime: newStartDate.toISOString(),
+            EndTime: new Date().toISOString(),
+            Metrics: []
         };
 
-        const metrics = await cloudwatch.getMetricStatistics(params).promise();
+        for (let j = 0; j < metricsInfo.metricNames.length; j++) {
+            const params = {
+                Id: Math.random().toString(6),
+                MetricStat: {
+                    Metric: {
+                        Namespace: "AWS/RDS",
+                        MetricName: metricsInfo.metricNames[j],
+                        Dimensions: [
+                            {
+                                Name: "DBInstanceIdentifier",
+                                Value: metricsInfo.currDbId
+                            }
+                        ]
+                    },
+                    Period: 300,
+                    Stat: metricsInfo.dataStatistics 
+                }
+            };
 
-        return metrics;
+            dataMetricsRequest.Metrics.push(params);
+        }
+
+        const completeMetricsDataInfo = await cloudwatch.getMetricData(dataMetricsRequest).promise();
+
+
+        return { DataMetrics: completeMetricsDataInfo, DataMetricsStatsList: metrics_stats_list };
     } catch (error) {
         throw new Error("Could not get metrics:", error);
     }
