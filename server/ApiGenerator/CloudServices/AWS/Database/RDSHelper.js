@@ -51,7 +51,7 @@ exports.checkRDSInstanceAvailability = async (currDbId, userCredentials, userReg
 
     try {
         const response = await rds
-            .describeDBInstances({ DBInstanceIdentifier: dbInstanceIdentifier })
+            .describeDBInstances({ DBInstanceIdentifier: currDbId })
             .promise();
 
         const dbInstance = response.DBInstances[0];
