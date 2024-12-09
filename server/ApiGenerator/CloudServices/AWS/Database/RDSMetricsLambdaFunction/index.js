@@ -11,12 +11,73 @@ exports.handler = async (event) => {
     } else if (event.action === "collectMetrics") {
         var metricsData = await getRDSMetrics(event.metricsInfo, event.userInfo["secretName"]);
 
-        return { statusCode: 200, body: JSON.stringify(metricsData)};
+        var events = await getRDSEvents(event.metricsInfo.currDbId);
+
+        var instanceHealthStatusReport = await assessInstanceHealth(metricsData.DataMatrics, events);
+
+        var allMetricsInfoResponse = {
+            MetricsDataInfo: metricsData.DataMetrics,
+            MetricsStatsInfo: metricsData.DataMetricsStatsList,
+            HealthStatusReport: instanceHealthStatusReport
+        };
+
+        return { statusCode: 200, body: JSON.stringify(allMetricsInfoResponse)};
     } else {
         return { statusCode: 400, body: "Unhandled event type" };
     }
 
     return { statusCode: 200, body: "Success" };
+};
+
+const getRDSEvents = async (dbInstanceId) => {
+    const params = {
+        SourceIdentifier: dbInstanceId,
+        SourceType: 'db-instance',
+        StartTime: new Date(Date.now() - 24 * 60 * 60 * 1000), 
+        MaxRecords: 200
+    };
+
+    const response = await rds.describeEvents(params).promise();
+
+    return response.Events.map(event => ({
+        message: event.Message,
+        date: event.Date
+    }));
+};
+
+const assessInstanceHealth = async (metrics, events) => {
+    const healthStatus = {
+        status: 'healthy',
+        issues: []
+    };
+
+    if (metrics.cpuUtilization > 75) {
+        healthStatus.status = 'warning';
+        healthStatus.issues.push('Warning: High CPU utilization');
+    }
+    if (metrics.cpuUtilization > 90) {
+        healthStatus.status = 'critical';
+        healthStatus.issues.push('Warning: Critical CPU utilization');
+    }
+    if (metrics.freeStorageSpace < 10 * 1024 * 1024 * 1024) { 
+        healthStatus.status = 'warning';
+        healthStatus.issues.push('Warning: Low free storage space');
+    }
+    if (metrics.freeStorageSpace < 1 * 1024 * 1024 * 1024) {
+        healthStatus.status = 'critical';
+        healthStatus.issues.push('Warning: Critically low free storage space');
+    }
+
+    //add more warning checks to other metrics
+
+    events.forEach(event => {
+        if (event.message.includes('failed') || event.message.includes('error')) {
+            healthStatus.status = 'critical';
+            healthStatus.issues.push(`Event issue: ${event.message}`);
+        }
+    });
+
+    return healthStatus;
 };
 
 const getRDSMetrics = async (metricsInfo, secretName) => {
@@ -93,6 +154,11 @@ const getRDSMetrics = async (metricsInfo, secretName) => {
 
         const completeMetricsDataInfo = await cloudwatch.getMetricData(dataMetricsRequest).promise();
 
+
+        completeMetricsDataInfo = completeMetricsDataInfo.Metrics.reduce((acc, result) => {
+            acc[result.Id] = result.Values[0] || 0;
+            return acc;
+        }, {});
 
         return { DataMetrics: completeMetricsDataInfo, DataMetricsStatsList: metrics_stats_list };
     } catch (error) {
