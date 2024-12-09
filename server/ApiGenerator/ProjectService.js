@@ -619,3 +619,21 @@ exports.EditProjectContributor = async (projectId, projectContributorId, updated
         throw new Error('could not delete model');
     }
 }
+
+exports.SetProjectCloudInfo = async (projectId, projectCloudInfo) => {
+    try {
+        var project = await GetProjectById(projectId);
+
+        if (!project) {
+            throw new Error('Model does not exist');
+        } 
+
+        project.ProjectCloudInfo = projectCloudInfo;
+
+        project.ModifiedAt = Date.now();
+
+        await project.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+}

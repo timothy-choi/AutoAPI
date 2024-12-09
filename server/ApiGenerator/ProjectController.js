@@ -340,3 +340,13 @@ exports.EditAwaitingUserProjectUserRequests = async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 }
+
+exports.SetProjectCloudInfo = async (req, res) => {
+    try {
+        await ProjectService.SetProjectCloudInfo(req.projectId, req.body);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}

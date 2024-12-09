@@ -117,8 +117,9 @@ exports.CallbackOAuth = async (req, res) => {
         await storeSecretInKeyVault(`oauth-access-token-${randomId}`, response.data.accessToken);
         await storeSecretInKeyVault(`oauth-refresh-token-${randomId}`, response.data.refreshToken);
 
+        const subscriptions = await getAzureSubscriptions(response.data.accessToken);
 
-        return res.status(200).send({"accessToken": response.data.access_token, "refreshToken": response.data.refresh_token, "id_token": response.data.id_token, "token_verification": user, "tokenManagerId": randomId});
+        return res.status(200).send({"accessToken": response.data.access_token, "refreshToken": response.data.refresh_token, "id_token": response.data.id_token, "token_verification": user, "tokenManagerId": randomId, "subscriptions": subscriptions});
     } catch (error) {
         return res.status(500).send("Failed to authenticate.");
     }
@@ -194,3 +195,17 @@ exports.LogoutFromAzure = async (req, res) => {
     });
 
 }
+
+const getAzureSubscriptions = async (accessToken) => {
+    try {
+        const response = await axios.get("https://management.azure.com/subscriptions?api-version=2020-01-01", {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        });
+
+        return response.data.value; 
+    } catch (error) {
+        throw new Error(`Failed to fetch subscriptions: ${error.message}`);
+    }
+};
