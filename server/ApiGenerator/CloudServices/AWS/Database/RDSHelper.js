@@ -159,6 +159,23 @@ exports.stopRDSInstance = async (currDbId, userCredentials, userRegion) => {
     }
 }
 
+const withRetries = async (fn, maxAttempts, delay) => {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            return await fn();
+        } catch (error) {
+            if (attempt < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2; 
+            } else {
+                throw new Error(error.message);
+            }
+        }
+    }
+
+    throw new Error("Operation Failed");
+};
+
 exports.modifyRDSInstance = async (changedDbAttributes, userCredentials, userRegion) => {
     const rds = new AWS.RDS({
         credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
@@ -166,9 +183,14 @@ exports.modifyRDSInstance = async (changedDbAttributes, userCredentials, userReg
     });
 
     try {
-        await rds.modifyDBInstance(changedDbAttributes).promise();
+        const modifyFunction = async () => await rds.modifyDBInstance(changedDbAttributes).promise();
 
-        await rds.waitFor("dBInstanceAvailable", { DBInstanceIdentifier: changedDbAttributes.DBInstanceIdentifier }).promise();
+        const modifyAvailability = async () => await rds.waitFor("dBInstanceAvailable", { DBInstanceIdentifier: changedDbAttributes.DBInstanceIdentifier }).promise();
+
+        await withRetries(modifyFunction, 3, 200);
+
+        await withRetries(modifyAvailability, 3, 200);
+
     } catch (error) {
         throw new Error(error.message);
     }
