@@ -160,6 +160,9 @@ exports.RefreshAccessToken = async (req, res) => {
         if (tokens.refresh_token) {
           req.session.refreshToken = tokens.refresh_token;
         }
+
+        await storeSecretInKeyVault(`oauth-access-token-${req.body.secretId}`, tokens.access_token);
+        await storeSecretInKeyVault(`oauth-refresh-token-${req.body.secretId}`, tokens.refresh_token);
     
         return res.status(200).send({
           accessTokenVal: tokens.access_token,
@@ -177,7 +180,7 @@ exports.LogoutFromAzure = async (req, res) => {
 
     const tenant = AZURE_TENANT_ID || "common"; 
     const logoutUrl = `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/logout?post_logout_redirect_uri=${encodeURIComponent(
-        POST_LOGOUT_REDIRECT_URI
+        AZURE_POST_LOGOUT_URI
     )}`;
 
     req.session.destroy((err) => {
