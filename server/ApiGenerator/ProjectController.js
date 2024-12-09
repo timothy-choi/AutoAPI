@@ -310,3 +310,33 @@ exports.EditAwaitingUserProjectUserRequests = async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 }
+
+exports.AddProjectContributor = async (req, res) => {
+    try {
+        await ProjectService.AddProjectContributor(req.projectId, req.body);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveProjectContributor = async (req, res) => {
+    try {
+        await ProjectService.RemoveProjectContributor(req.projectId, req.projectContributorId);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.EditAwaitingUserProjectUserRequests = async (req, res) => {
+    try {
+        await ProjectService.EditProjectContributor(req.projectId, req.projectContributorId, req.body);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}

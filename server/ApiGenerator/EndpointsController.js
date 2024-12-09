@@ -310,7 +310,7 @@ exports.EditEndpointResponseExample = async (req, res) => {
     }
 }
 
-exports.SetLastAccessedAt = async (req, rres) => {
+exports.SetLastAccessedAt = async (req, res) => {
     try {
         await EndpointService.SetLastAccessedAt(req.endpointId, req.body.lastAccessedAt);
 
