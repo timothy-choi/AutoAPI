@@ -686,6 +686,22 @@ exports.EditApiEndpointResponseExample = async (endpointId, endpointResponseExam
     }
 }
 
+exports.SetLastAccessedAt = async (endpointId, accessDate) => {
+    try {
+        var endpoint = await this.GetEndpointsById(endpointId);
+
+        if (!endpoint) {
+            throw new Exception('database does not exist');
+        }
+
+        endpoint.LastAccessedAt = accessDate;
+
+        await endpoint.save();
+    } catch (error) {
+        throw new Exception('Can not edit database');
+    }
+}
+
 exports.AddEndpointDependencies = async (endpointId, endpointDependencies, username) => {
     try {
         var endpoint = await this.GetEndpointsById(endpointId);

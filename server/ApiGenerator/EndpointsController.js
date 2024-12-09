@@ -310,6 +310,16 @@ exports.EditEndpointResponseExample = async (req, res) => {
     }
 }
 
+exports.SetLastAccessedAt = async (req, rres) => {
+    try {
+        await EndpointService.SetLastAccessedAt(req.endpointId, req.body.lastAccessedAt);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
 exports.AddEndpointDependency = async (req, res) => {
     try {
         await EndpointService.AddEndpointDependencies(req.endpointId, req.endpointResponseSchemaId, req.body, req.username);
