@@ -9,6 +9,9 @@ const AZURE_TOKEN_URL = process.env.AZURE_TOKEN_URL;
 const AZURE_SCOPES = process.env.AZURE_SCOPES;
 const AZURE_POST_LOGOUT_URI = proces.env.AZURE_POST_LOGOUT_URI;
 
+const { DefaultAzureCredential } = require("@azure/identity");
+const { SecretClient } = require("@azure/keyvault-secrets");
+
 const axios = require('axios');
 const crypto = require("crypto");
 
@@ -16,6 +19,20 @@ const querystring = require('querystring');
 const jwt = require('jsonwebtoken');
 
 const generateState = () => crypto.randomBytes(16).toString("hex");
+
+const storeSecretInKeyVault = async (secretName, secretValue) => {
+    const keyVaultName = process.env.AZURE_KEY_VAULT_NAME; 
+    const keyVaultUri = `https://${keyVaultName}.vault.azure.net`;
+
+    const credential = new DefaultAzureCredential();
+    const client = new SecretClient(keyVaultUri, credential);
+
+    try {
+        await client.setSecret(secretName, secretValue);
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
 
 const validateToken = async (token) => {
     try {
@@ -95,7 +112,13 @@ exports.CallbackOAuth = async (req, res) => {
         req.session.accessToken = response.data.access_token;
         req.session.refreshToken = response.data.refresh_token;
 
-        return res.status(200).send({"accessToken": response.data.access_token, "refreshToken": response.data.refresh_token, "id_token": response.data.id_token, "token_verification": user});
+        var randomId = Math.random().toString(10);
+
+        await storeSecretInKeyVault(`oauth-access-token-${randomId}`, response.data.accessToken);
+        await storeSecretInKeyVault(`oauth-refresh-token-${randomId}`, response.data.refreshToken);
+
+
+        return res.status(200).send({"accessToken": response.data.access_token, "refreshToken": response.data.refresh_token, "id_token": response.data.id_token, "token_verification": user, "tokenManagerId": randomId});
     } catch (error) {
         return res.status(500).send("Failed to authenticate.");
     }
