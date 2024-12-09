@@ -86,6 +86,23 @@ exports.removeRDSInstance = async (req, res) => {
     }
 }
 
+exports.rebootRDSInstance = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var rebootData = await RDSHelper.rebootRDSInstance(req.body.dbInstanceInfo, userCredentials, req.body.userRegion);
+
+        return res.status(201).send(rebootData);
+    } catch (error) {
+        return res.status(500).send("Error creating RDS instance: " + error);
+    }
+}
+
 exports.deleteRDSInstance = async (req, res) => {
     try {
         let userCredentials = {};
