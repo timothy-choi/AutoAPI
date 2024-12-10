@@ -156,6 +156,102 @@ exports.BatchQueryTable = async (userCredentials, requestItems) => {
     }
 }
 
+exports.ScanTable = async (userCredentials, tableName, filterExpression = null) => {
+    try {
+        const docClient = new AWS.DynamoDB.DocumentClient({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+
+        const params = { TableName: tableName };
+        if (filterExpression) {
+            params.FilterExpression = filterExpression;
+        }
+
+        const data = await docClient.scan(params).promise();
+
+        return data.Items;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.UpdateItem = async (userCredentials, tableName, key, updateExpression, expressionAttributeValues, returnValues) => {
+    try {
+        const docClient = new AWS.DynamoDB.DocumentClient({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+    
+        const params = {
+            TableName: tableName,
+            Key: key,
+            UpdateExpression: updateExpression,
+            ExpressionAttributeValues: expressionAttributeValues,
+            ReturnValues: returnValues
+          };
+    
+        await docClient.update(params).promise();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.BatchWriteItems = async (userCredentials, requests) => {
+    try {
+        const docClient = new AWS.DynamoDB.DocumentClient({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+
+        const params = {
+            RequestItems: requests
+        };
+
+        await docClient.batchWrite(params).promise();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.CreateGSI = async (userCredentials, tableName, indexParams) => {
+    try {
+        const dynamodb = new AWS.DynamoDB({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+
+        const params = {
+            TableName: tableName,
+            GlobalSecondaryIndexUpdates: [
+              {
+                Create: {
+                  IndexName: indexParams.IndexName,
+                  KeySchema: indexParams.KeySchema,
+                  Projection: indexParams.Projection,
+                  ProvisionedThroughput: indexParams.ProvisionedThroughput,
+                },
+              },
+            ],
+            AttributeDefinitions: indexParams.AttributeDefinitions,
+        };
+
+        const data = await dynamodb.updateTable(params).promise();
+
+        return data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.DeleteDynamoDBTable = async (userCredentials, tableName) => {
     try {
         const dynamodb = new AWS.DynamoDB({
