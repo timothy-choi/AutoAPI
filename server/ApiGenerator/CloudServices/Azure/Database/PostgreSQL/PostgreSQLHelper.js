@@ -27,16 +27,38 @@ exports.deletePostgreSQLServer = async (resourceGroupName, serverName, subscript
     }
 }
 
-exports.createPostgreSQLDatabase = async (databaseInfo, postgreSqlClient) => {
+exports.getPostgreSQLServer = async (resourceGroupName, serverName, subscriptionId) => {
     try {
+        const credential = new DefaultAzureCredential();
+        
+        const postgreSqlClient = new PostgreSQLManagementClient(credential, subscriptionId);
+
+        const serverDetails = await postgreSqlClient.servers.get(resourceGroupName, serverName);
+
+        return serverDetails;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.createPostgreSQLDatabase = async (databaseInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const postgreSqlClient = new PostgreSQLManagementClient(credential, subscriptionId);
+
         await postgreSqlClient.databases.beginCreateOrUpdateAndWait(databaseInfo.resourceGroupName, databaseInfo.serverName, databaseInfo.databaseName, databaseInfo.requestInfo).promise();
     } catch (error) {
         throw new Error(error.message);
     }
 }
 
-exports.deletePostgreSQLDatabase = async (databaseInfo, postgreSqlClient) => {
+exports.deletePostgreSQLDatabase = async (databaseInfo, subscriptionId) => {
     try {
+        const credential = new DefaultAzureCredential();
+        
+        const postgreSqlClient = new PostgreSQLManagementClient(credential, subscriptionId);
+
         await postgreSqlClient.databases.beginDeleteAndWait(databaseInfo.resourceGroupName, databaseInfo.serverName, databaseInfo.databaseName).promise();
     } catch (error) {
         throw new Error(error.message);

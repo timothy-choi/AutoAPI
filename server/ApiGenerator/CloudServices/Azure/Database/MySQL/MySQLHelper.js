@@ -27,16 +27,38 @@ exports.deleteMySQLServer = async (resourceGroupName, serverName, subscriptionId
     }
 }
 
-exports.createMySQLDatabase = async (databaseInfo, mySqlClient) => {
+exports.getMySQLServer = async (resourceGroupName, serverName, subscriptionId) => {
     try {
+        const credential = new DefaultAzureCredential();
+        
+        const mySqlClient = new MySQLManagementClient(credential, subscriptionId);
+
+        const serverDetails = await mySqlClient.servers.get(resourceGroupName, serverName);
+
+        return serverDetails;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.createMySQLDatabase = async (databaseInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const mySqlClient = new MySQLManagementClient(credential, subscriptionId);
+
         await mySqlClient.databases.beginCreateOrUpdateAndWait(databaseInfo.resourceGroupName, databaseInfo.serverName, databaseInfo.databaseName, databaseInfo.requestInfo).promise();
     } catch (error) {
         throw new Error(error.message);
     }
 }
 
-exports.deleteMySQLDatabase = async (databaseInfo, mySqlClient) => {
+exports.deleteMySQLDatabase = async (databaseInfo, subscriptionId) => {
     try {
+        const credential = new DefaultAzureCredential();
+        
+        const mySqlClient = new MySQLManagementClient(credential, subscriptionId);
+        
         await mySqlClient.databases.beginDeleteAndWait(databaseInfo.resourceGroupName, databaseInfo.serverName, databaseInfo.databaseName).promise();
     } catch (error) {
         throw new Error(error.message);

@@ -28,16 +28,38 @@ exports.deleteSQLServer = async (resourceGroupName, serverName, subscriptionId) 
     }
 }
 
-exports.createSQLDatabase = async (databaseInfo, sqlClient) => {
+exports.getSQLServer = async (resourceGroupName, serverName, subscriptionId) => {
     try {
+        const credential = new DefaultAzureCredential();
+        
+        const sqlClient = new SqlManagementClient(credential, subscriptionId);
+
+        var sqlServerResponse = await sqlClient.servers.get(resourceGroupName, serverName);
+
+        return sqlServerResponse;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.createSQLDatabase = async (databaseInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const sqlClient = new SqlManagementClient(credential, subscriptionId);
+
         await sqlClient.databases.beginCreateOrUpdateAndWait(databaseInfo.resourceGroupName, databaseInfo.serverName, databaseInfo.databaseName, databaseInfo.requestInfo).promise();
     } catch (error) {
         throw new Error(error.message);
     }
 }
 
-exports.deleteSQLDatabase = async (databaseInfo, sqlClient) => {
+exports.deleteSQLDatabase = async (databaseInfo, subscriptionId) => {
     try {
+        const credential = new DefaultAzureCredential();
+        
+        const sqlClient = new SqlManagementClient(credential, subscriptionId);
+
         await sqlClient.databases.beginDeleteAndWait(databaseInfo.resourceGroupName, databaseInfo.serverName, databaseInfo.databaseName).promise();
     } catch (error) {
         throw new Error(error.message);
