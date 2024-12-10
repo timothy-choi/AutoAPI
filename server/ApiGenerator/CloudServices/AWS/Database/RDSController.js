@@ -120,6 +120,40 @@ exports.rebootRDSInstance = async (req, res) => {
     }
 }
 
+exports.createRDSBackup = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var snapshotData = await RDSHelper.createRDSBackup(req.body.currDbId, req.body.snapshotId, userCredentials, req.body.userRegion);
+
+        return res.status(201).send(snapshotData);
+    } catch (error) {
+        return res.status(500).send("Error creating RDS instance: " + error);
+    }
+}
+
+exports.restoreRDSBackup = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        await RDSHelper.restoreRDSBackup(req.body.currDbId, req.body.snapshotId, req.body.instanceClass, req.body.publiclyAccessible, userCredentials, req.body.userRegion);
+
+        return res.status(201).send(null);
+    } catch (error) {
+        return res.status(500).send("Error creating RDS instance: " + error);
+    }
+}
+
 exports.deleteRDSInstance = async (req, res) => {
     try {
         let userCredentials = {};
