@@ -1,63 +1,113 @@
 const AWS = require('aws-sdk');
 
 exports.CreateDynamoDBTable = async (userCredentials, tableParams) => {
-    const dynamodb = new AWS.DynamoDB({
-        accessKeyId: userCredentials.accessKey,
-        secretAccessKey: userCredentials.secretKey,
-        sessionToken: userCredentials.sessionToken,
-        region: userCredentials.region
-    });
-
-    const tableResponse = await dynamodb.createTable(tableParams).promise();
-
-    return tableResponse;
+    try {
+        const dynamodb = new AWS.DynamoDB({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+    
+        const tableResponse = await dynamodb.createTable(tableParams).promise();
+    
+        return tableResponse;
+    } catch (error) {
+        throw new Error(error.message);
+    }
 }
 
 exports.DescribeTable = async (userCredentials, tableName) => {
-    const dynamodb = new AWS.DynamoDB({
-        accessKeyId: userCredentials.accessKey,
-        secretAccessKey: userCredentials.secretKey,
-        sessionToken: userCredentials.sessionToken,
-        region: userCredentials.region
-    });
+    try {
+        const dynamodb = new AWS.DynamoDB({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
 
-    const params = {
-        TableName: tableName, 
-    };
+        const params = {
+            TableName: tableName, 
+        };
 
-    const tableResponse = await dynamodb.createTable(params).promise();
+        const tableResponse = await dynamodb.describeTable(params).promise();
 
-    return tableResponse;
+        return tableResponse;
+    } catch (error) {
+        throw new Error(error.message);
+    }
 }
 
 exports.GetTableStatus = async (userCredentials, tableName) => {
-    const dynamodb = new AWS.DynamoDB({
-        accessKeyId: userCredentials.accessKey,
-        secretAccessKey: userCredentials.secretKey,
-        sessionToken: userCredentials.sessionToken,
-        region: userCredentials.region
-    });
+    try {
+        const dynamodb = new AWS.DynamoDB({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
 
-    const params = {
-        TableName: tableName, 
-    };
+        const params = {
+            TableName: tableName, 
+        };
 
-    const tableResponse = await dynamodb.createTable(params).promise();
+        const tableResponse = await dynamodb.describeTable(params).promise();
 
-    return tableResponse.TableDescription.TableStatus;
+        return tableResponse.TableDescription.TableStatus;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.PutTableEntry = async (userCredentials, tableName, entryInfo) => {
+    try {
+        const docClient = new AWS.DynamoDB.DocumentClient({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+    
+        const params = { TableName: tableName, Item: entryInfo };
+    
+        await docClient.put(params).promise();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.DeleteTableEntry = async (userCredentials, tableName, keyValue) => {
+    try {
+        const docClient = new AWS.DynamoDB.DocumentClient({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+    
+        const params = { TableName: tableName, Key: keyValue };
+    
+        await docClient.delete(params).promise();
+    } catch (error) {
+        throw new Error(error.message);
+    }
 }
 
 exports.DeleteDynamoDBTable = async (userCredentials, tableName) => {
-    const dynamodb = new AWS.DynamoDB({
-        accessKeyId: userCredentials.accessKey,
-        secretAccessKey: userCredentials.secretKey,
-        sessionToken: userCredentials.sessionToken,
-        region: userCredentials.region
-    });
+    try {
+        const dynamodb = new AWS.DynamoDB({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
 
-    const params = {
-        TableName: tableName, 
-    };
+        const params = {
+            TableName: tableName, 
+        };
 
-    await dynamodb.deleteTable(params).promise();
+        await dynamodb.deleteTable(params).promise();
+    } catch (error) {
+        throw new Error(error.message);
+    }
 }
