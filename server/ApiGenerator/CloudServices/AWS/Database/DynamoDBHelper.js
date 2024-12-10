@@ -252,6 +252,103 @@ exports.CreateGSI = async (userCredentials, tableName, indexParams) => {
     }
 }
 
+exports.UpdateProvisionedThroughPut = async (userCredentials, tableName, readCapacity, writeCapacity) => {
+    try {
+        const dynamodb = new AWS.DynamoDB({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+
+        const params = {
+            TableName: tableName,
+            ProvisionedThroughput: {
+              ReadCapacityUnits: readCapacity,
+              WriteCapacityUnits: writeCapacity,
+            },
+        };
+
+        const data = await dynamodb.updateTable(params).promise();
+
+        return data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.EnableStreams = async (userCredentials, tableName, streamViewType) => {
+    try {
+        const dynamodb = new AWS.DynamoDB({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+
+        const params = {
+            TableName: tableName,
+            StreamSpecification: {
+              StreamEnabled: true,
+              StreamViewType: streamViewType,
+            },
+          };
+
+        const data = await dynamodb.updateTable(params).promise();
+
+        return data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.UpdateTTL = async (userCredentials, tableName, ttlAttribute) => {
+    try {
+        const dynamodb = new AWS.DynamoDB({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+
+        const params = {
+            TableName: tableName,
+            TimeToLiveSpecification: {
+              AttributeName: ttlAttribute,
+              Enabled: true, 
+            },
+        };
+
+        const data = await dynamodb.updateTimeToLive(params).promise();
+
+        return data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.ModifyTagTable = async (userCredentials, resourceArn, tags) => {
+    try {
+        const dynamodb = new AWS.DynamoDB({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+
+        const params = {
+            ResourceArn: resourceArn, 
+            Tags: tags, 
+        };
+
+        const data = await dynamodb.tagResource(params).promise();
+
+        return data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.DeleteDynamoDBTable = async (userCredentials, tableName) => {
     try {
         const dynamodb = new AWS.DynamoDB({
