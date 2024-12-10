@@ -93,6 +93,69 @@ exports.DeleteTableEntry = async (userCredentials, tableName, keyValue) => {
     }
 }
 
+exports.GetTableEntry = async (userCredentials, tableName, keyValue) => {
+    try {
+        const docClient = new AWS.DynamoDB.DocumentClient({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+    
+        const params = { TableName: tableName, Key: keyValue };
+    
+        var data = await docClient.get(params).promise();
+
+        return data.Item;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.QueryTable = async (userCredentials, tableName, keyConditionExpression, expressionAttribute) => {
+    try {
+        const docClient = new AWS.DynamoDB.DocumentClient({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+    
+        const params = {
+            TableName: tableName,
+            KeyConditionExpression: keyConditionExpression,
+            ExpressionAttributeValues: expressionAttributeValues,
+          };
+    
+        var data = await docClient.query(params).promise();
+
+        return data.Items;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.BatchQueryTable = async (userCredentials, requestItems) => {
+    try {
+        const docClient = new AWS.DynamoDB.DocumentClient({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+    
+        const params = {
+            RequestItems: requestItems
+          };
+    
+        var data = await docClient.batchGet(params).promise();
+
+        return data.Responses;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.DeleteDynamoDBTable = async (userCredentials, tableName) => {
     try {
         const dynamodb = new AWS.DynamoDB({
