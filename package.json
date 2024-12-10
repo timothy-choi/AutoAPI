@@ -17,8 +17,12 @@
     "jsonwebtoken": "^9.0.2",
     "kafka-node": "^5.0.0",
     "mongoose": "^8.8.4",
+    "mssql": "^11.0.1",
+    "mysql2": "^3.11.5",
     "nodemailer": "^6.9.16",
     "npm": "^10.9.2",
+    "pg": "^8.13.1",
+    "pq": "0.0.3",
     "sequelize": "^6.37.5",
     "web-push": "^3.6.7",
     "ws": "^8.18.0"
