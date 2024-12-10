@@ -1,5 +1,7 @@
 {
   "dependencies": {
+    "@azure/arm-mysql": "^5.1.0",
+    "@azure/arm-postgresql": "^6.1.0",
     "@azure/arm-sql": "^10.0.0",
     "@azure/identity": "^4.5.0",
     "@azure/keyvault-secrets": "^4.9.0",
