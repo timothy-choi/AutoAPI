@@ -12,6 +12,14 @@ exports.connectToPostgreSQLDatabase = async (connectionInfo) => {
     }
 }
 
+const ReleaseClient = async (client) => {
+    try {
+        client.release();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.ExecuteQuery = async (query, params, client) => {
     try {
         const result = await client.query(query, params);
@@ -19,6 +27,8 @@ exports.ExecuteQuery = async (query, params, client) => {
         return result.rows;
     } catch (error) {
         throw new Error(error.message);
+    } finally {
+        ReleaseClient(client);
     }
 }
 
@@ -29,6 +39,8 @@ exports.InsertIntoPostgres = async (query, params, client) => {
         return result.rows[0].id;
     } catch (error) {
         throw new Error(error.message);
+    } finally {
+        ReleaseClient(client);
     }
 }
 
@@ -39,6 +51,8 @@ exports.RemoveOrModifyInPostgres = async (query, params, client) => {
         return result.rowCount;
     } catch (error) {
         throw new Error(error.message);
+    } finally {
+        ReleaseClient(client);
     }
 }
 
