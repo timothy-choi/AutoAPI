@@ -124,7 +124,7 @@ exports.QueryTable = async (userCredentials, tableName, keyConditionExpression, 
         const params = {
             TableName: tableName,
             KeyConditionExpression: keyConditionExpression,
-            ExpressionAttributeValues: expressionAttributeValues,
+            ExpressionAttributeValues: expressionAttribute,
           };
     
         var data = await docClient.query(params).promise();

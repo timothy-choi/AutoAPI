@@ -18,6 +18,57 @@ exports.CreateDynamoDBTable = async (req, res) => {
     }
 }
 
+exports.GetTableStatus = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        const tableStatus = await DynamoDBHelper.GetTableStatus(userCredentials, req.body.tableName);
+
+        return res.status(200).send({"tableStatus": tableStatus});
+    } catch (error) {
+        return res.status(500).send("Error creating DynamoDB table: " + error);
+    }
+}
+
+exports.AddItemToTable = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        await DynamoDBHelper.PutTableEntry(userCredentials, req.body.tableName, req.body.entryInfo);
+
+        return res.status(201).send(null);
+    } catch (error) {
+        return res.status(500).send("Error creating DynamoDB table: " + error);
+    }
+}
+
+exports.RemoveItemFromTable = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        await DynamoDBHelper.DeleteTableEntry(userCredentials, req.body.tableName, req.body.keyValue);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send("Error creating DynamoDB table: " + error);
+    }
+}
+
 exports.DeleteDynamoDBTable = async (req, res) => {
     try {
         var userCredentials = {};
