@@ -20,3 +20,47 @@ exports.createOAuth2Client = async (accessToken, refreshToken) => {
     }
 }
 
+exports.createGCloudDBInstance = async (authClient, projectId, instanceConfig) => {
+    try {
+        const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
+
+        const res = await sqlAdmin.instances.insert({
+            project: projectId,
+            requestBody: instanceConfig,
+        });
+
+        return res.data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.getGCloudDBInstanceDetails = async (authClient, projectId, instanceId) => {
+    try {
+        const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
+
+        const res = await sqlAdmin.instances.get({
+            project: projectId,
+            instance: instanceId,
+        });
+
+        return res.data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.deleteGCloudDBInstance = async (authClient, projectId, instanceId) => {
+    try {
+        const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
+
+        const res = await sqlAdmin.instances.delete({
+            project: projectId,
+            instance: instanceId,
+        });
+
+        return res.data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
