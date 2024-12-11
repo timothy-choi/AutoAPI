@@ -1,11 +1,21 @@
-const mysql = require('mysql2/promise');
+const mysql = require('mysql2');
 
 exports.connectToMySQLDatabase = async (connectionInfo) => {
     try {
-        const connection = await mysql.createConnection(connectionInfo);
+        const pool = await mysql.createPool(connectionInfo);
 
-        return connection;
+        const poolInstance = await pool.promise();
+
+        return poolInstance;
     } catch (error) {
         throw new Error(error.message);
     }
+}
+
+exports.endMySQLConnection = async (pool) => {
+    try {
+        await pool.end();
+    } catch (error) {
+        throw new Error(error.message);
+    } 
 }

@@ -1,12 +1,20 @@
-const { Client } = require('pg');
+const { Pool } = require('pg');
 
 exports.connectToPostgreSQLDatabase = async (connectionInfo) => {
     try {
-        const client = new Client(connectionInfo);
+        const pool = new Pool(connectionInfo);
 
-        await client.connect();
+        const client = await pool.connect();
 
         return client;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.endPostgreSQLConnection = async (pool) => {
+    try {
+        await pool.end();
     } catch (error) {
         throw new Error(error.message);
     }
