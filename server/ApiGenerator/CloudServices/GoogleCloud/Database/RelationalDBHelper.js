@@ -4,6 +4,37 @@ const GCLOUD_CLIENT_ID = process.env.GCLOUD_CLIENT_ID;
 const GCLOUD_CLIENT_SECRET = process.env.GCLOUD_CLIENT_SECRET;
 const GCLOUD_REDIRECT_URL = process.env.GCLOUD_REDIRECT_URL;
 
+exports.trackGCloudDBOperationStatus = async (projectId, operationId, authClient) => {
+    try {
+        const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
+
+        const startTime = Date.now();
+
+        while (true) {
+            const response = await sqlAdmin.operations.get({
+                project: projectId,
+                operation: operationId,
+                auth: authClient,
+            });
+
+            if (response.data.status === 'DONE') {
+                if (response.data.error) {
+                    throw new Error('Operation failed: ', response.data.error);
+                }
+                return response.data;
+            }
+
+            const elapsedTime = Date.now() - startTime;
+            if (elapsedTime > timeoutMs) {
+                throw new Error('Operation timed out.');
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
 
 exports.createOAuth2Client = async (accessToken, refreshToken) => {
     try {
