@@ -12,6 +12,34 @@ exports.connectToSQLServerDatabase = async (connectionInfo) => {
     }
 }
 
+exports.executeQuery = async (pool, query, params = []) => {
+    try {
+        const request = pool.request();
+
+        params.forEach(({ name, value }) => request.input(name, value));
+
+        const response = await request.query(query);
+
+        return response.recordset;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.insertModifyOrDeleteInSqlServer = async (pool, query, params = []) => {
+    try {
+        const request = pool.request();
+
+        params.forEach(({ name, value }) => request.input(name, value));
+
+        const response = await request.query(query);
+
+        return response.rowsAffected;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.endSqlServerConnection = async (pool) => {
     try {
         await pool.close();
