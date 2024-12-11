@@ -50,6 +50,60 @@ exports.getGCloudDBInstanceDetails = async (authClient, projectId, instanceId) =
     }
 }
 
+exports.startOrStopGCloudDBInstance = async (projectId, instanceId, action) => {
+    try {
+        const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
+
+        const res = await sqlAdmin.instances.patch({
+            project: projectId,
+            instance: instanceId,
+            auth: authClient,
+            requestBody: {
+                settings: {
+                    activationPolicy: (action === 'start' ? 'ALWAYS' : 'NEVER'),
+                },
+            },
+        });
+
+        return res.data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.createGCloudBackup = async (authClient, projectId, instanceId) => {
+    try {
+        const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
+
+        const res = await sqlAdmin.backupRuns.insert({
+            project: projectId,
+            instance: instanceId,
+        });
+
+        return res.data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.restoreGCloudBackup = async (authClient, projectId, instanceId, backupId) => {
+    try {
+        const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
+
+        await sqlAdmin.instances.restoreBackup({
+            project: projectId,
+            instance: instanceId,
+            requestBody: {
+                restoreBackupContext: {
+                    backupRunId: backupId,
+                },
+            },
+        });
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.deleteGCloudDBInstance = async (authClient, projectId, instanceId) => {
     try {
         const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
