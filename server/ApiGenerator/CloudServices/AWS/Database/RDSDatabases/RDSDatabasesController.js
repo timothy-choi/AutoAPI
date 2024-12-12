@@ -35,6 +35,38 @@ exports.ExecuteQuery = async (req, res) => {
     }
 }
 
+exports.ModifyItemInDBInstance = async (req, res) => {
+    try {
+        var pool = null;
+
+        var response = null;
+
+        if (req.database === 'MySQL') {
+            [pool, client] = await MySQLHelper.connectToMySQLDatabase(req.body.connectionInfo);
+
+            response = await MySQLHelper.RemoveOrModifyInMySQLDatabase(req.body.query, req.body.values, client);
+
+            await MySQLHelper.endMySQLConnection(pool);
+        } else if (req.database === 'SqlServer') {
+            [pool, client] = await SQLServerHelper.connectToSQLServerDatabase(req.body.connectionInfo);
+
+            response = await SQLServerHelper.insertModifyOrDeleteInSqlServer(client, req.body.query, req.body.params);
+
+            await SQLServerHelper.endSqlServerConnection(pool);
+        } else {
+            [pool, client] = await PostgreSQLHelper.connectToPostgreSQLDatabase(req.body.connectionInfo);
+
+            response = await PostgreSQLHelper.RemoveOrModifyInPostgres(req.body.query, req.body.params, client);
+
+            await PostgreSQLHelper.endPostgreSQLConnection(pool);
+        }
+
+        return res.status(200).send(response);
+    } catch (error) {
+        return res.status(500).send("Error executing query: " + error.message);
+    }
+}
+
 exports.InsertToDBInstance = async (req, res) => {
     try {
         var pool = null;
@@ -60,6 +92,38 @@ exports.InsertToDBInstance = async (req, res) => {
         }
 
         return res.status(201).send(null);
+    } catch (error) {
+        return res.status(500).send("Error executing query: " + error.message);
+    }
+}
+
+exports.RemoveItemInDBInstance = async (req, res) => {
+    try {
+        var pool = null;
+
+        var response = null;
+
+        if (req.database === 'MySQL') {
+            [pool, client] = await MySQLHelper.connectToMySQLDatabase(req.body.connectionInfo);
+
+            response = await MySQLHelper.RemoveOrModifyInMySQLDatabase(req.body.query, req.body.values, client);
+
+            await MySQLHelper.endMySQLConnection(pool);
+        } else if (req.database === 'SqlServer') {
+            [pool, client] = await SQLServerHelper.connectToSQLServerDatabase(req.body.connectionInfo);
+
+            response = await SQLServerHelper.insertModifyOrDeleteInSqlServer(client, req.body.query, req.body.params);
+
+            await SQLServerHelper.endSqlServerConnection(pool);
+        } else {
+            [pool, client] = await PostgreSQLHelper.connectToPostgreSQLDatabase(req.body.connectionInfo);
+
+            response = await PostgreSQLHelper.RemoveOrModifyInPostgres(req.body.query, req.body.params, client);
+
+            await PostgreSQLHelper.endPostgreSQLConnection(pool);
+        }
+
+        return res.status(200).send(response);
     } catch (error) {
         return res.status(500).send("Error executing query: " + error.message);
     }
