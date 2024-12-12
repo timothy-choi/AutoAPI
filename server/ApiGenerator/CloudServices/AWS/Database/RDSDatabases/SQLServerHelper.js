@@ -6,7 +6,7 @@ exports.connectToSQLServerDatabase = async (connectionInfo) => {
 
         const poolInstance = await pool.connect();
 
-        return poolInstance;
+        return (pool, poolInstance);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -23,6 +23,8 @@ exports.executeQuery = async (pool, query, params = []) => {
         return response.recordset;
     } catch (error) {
         throw new Error(error.message);
+    } finally {
+        
     }
 }
 

@@ -6,7 +6,7 @@ exports.connectToPostgreSQLDatabase = async (connectionInfo) => {
 
         const client = await pool.connect();
 
-        return client;
+        return (pool, client);
     } catch (error) {
         throw new Error(error.message);
     }

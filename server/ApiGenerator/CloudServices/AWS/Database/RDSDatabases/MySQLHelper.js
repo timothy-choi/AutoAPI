@@ -6,7 +6,7 @@ exports.connectToMySQLDatabase = async (connectionInfo) => {
 
         const poolInstance = await pool.promise();
 
-        return poolInstance;
+        return (pool, poolInstance);
     } catch (error) {
         throw new Error(error.message);
     }
