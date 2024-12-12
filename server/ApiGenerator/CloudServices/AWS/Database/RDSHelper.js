@@ -87,6 +87,64 @@ exports.GetRDSInstanceStatus = async (currDbId, userCredentials, userRegion) => 
     }
 }
 
+exports.StartOrStopRDSInstanceUsageMetricsFunction = async (lambdaFunctionName, payloadInfo, userCredentials, userRegion) => {
+    try {
+        const lambda = new AWS.Lambda({
+            credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+            region: userRegion
+        });
+
+        const params = {
+            FunctionName: lambdaFunctionName,
+            Payload: JSON.stringify(payloadInfo)
+        };
+
+        lambda.invoke(params, (err, data) => {
+            if (err) {
+                throw new Error(err.message);
+            } else {
+                var response = JSON.payload(data);
+
+                if (response.status != 200) {
+                    throw new Error('Could not start or stop the instance');
+                }
+            }
+        });
+    } catch (error) {
+        throw new Error(`Error starting or stopping RDS instance usage and health status metrics: ${error.message}`);
+    }
+}
+
+exports.GetRDSInstanceUsageAndHealthStatus = async (lambdaFunctionName, payloadInfo, userCredentials, userRegion) => {
+    try {
+        const lambda = new AWS.Lambda({
+            credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+            region: userRegion
+        });
+
+        const params = {
+            FunctionName: lambdaFunctionName,
+            Payload: JSON.stringify(payloadInfo)
+        };
+
+        lambda.invoke(params, (err, data) => {
+            if (err) {
+                throw new Error(err.message);
+            } else {
+                var dataResponse = JSON.parse(data.Payload);
+
+                if (dataResponse.status != 200) {
+                    throw new Error('Could not get usage report and health status');
+                } else {
+                    return dataResponse;
+                }
+            }
+        });
+    } catch (error) {
+        throw new Error(`Error getting RDS instance usage and health status: ${error.message}`);
+    }
+}
+
 exports.startRDSInstance = async (currDbId, userCredentials, userRegion) => {
     const rds = new AWS.RDS({
         credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),

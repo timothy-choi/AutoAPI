@@ -5,7 +5,7 @@ exports.handler = async (event) => {
     if (event.source === "aws.rds") {
         if (event.dbInfo["status"] === "available") {
             await startMetricsPolling(event.dbInfo["ruleParams"], event.dbInfo["targetParams"], event.userInfo["secretName"], event.userInfo["userRegion"]);
-        } else if (dbInstanceStatus === "stopped") {
+        } else if (event.dbInfo["status"] === "stopped") {
             await stopMetricsPolling(event.metricsInfo["ruleName"], event.userInfo["secretName"], event.metricsInfo["targetIds"]);
         }
     } else if (event.action === "collectMetrics") {
