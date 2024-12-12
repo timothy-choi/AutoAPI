@@ -41,6 +41,60 @@ exports.getPostgreSQLServer = async (resourceGroupName, serverName, subscription
     }
 }
 
+exports.updatePostgreSQLServer = async (serverInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const postgresClient = new PostgreSQLManagementClient(credential, subscriptionId);
+
+        const updatedServer = await postgresClient.servers.beginUpdateAndWait(serverInfo.resourceGroupName, serverInfo.serverName, serverInfo.updateParams);
+
+        return updatedServer;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.createOrUpdateFirewallRule = async (firewallInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const postgresClient = new PostgreSQLManagementClient(credential, subscriptionId);
+
+        const firewallRule = await postgresClient.firewallRules.beginCreateOrUpdateAndWait(firewallInfo.resourceGroupName, firewallInfo.serverName, firewallInfo.ruleName, firewallInfo.parameters);
+
+        return firewallRule;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.removeFirewallRule = async (firewallInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const postgresClient = new PostgreSQLManagementClient(credential, subscriptionId);
+
+        await postgresClient.firewallRules.beginDeleteAndWait(firewallInfo.resourceGroupName, firewallInfo.serverName, firewallInfo.ruleName);
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.restoreBackup = async (restoreInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const postgresClient = new PostgreSQLManagementClient(credential, subscriptionId);
+
+        const response = await postgresClient.servers.beginRestoreAndWait(restoreInfo.resourceGroupName, restoreInfo.serverName, restoreInfo.parameters);
+
+        return response;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.createPostgreSQLDatabase = async (databaseInfo, subscriptionId) => {
     try {
         const credential = new DefaultAzureCredential();
