@@ -69,6 +69,74 @@ exports.RemoveItemFromTable = async (req, res) => {
     }
 }
 
+exports.GetItemFromTable = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var itemResponse = await DynamoDBHelper.GetTableEntry(userCredentials, req.body.tableName, req.body.keyValue);
+
+        return res.status(201).send({"itemResponse": itemResponse});
+    } catch (error) {
+        return res.status(500).send("Error getting item from DynamoDB table: " + error);
+    }
+}
+
+exports.QueryDynamoDBTable = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var queryResponse = await DynamoDBHelper.QueryTable(userCredentials, req.body.tableName, req.body.keyConditionExpression, req.body.expressionAttribute);
+
+        return res.status(201).send({"queryResponse": queryResponse});
+    } catch (error) {
+        return res.status(500).send("Error getting item from DynamoDB table: " + error);
+    }
+}
+
+exports.GetBatchQuery = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var batchQueryResponse = await DynamoDBHelper.BatchQueryTable(userCredentials, req.body.requestItems);
+
+        return res.status(201).send({"batchQueryResponse": batchQueryResponse});
+    } catch (error) {
+        return res.status(500).send("Error getting item from DynamoDB table: " + error);
+    }
+}
+
+exports.ScanTable = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var scanTableResponse = await DynamoDBHelper.ScanTable(userCredentials, req.body.tableName, req.body.filterExpression);
+
+        return res.status(201).send({"scanTableResponse": scanTableResponse});
+    } catch (error) {
+        return res.status(500).send("Error getting item from DynamoDB table: " + error);
+    }
+}
+
 exports.DeleteDynamoDBTable = async (req, res) => {
     try {
         var userCredentials = {};
