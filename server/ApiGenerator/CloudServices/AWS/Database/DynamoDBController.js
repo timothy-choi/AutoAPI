@@ -10,6 +10,10 @@ exports.CreateDynamoDBTable = async (req, res) => {
             userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
         }
 
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
         const tableResponse = await DynamoDBHelper.CreateDynamoDBTable(userCredentials, req.body.tableParams);
 
         return res.status(201).send({"tableResponse": tableResponse});
@@ -26,6 +30,10 @@ exports.GetTableStatus = async (req, res) => {
         } else {
             userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
         }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
 
         const tableStatus = await DynamoDBHelper.GetTableStatus(userCredentials, req.body.tableName);
 
@@ -44,6 +52,10 @@ exports.AddItemToTable = async (req, res) => {
             userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
         }
 
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
         await DynamoDBHelper.PutTableEntry(userCredentials, req.body.tableName, req.body.entryInfo);
 
         return res.status(201).send(null);
@@ -60,6 +72,10 @@ exports.RemoveItemFromTable = async (req, res) => {
         } else {
             userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
         }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
 
         await DynamoDBHelper.DeleteTableEntry(userCredentials, req.body.tableName, req.body.keyValue);
 
@@ -78,6 +94,10 @@ exports.GetItemFromTable = async (req, res) => {
             userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
         }
 
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
         var itemResponse = await DynamoDBHelper.GetTableEntry(userCredentials, req.body.tableName, req.body.keyValue);
 
         return res.status(201).send({"itemResponse": itemResponse});
@@ -94,6 +114,10 @@ exports.QueryDynamoDBTable = async (req, res) => {
         } else {
             userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
         }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
 
         var queryResponse = await DynamoDBHelper.QueryTable(userCredentials, req.body.tableName, req.body.keyConditionExpression, req.body.expressionAttribute);
 
@@ -112,6 +136,10 @@ exports.GetBatchQuery = async (req, res) => {
             userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
         }
 
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
         var batchQueryResponse = await DynamoDBHelper.BatchQueryTable(userCredentials, req.body.requestItems);
 
         return res.status(201).send({"batchQueryResponse": batchQueryResponse});
@@ -128,6 +156,10 @@ exports.ScanTable = async (req, res) => {
         } else {
             userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
         }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
 
         var scanTableResponse = await DynamoDBHelper.ScanTable(userCredentials, req.body.tableName, req.body.filterExpression);
 
@@ -146,6 +178,10 @@ exports.UpdateItemInTable = async (req, res) => {
             userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
         }
 
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
         await DynamoDBHelper.UpdateItem(userCredentials, req.body.tableName, req.body.key, req.body.updateExpression, req.body.expressionAttributeValues, req.body.returnValues);
 
         return res.status(200).send(null);
@@ -163,6 +199,10 @@ exports.BatchWriteItems = async (req, res) => {
             userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
         }
 
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
         await DynamoDBHelper.BatchWriteItems(userCredentials, req.body.requests);
 
         return res.status(200).send(null);
@@ -179,6 +219,10 @@ exports.DeleteDynamoDBTable = async (req, res) => {
         } else {
             userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
         }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
 
         await DynamoDBHelper.DeleteDynamoDBTable(userCredentials, req.body.tableName);
 
