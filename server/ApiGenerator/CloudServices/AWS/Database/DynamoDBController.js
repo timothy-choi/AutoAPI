@@ -137,6 +137,40 @@ exports.ScanTable = async (req, res) => {
     }
 }
 
+exports.UpdateItemInTable = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        await DynamoDBHelper.UpdateItem(userCredentials, req.body.tableName, req.body.key, req.body.updateExpression, req.body.expressionAttributeValues, req.body.returnValues);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send("Error getting item from DynamoDB table: " + error);
+    }
+}
+
+exports.BatchWriteItems = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        await DynamoDBHelper.BatchWriteItems(userCredentials, req.body.requests);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send("Error getting item from DynamoDB table: " + error);
+    }
+}
+
 exports.DeleteDynamoDBTable = async (req, res) => {
     try {
         var userCredentials = {};
