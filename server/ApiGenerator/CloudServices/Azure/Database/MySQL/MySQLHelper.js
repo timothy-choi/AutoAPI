@@ -41,6 +41,60 @@ exports.getMySQLServer = async (resourceGroupName, serverName, subscriptionId) =
     }
 }
 
+exports.updateMySQLServer = async (serverInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const mySqlClient = new MySQLManagementClient(credential, subscriptionId);
+
+        const updatedServer = await mySqlClient.servers.beginUpdateAndWait(serverInfo.resourceGroupName, serverInfo.serverName, serverInfo.updateParams);
+
+        return updatedServer;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.createOrUpdateFirewallRule = async (firewallInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const mySqlClient = new MySQLManagementClient(credential, subscriptionId);
+
+        const firewallRule = await mySqlClient.firewallRules.beginCreateOrUpdateAndWait(firewallInfo.resourceGroupName, firewallInfo.serverName, firewallInfo.ruleName, firewallInfo.parameters);
+
+        return firewallRule;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.removeFirewallRule = async (firewallInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const mySqlClient = new MySQLManagementClient(credential, subscriptionId);
+
+        await mySqlClient.firewallRules.beginDeleteAndWait(firewallInfo.resourceGroupName, firewallInfo.serverName, firewallInfo.ruleName);
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.restoreBackup = async (restoreInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const mySqlClient = new MySQLManagementClient(credential, subscriptionId);
+
+        const response = await mySqlClient.servers.beginRestoreAndWait(restoreInfo.resourceGroupName, restoreInfo.serverName, restoreInfo.parameters);
+
+        return response;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.createMySQLDatabase = async (databaseInfo, subscriptionId) => {
     try {
         const credential = new DefaultAzureCredential();
