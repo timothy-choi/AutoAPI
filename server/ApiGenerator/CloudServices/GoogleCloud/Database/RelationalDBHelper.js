@@ -135,6 +135,38 @@ exports.restoreGCloudBackup = async (authClient, projectId, instanceId, backupId
     }
 }
 
+exports.updateGCloudDBInstanceSettings = async (authClient, projectId, instanceId, settings) => {
+    try {
+        const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
+
+        var response = await sqlAdmin.instances.patch({
+            project: projectId,
+            instance: instanceId,
+            requestBody: { settings },
+        });
+
+        return response.data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.FailoverGCloudDBInstance = async (authClient, projectId, instanceId) => {
+    try {
+        const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
+
+        const response = await sqlAdmin.instances.failover({
+            project: projectId,
+            instance: instanceId,
+            requestBody: { failoverContext: {} },
+        });
+
+        return response.data;
+    } catch (error) {
+        throw new Error('Failed to trigger failover.', error);
+    }
+};
+
 exports.deleteGCloudDBInstance = async (authClient, projectId, instanceId) => {
     try {
         const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
