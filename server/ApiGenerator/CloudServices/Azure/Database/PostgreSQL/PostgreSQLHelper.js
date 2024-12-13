@@ -154,7 +154,23 @@ exports.createPostgreSQLDatabase = async (databaseInfo, subscriptionId) => {
         
         const postgreSqlClient = new PostgreSQLManagementClient(credential, subscriptionId);
 
-        await postgreSqlClient.databases.beginCreateOrUpdateAndWait(databaseInfo.resourceGroupName, databaseInfo.serverName, databaseInfo.databaseName, databaseInfo.requestInfo).promise();
+        var databaseResponse = await postgreSqlClient.databases.beginCreateOrUpdateAndWait(databaseInfo.resourceGroupName, databaseInfo.serverName, databaseInfo.databaseName, databaseInfo.requestInfo).promise();
+
+        return databaseResponse;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.getPostgreSQLDatabase = async (databaseInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const postgresClient = new PostgreSQLManagementClient(credential, subscriptionId);
+
+        const databaseDetails = await postgresClient.databases.get(databaseInfo.resourceGroupName, databaseInfo.serverName, databaseInfo.databaseName);
+
+        return databaseDetails;
     } catch (error) {
         throw new Error(error.message);
     }
