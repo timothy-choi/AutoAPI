@@ -7,7 +7,7 @@ exports.createPostgreSQLServer = async (PostgreSQLInfo, subscriptionId) => {
         
         const postgreClient = new PostgreSQLManagementClient(credential, subscriptionId);
 
-        var postgreServerResponse = await postgreClient.servers.beginCreateAndWait(PostgreSQLInfo.resourceGroupName, PostgreSQLInfo.serverName, PostgreSQLInfo.requestInfo);
+        var postgreServerResponse = await postgreClient.flexibleServers.beginCreateAndWait(PostgreSQLInfo.resourceGroupName, PostgreSQLInfo.serverName, PostgreSQLInfo.requestInfo);
 
         return postgreServerResponse;
     } catch (error) {
@@ -21,7 +21,7 @@ exports.deletePostgreSQLServer = async (resourceGroupName, serverName, subscript
         
         const postgreClient = new PostgreSQLManagementClient(credential, subscriptionId);
 
-        await postgreClient.servers.beginDeleteAndWait(resourceGroupName, serverName);
+        await postgreClient.flexibleServers.beginDeleteAndWait(resourceGroupName, serverName);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -33,7 +33,7 @@ exports.getPostgreSQLServer = async (resourceGroupName, serverName, subscription
         
         const postgreSqlClient = new PostgreSQLManagementClient(credential, subscriptionId);
 
-        const serverDetails = await postgreSqlClient.servers.get(resourceGroupName, serverName);
+        const serverDetails = await postgreSqlClient.flexibleServers.get(resourceGroupName, serverName);
 
         return serverDetails;
     } catch (error) {
@@ -47,9 +47,37 @@ exports.updatePostgreSQLServer = async (serverInfo, subscriptionId) => {
         
         const postgresClient = new PostgreSQLManagementClient(credential, subscriptionId);
 
-        const updatedServer = await postgresClient.servers.beginUpdateAndWait(serverInfo.resourceGroupName, serverInfo.serverName, serverInfo.updateParams);
+        const updatedServer = await postgresClient.flexibleServers.beginUpdateAndWait(serverInfo.resourceGroupName, serverInfo.serverName, serverInfo.updateParams);
 
         return updatedServer;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.startPostgresServer = async (serverInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const postgresClient = new PostgreSQLManagementClient(credential, subscriptionId);
+
+        const response = await postgresClient.flexibleServers.beginStartAndWait(serverInfo.resourceGroupName, serverInfo.serverName);
+
+        return response;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.stopSQLServer = async (serverInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const postgresClient = new PostgreSQLManagementClient(credential, subscriptionId);
+
+        const response = await postgresClient.flexibleServers.beginStopAndWait(serverInfo.resourceGroupName, serverInfo.serverName);
+
+        return response;
     } catch (error) {
         throw new Error(error.message);
     }
@@ -87,7 +115,7 @@ exports.restoreBackup = async (restoreInfo, subscriptionId) => {
         
         const postgresClient = new PostgreSQLManagementClient(credential, subscriptionId);
 
-        const response = await postgresClient.servers.beginRestoreAndWait(restoreInfo.resourceGroupName, restoreInfo.serverName, restoreInfo.parameters);
+        const response = await postgresClient.flexibleServers.beginRestoreAndWait(restoreInfo.resourceGroupName, restoreInfo.serverName, restoreInfo.parameters);
 
         return response;
     } catch (error) {

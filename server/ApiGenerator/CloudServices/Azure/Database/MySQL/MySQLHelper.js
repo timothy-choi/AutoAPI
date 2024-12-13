@@ -7,7 +7,7 @@ exports.createMySQLServer = async (SqlServerInfo, subscriptionId) => {
         
         const mySqlClient = new MySQLManagementClient(credential, subscriptionId);
 
-        var mySqlServerResponse = await mySqlClient.servers.beginCreateAndWait(SqlServerInfo.resourceGroupName, SqlServerInfo.serverName, SqlServerInfo.requestInfo);
+        var mySqlServerResponse = await mySqlClient.flexibleServers.beginCreateAndWait(SqlServerInfo.resourceGroupName, SqlServerInfo.serverName, SqlServerInfo.requestInfo);
 
         return mySqlServerResponse;
     } catch (error) {
@@ -21,7 +21,7 @@ exports.deleteMySQLServer = async (resourceGroupName, serverName, subscriptionId
         
         const mySqlClient = new MySQLManagementClient(credential, subscriptionId);
 
-        await mySqlClient.servers.beginDeleteAndWait(resourceGroupName, serverName);
+        await mySqlClient.flexibleServers.beginDeleteAndWait(resourceGroupName, serverName);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -33,7 +33,7 @@ exports.getMySQLServer = async (resourceGroupName, serverName, subscriptionId) =
         
         const mySqlClient = new MySQLManagementClient(credential, subscriptionId);
 
-        const serverDetails = await mySqlClient.servers.get(resourceGroupName, serverName);
+        const serverDetails = await mySqlClient.flexibleServers.get(resourceGroupName, serverName);
 
         return serverDetails;
     } catch (error) {
@@ -47,9 +47,37 @@ exports.updateMySQLServer = async (serverInfo, subscriptionId) => {
         
         const mySqlClient = new MySQLManagementClient(credential, subscriptionId);
 
-        const updatedServer = await mySqlClient.servers.beginUpdateAndWait(serverInfo.resourceGroupName, serverInfo.serverName, serverInfo.updateParams);
+        const updatedServer = await mySqlClient.flexibleServers.beginUpdateAndWait(serverInfo.resourceGroupName, serverInfo.serverName, serverInfo.updateParams);
 
         return updatedServer;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.startMySQLServer = async (serverInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const mySqlClient = new MySQLManagementClient(credential, subscriptionId);
+
+        const response = await mySqlClient.flexibleServers.beginStartAndWait(serverInfo.resourceGroupName, serverInfo.serverName);
+
+        return response;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.stopMySQLServer = async (serverInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const mySqlClient = new MySQLManagementClient(credential, subscriptionId);
+
+        const response = await mySqlClient.flexibleServers.beginStopAndWait(serverInfo.resourceGroupName, serverInfo.serverName);
+
+        return response;
     } catch (error) {
         throw new Error(error.message);
     }
@@ -87,7 +115,7 @@ exports.restoreBackup = async (restoreInfo, subscriptionId) => {
         
         const mySqlClient = new MySQLManagementClient(credential, subscriptionId);
 
-        const response = await mySqlClient.servers.beginRestoreAndWait(restoreInfo.resourceGroupName, restoreInfo.serverName, restoreInfo.parameters);
+        const response = await mySqlClient.flexibleServers.beginRestoreAndWait(restoreInfo.resourceGroupName, restoreInfo.serverName, restoreInfo.parameters);
 
         return response;
     } catch (error) {
