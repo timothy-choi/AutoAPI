@@ -211,6 +211,111 @@ exports.BatchWriteItems = async (req, res) => {
     }
 }
 
+exports.CreateGSI = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
+        var gsiResponse = await DynamoDBHelper.CreateGSI(userCredentials, req.body.tableName, req.body.indexParams);
+
+        return res.status(200).send({"gsiResponse": gsiResponse});
+    } catch (error) {
+        return res.status(500).send("Error getting item from DynamoDB table: " + error);
+    }
+}
+
+exports.UpdatedProvisionedThroughPut = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
+        var provisionedThroughputResponse = await DynamoDBHelper.UpdateProvisionedThroughPut(userCredentials, req.body.tableName, req.body.readCapacity, req.body.writeCapacity);
+
+        return res.status(200).send({"provisionedThroughputResponse": provisionedThroughputResponse});
+    } catch (error) {
+        return res.status(500).send("Error getting item from DynamoDB table: " + error);
+    }
+}
+
+exports.EnableStreams = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
+        var streamsResponse = await DynamoDBHelper.EnableStreams(userCredentials, req.body.tableName, req.body.streamViewType);
+
+        return res.status(200).send({"streamsResponse": streamsResponse});
+    } catch (error) {
+        return res.status(500).send("Error getting item from DynamoDB table: " + error);
+    }
+}
+
+exports.UpdateTTL = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
+        var ttlResponse = await DynamoDBHelper.UpdateTTL(userCredentials, req.body.tableName, req.body.ttlAttribute);
+
+        return res.status(200).send({"ttlResponse": ttlResponse});
+    } catch (error) {
+        return res.status(500).send("Error getting item from DynamoDB table: " + error);
+    }
+}
+
+exports.ModifyTagTable = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
+        var tagTableResponse = await DynamoDBHelper.ModifyTagTable(userCredentials, req.body.resourceArn, req.body.tags);
+
+        return res.status(200).send({"tagTableResponse": tagTableResponse});
+    } catch (error) {
+        return res.status(500).send("Error getting item from DynamoDB table: " + error);
+    }
+}
+
 exports.DeleteDynamoDBTable = async (req, res) => {
     try {
         var userCredentials = {};
