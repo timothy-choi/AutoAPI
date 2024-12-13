@@ -35,7 +35,7 @@ exports.createVPC = async (cidrBlock, vpcName, userCredentials, userRegion) => {
     return vpcId;
 }
 
-exports.createSubnet = async (vpcId, cidrBlock, availabilityZone = null, userCredentials, userRegion) => {
+exports.createSubnet = async (vpcId, cidrBlock, availabilityZone = null, userCredentials, userRegion, mapPublicIpOnLaunch, tags) => {
     const ec2 = new AWS.EC2({
         credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
         region: userRegion
@@ -52,7 +52,42 @@ exports.createSubnet = async (vpcId, cidrBlock, availabilityZone = null, userCre
 
     const result = await ec2.createSubnet(params).promise();
 
+    if (mapPublicIpOnLaunch) {
+        await ec2.modifySubnetAttribute({SubnetId: result.Subnet.SubnetId, MapPublicIpOnLaunch: { Value: true },}).promise();
+    }
+
+    if (tags > 0) {
+        await ec2.createTags({Resources: [subnetId], Tags: tags}).promise();
+    }
+
     return result.Subnet;
+}
+
+exports.modifySubnet = async (subnetId, attributes, userCredentials, userRegion) => {
+    const ec2 = new AWS.EC2({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    for (const [key, value] of Object.entries(attributes)) {
+        const params = {
+            SubnetId: subnetId,
+            [key]: { Value: value }, 
+        };
+
+        await ec2.modifySubnetAttribute(params).promise();
+    }
+}
+
+exports.associateRouteTable = async (subnetId, routeTableId, userCredentials, userRegion) => {
+    const ec2 = new AWS.EC2({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    const result = await ec2.associateRouteTable({SubnetId: subnetId, RouteTableId: routeTableId}).promise();
+
+    return result;
 }
 
 exports.createSecurityGroup = async (vpcId, groupName, groupDesc, inboundRules, userCredentials, userRegion) => {
