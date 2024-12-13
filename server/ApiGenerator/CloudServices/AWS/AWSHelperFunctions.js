@@ -35,6 +35,26 @@ exports.createVPC = async (cidrBlock, vpcName, userCredentials, userRegion) => {
     return vpcId;
 }
 
+exports.createSubnet = async (vpcId, cidrBlock, availabilityZone = null, userCredentials, userRegion) => {
+    const ec2 = new AWS.EC2({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    const params = {
+        VpcId: vpcId, 
+        CidrBlock: cidrBlock,
+    };
+
+    if (availabilityZone) {
+        params.AvailabilityZone = availabilityZone;
+    }
+
+    const result = await ec2.createSubnet(params).promise();
+
+    return result.Subnet;
+}
+
 exports.createSecurityGroup = async (vpcId, groupName, groupDesc, inboundRules, userCredentials, userRegion) => {
     const ec2 = new AWS.EC2({
         credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
@@ -58,6 +78,57 @@ exports.createSecurityGroup = async (vpcId, groupName, groupDesc, inboundRules, 
     }
 
     return securityGroupId;
+}
+
+exports.updateSecurityGroups = async (userCredentials, userRegion, securityGroupIds) => {
+    const ec2 = new AWS.EC2({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    const params = {
+        GroupIds: securityGroupIds,
+    };
+
+    await ec2.modifySecurityGroupRules(params).promise();
+}
+
+exports.createNetworkACL = async (vpcId, userCredentials, userRegion) => {
+    const ec2 = new AWS.EC2({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    const params = { VpcId: vpcId };
+
+    const result = await ec2.createNetworkAcl(params).promise();
+
+    return result.NetworkAcl;
+}
+
+exports.addNetworkACLEntry = async (networkACLEntry, userCredentials, userRegion) => {
+    const ec2 = new AWS.EC2({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    await ec2.createNetworkAclEntry(networkACLEntry).promise();
+}
+
+exports.associateNetworkACL = async (subnetId, aclId, userCredentials, userRegion) => {
+    const ec2 = new AWS.EC2({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    const params = {
+        SubnetId: subnetId,
+        NetworkAclId: aclId,
+    };
+
+    const result = await ec2.associateNetworkAcl(params).promise();
+
+    return result.AssociationId;
 }
 
 exports.getRegionFromIP = async (ip_addr) => {
