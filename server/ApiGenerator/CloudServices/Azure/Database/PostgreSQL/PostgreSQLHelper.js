@@ -107,6 +107,20 @@ exports.createPostgreSQLDatabase = async (databaseInfo, subscriptionId) => {
     }
 }
 
+exports.updatePostgresDatabase = async (databaseInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const postgresClient = new PostgreSQLManagementClient(credential, subscriptionId);
+
+        var result = await postgresClient.databases.beginCreateOrUpdateAndWait(databaseInfo.resourceGroupName, databaseInfo.serverName, databaseInfo.databaseName, databaseInfo.updatedParameters).promise();
+
+        return result;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.deletePostgreSQLDatabase = async (databaseInfo, subscriptionId) => {
     try {
         const credential = new DefaultAzureCredential();

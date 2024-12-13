@@ -108,6 +108,20 @@ exports.createSQLDatabase = async (databaseInfo, subscriptionId) => {
     }
 }
 
+exports.updateSQLDatabase = async (databaseInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const sqlClient = new SqlManagementClient(credential, subscriptionId);
+
+        var result = await sqlClient.databases.beginCreateOrUpdateAndWait(databaseInfo.resourceGroupName, databaseInfo.serverName, databaseInfo.databaseName, databaseInfo.updatedParameters).promise();
+
+        return result;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.deleteSQLDatabase = async (databaseInfo, subscriptionId) => {
     try {
         const credential = new DefaultAzureCredential();

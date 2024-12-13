@@ -107,6 +107,20 @@ exports.createMySQLDatabase = async (databaseInfo, subscriptionId) => {
     }
 }
 
+exports.updateMySQLDatabase = async (databaseInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const mySqlClient = new MySQLManagementClient(credential, subscriptionId);
+
+        var result = await mySqlClient.databases.beginCreateOrUpdateAndWait(databaseInfo.resourceGroupName, databaseInfo.serverName, databaseInfo.databaseName, databaseInfo.updatedParameters).promise();
+
+        return result;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.deleteMySQLDatabase = async (databaseInfo, subscriptionId) => {
     try {
         const credential = new DefaultAzureCredential();
