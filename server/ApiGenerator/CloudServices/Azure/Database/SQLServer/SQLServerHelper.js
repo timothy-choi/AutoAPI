@@ -8,7 +8,7 @@ exports.createSQLServer = async (SqlServerInfo, subscriptionId) => {
         
         const sqlClient = new SqlManagementClient(credential, subscriptionId);
 
-        var sqlServerResponse = await sqlClient.flexibleServers.beginCreateOrUpdateAndWait(SqlServerInfo.resourceGroupName, SqlServerInfo.serverName, SqlServerInfo.requestInfo);
+        var sqlServerResponse = await sqlClient.servers.beginCreateOrUpdateAndWait(SqlServerInfo.resourceGroupName, SqlServerInfo.serverName, SqlServerInfo.requestInfo);
 
         return sqlServerResponse;
     } catch (error) {
@@ -22,7 +22,7 @@ exports.deleteSQLServer = async (resourceGroupName, serverName, subscriptionId) 
         
         const sqlClient = new SqlManagementClient(credential, subscriptionId);
 
-        await sqlClient.flexibleServers.beginDeleteAndWait(resourceGroupName, serverName);
+        await sqlClient.servers.beginDeleteAndWait(resourceGroupName, serverName);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -34,7 +34,7 @@ exports.getSQLServer = async (resourceGroupName, serverName, subscriptionId) => 
         
         const sqlClient = new SqlManagementClient(credential, subscriptionId);
 
-        var sqlServerResponse = await sqlClient.flexibleServers.get(resourceGroupName, serverName);
+        var sqlServerResponse = await sqlClient.servers.get(resourceGroupName, serverName);
 
         return sqlServerResponse;
     } catch (error) {
@@ -48,7 +48,7 @@ exports.updateSQLServer = async (serverInfo, subscriptionId) => {
         
         const sqlClient = new SqlManagementClient(credential, subscriptionId);
 
-        const updatedServer = await sqlClient.flexibleServers.beginUpdateAndWait(serverInfo.resourceGroupName, serverInfo.serverName, serverInfo.updateParams);
+        const updatedServer = await sqlClient.servers.beginUpdateAndWait(serverInfo.resourceGroupName, serverInfo.serverName, serverInfo.updateParams);
 
         return updatedServer;
     } catch (error) {
@@ -62,7 +62,7 @@ exports.startSQLServer = async (serverInfo, subscriptionId) => {
         
         const sqlClient = new SqlManagementClient(credential, subscriptionId);
 
-        const response = await sqlClient.flexibleServers.beginStartAndWait(serverInfo.resourceGroupName, serverInfo.serverName);
+        const response = await sqlClient.servers.beginStartAndWait(serverInfo.resourceGroupName, serverInfo.serverName);
 
         return response;
     } catch (error) {
@@ -76,13 +76,30 @@ exports.stopSQLServer = async (serverInfo, subscriptionId) => {
         
         const sqlClient = new SqlManagementClient(credential, subscriptionId);
 
-        const response = await sqlClient.flexibleServers.beginStopAndWait(serverInfo.resourceGroupName, serverInfo.serverName);
+        const response = await sqlClient.servers.beginStopAndWait(serverInfo.resourceGroupName, serverInfo.serverName);
 
         return response;
     } catch (error) {
         throw new Error(error.message);
     }
 }
+
+exports.failoverAutoFailoverGroup = async (serverInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const sqlClient = new SqlManagementClient(credential, subscriptionId);
+
+        var response = await sqlClient.failoverGroups.beginFailoverAndWait(
+            serverInfo.resourceGroupName,
+            serverInfo.serverName,
+            serverInfo.failoverGroupName
+        );
+
+        return response;
+    } catch (error) {
+        throw new Error(`Error triggering failover: ${error.message}`);
+    }
+};
  
 exports.createOrUpdateFirewallRule = async (firewallInfo, subscriptionId) => {
     try {
@@ -116,7 +133,7 @@ exports.restoreBackup = async (restoreInfo, subscriptionId) => {
         
         const sqlClient = new SqlManagementClient(credential, subscriptionId);
 
-        const response = await sqlClient.flexibleServers.beginRestoreAndWait(restoreInfo.resourceGroupName, restoreInfo.serverName, restoreInfo.parameters);
+        const response = await sqlClient.servers.beginRestoreAndWait(restoreInfo.resourceGroupName, restoreInfo.serverName, restoreInfo.parameters);
 
         return response;
     } catch (error) {
