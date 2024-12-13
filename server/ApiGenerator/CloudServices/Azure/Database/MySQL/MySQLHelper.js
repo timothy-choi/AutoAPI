@@ -83,6 +83,20 @@ exports.stopMySQLServer = async (serverInfo, subscriptionId) => {
     }
 }
 
+exports.rebootMySQLServer = async (serverInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const mySqlClient = new MySQLManagementClient(credential, subscriptionId);
+
+        const response = await mySqlClient.flexibleServers.beginRestartAndWait(serverInfo.resourceGroupName, serverInfo.serverName);
+
+        return response;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.createOrUpdateFirewallRule = async (firewallInfo, subscriptionId) => {
     try {
         const credential = new DefaultAzureCredential();

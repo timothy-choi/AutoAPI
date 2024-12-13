@@ -83,6 +83,20 @@ exports.stopSQLServer = async (serverInfo, subscriptionId) => {
     }
 }
 
+exports.rebootPostgresServer = async (serverInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const postgresClient = new PostgreSQLManagementClient(credential, subscriptionId);
+
+        const response = await postgresClient.flexibleServers.beginRestartAndWait(serverInfo.resourceGroupName, serverInfo.serverName);
+
+        return response;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.createOrUpdateFirewallRule = async (firewallInfo, subscriptionId) => {
     try {
         const credential = new DefaultAzureCredential();
