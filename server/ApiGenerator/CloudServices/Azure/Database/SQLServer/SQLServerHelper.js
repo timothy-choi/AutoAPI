@@ -84,6 +84,24 @@ exports.stopSQLServer = async (serverInfo, subscriptionId) => {
     }
 }
 
+exports.createFailoverGroup = async (failoverInfo, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const sqlClient = new SqlManagementClient(credential, subscriptionId);
+
+        const result = await sqlClient.failoverGroups.beginCreateOrUpdateAndWait(
+            failoverInfo.resourceGroupName,
+            failoverInfo.primaryServerName,
+            failoverInfo.failoverGroupName,
+            failoverInfo.failoverGroupParameters
+        );
+
+        return result;
+    } catch (error) {
+        throw new Error(`Error creating failover group: ${error.message}`);
+    }
+}
+
 exports.failoverAutoFailoverGroup = async (serverInfo, subscriptionId) => {
     try {
         const credential = new DefaultAzureCredential();
