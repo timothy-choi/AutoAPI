@@ -137,6 +137,17 @@ exports.restoreBackup = async (restoreInfo, subscriptionId) => {
     }
 }
 
+exports.failoverFlexibleServer = async (resourceGroupName, serverName, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const mysqlClient = new MySQLManagementClient(credential, subscriptionId);
+
+        await mysqlClient.flexibleServers.beginFailoverAndWait(resourceGroupName, serverName);
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
 exports.createMySQLDatabase = async (databaseInfo, subscriptionId) => {
     try {
         const credential = new DefaultAzureCredential();

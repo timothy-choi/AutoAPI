@@ -137,6 +137,17 @@ exports.restoreBackup = async (restoreInfo, subscriptionId) => {
     }
 }
 
+exports.failoverFlexibleServer = async (resourceGroupName, serverName, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const postgresClient = new PostgreSQLManagementClient(credential, subscriptionId);
+
+        await postgresClient.flexibleServers.beginFailoverAndWait(resourceGroupName, serverName);
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
 exports.createPostgreSQLDatabase = async (databaseInfo, subscriptionId) => {
     try {
         const credential = new DefaultAzureCredential();
