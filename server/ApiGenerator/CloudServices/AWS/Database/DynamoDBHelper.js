@@ -432,6 +432,56 @@ exports.ModifyTagTable = async (userCredentials, resourceArn, tags) => {
     }
 }
 
+exports.CreateBackup = async (userCredentials, tableName, backupName) => {
+    try {
+        const dynamodb = new AWS.DynamoDB({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+
+        const operation = async () => {        
+        
+            const params = { TableName: tableName, BackupName: backupName };
+
+            const data = await dynamodb.createBackup(params).promise();
+
+            return data;
+        };
+
+        return executeWithRetry(operation, 3, 20, 3);
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.RestoreBackup = async (userCredentials, backupArn, restoredTableName) => {
+    try {
+        const dynamodb = new AWS.DynamoDB({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+
+        const operation = async () => {
+            const params = {
+                BackupArn: backupArn,
+                TargetTableName: restoredTableName
+            };
+
+            const data = await dynamodb.restoreTableFromBackup(params).promise();
+
+            return data;
+        };
+
+        return executeWithRetry(operation, 3, 20, 3); 
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.DeleteDynamoDBTable = async (userCredentials, tableName) => {
     try {
         const dynamodb = new AWS.DynamoDB({

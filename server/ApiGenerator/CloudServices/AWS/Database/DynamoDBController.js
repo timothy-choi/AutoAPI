@@ -316,6 +316,48 @@ exports.ModifyTagTable = async (req, res) => {
     }
 }
 
+exports.CreateBackup = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
+        var backupResponse = await DynamoDBHelper.CreateBackup(userCredentials, req.body.tableName, req.body.backupName);
+
+        return res.status(201).send({"backupResponse": backupResponse});
+    } catch (error) {
+        return res.status(500).send("Error getting item from DynamoDB table: " + error);
+    }
+}
+
+exports.RestoreBackup = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
+        var backupRestoreResponse = await DynamoDBHelper.RestoreBackup(userCredentials, req.body.backupArn, req.body.restoredTableName);
+
+        return res.status(201).send({"backupRestoreResponse": backupRestoreResponse});
+    } catch (error) {
+        return res.status(500).send("Error getting item from DynamoDB table: " + error);
+    }
+}
+
 exports.DeleteDynamoDBTable = async (req, res) => {
     try {
         var userCredentials = {};
