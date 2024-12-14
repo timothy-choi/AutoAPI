@@ -35,3 +35,57 @@ exports.DeleteDatabaseServer = async (req, res) => {
         return res.status(500).send(error.message);
     }
 }
+
+exports.UpdateDatabaseServer = async (req, res) => {
+    try {
+        var updateResponse = null;
+
+        if (req.database === 'MySQL') {
+            updateResponse = await MySQLHelper.updateMySQLServer(req.body.serverInfo, req.body.subscriptionId);
+        } else if (req.database === 'SQLServer') {
+            updateResponse = await SQLServerHelper.updateSQLServer(req.body.serverInfo, req.body.subscriptionId);
+        } else {
+            updateResponse = await PostgreSQLHelper.updatePostgreSQLServer(req.body.serverInfo, req.body.subscriptionId);
+        }
+
+        return res.status(200).send({"updateResponse": updateResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.StartDatabaseServer = async (req, res) => {
+    try {
+        var startResponse = null;
+
+        if (req.database === 'MySQL') {
+            startResponse = await MySQLHelper.startMySQLServer(req.body.serverInfo, req.body.subscriptionId);
+        } else if (req.database === 'SQLServer') {
+            startResponse = await SQLServerHelper.startSQLServer(req.body.serverInfo, req.body.subscriptionId);
+        } else {
+            startResponse = await PostgreSQLHelper.startPostgresServer(req.body.serverInfo, req.body.subscriptionId);
+        }
+
+        return res.status(200).send({"startResponse": startResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.StopDatabaseServer = async (req, res) => {
+    try {
+        var stopResponse = null;
+
+        if (req.database === 'MySQL') {
+            stopResponse = await MySQLHelper.stopMySQLServer(req.body.serverInfo, req.body.subscriptionId);
+        } else if (req.database === 'SQLServer') {
+            stopResponse = await SQLServerHelper.stopSQLServer(req.body.serverInfo, req.body.subscriptionId);
+        } else {
+            stopResponse = await PostgreSQLHelper.startPostgresServer(req.body.serverInfo, req.body.subscriptionId);
+        }
+
+        return res.status(200).send({"startResponse": startResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
