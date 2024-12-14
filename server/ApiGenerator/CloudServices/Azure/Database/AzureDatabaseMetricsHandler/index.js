@@ -13,7 +13,7 @@ const getDBInstanceMetrics = async (resourceId, subscriptionId, metricName, stat
         const metricsResponse = await monitorClient.metrics.list(resourceId, {
             timespan: `${startTime}/${endTime}`,
             interval: `PT3M`,  
-            metricnames: metricNames[i],
+            metricnames: metricName,
             aggregation: statistics,
         });
 
@@ -54,9 +54,41 @@ const organizeMetricsData = (metricsData) => {
 }
 
 module.exports = async function (context, req) {
+    var allMetricsResults = [];
+
+    if (req.body.stop) {
+        context.res = {
+            status: 200,
+            body: {
+                message: "Metrics Handler to shut down"
+            },
+            headers: {
+                "Content-Type": "application/json"
+            }
+        };
+
+        return;
+    }
+
     try {
+        for (let i = 0; i < req.body.metricNames; ++i) {
+            var metricsResponse = await getDBInstanceMetrics(req.body.resourceId, req.body.subscriptionId, req.body.metricNames[i], req.body.statistics);
 
+            var metricsData = organizeMetricsData(metricsResponse);
+
+            allMetricsResults.push(metricsData);
+        }
+
+        context.res = {
+            status: 200,
+            body: {
+                metricsResults: allMetricsResults
+            },
+            headers: {
+                "Content-Type": "application/json"
+            }
+        };
     } catch (error) {
-
+        throw new Error(error.message);
     }
 }
