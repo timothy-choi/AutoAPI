@@ -90,6 +90,36 @@ exports.StopDatabaseServer = async (req, res) => {
     }
 }
 
+exports.RebootDatabaseServer = async (req, res) => {
+    try {
+        var rebootResponse = null;
+
+        if (req.database === 'MySQL') {
+            rebootResponse = await MySQLHelper.rebootMySQLServer(req.body.serverInfo, req.body.subscriptionId);
+        } else if (req.database === 'Postgres') {
+            rebootResponse = await PostgreSQLHelper.rebootPostgresServer(req.body.serverInfo, req.body.subscriptionId);
+        }
+
+        return res.status(201).send({"startResponse": startResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.StartDatabaseFailover = async (req, res) => {
+    try {
+        if (req.database === 'MySQL') {
+            await MySQLHelper.failoverFlexibleServer(req.body.resourceGroupName, req.body.serverName, req.body.subscriptionId);
+        } else if (req.database === 'Postgres') {
+            await PostgreSQLHelper.failoverFlexibleServer(req.body.resourceGroupName, req.body.serverName, req.body.subscriptionId);
+        }
+
+        return res.status(201).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
 exports.CreateDatabase = async (req, res) => {
     try {
         var databaseResponse = null;
