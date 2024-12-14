@@ -35,6 +35,41 @@ exports.GetRDSInstanceStatus = async (req, res) => {
     }
 }
 
+exports.StartOrStopRDSInstanceMetricsFunction = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        await RDSHelper.StartOrStopRDSInstanceUsageMetricsFunction(req.body.lambdaFunctionName, req.body.payloadInfo, userCredentials, req.body.userRegion);
+
+        return res.status(201).send(null);
+    } catch (error) {
+        return res.status(500).send("Error starting or stopping RDS instance metrics function: " + error);
+    }
+}
+
+exports.GetRDSInstanceUsageAndHealthStatus = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var metricsResponse = await RDSHelper.GetRDSInstanceUsageAndHealthStatus(req.body.lambdaFunctionName, req.body.payloadInfo, userCredentials, req.body.userRegion);
+
+        return res.status(200).send({"metricsResponse": metricsResponse});
+    } catch (error) {
+        return res.status(500).send("Error getting metrics and health status data: " + error);
+    }
+}
+
+
 exports.createRDSInstance = async (req, res) => {
     try {
         let userCredentials = {};

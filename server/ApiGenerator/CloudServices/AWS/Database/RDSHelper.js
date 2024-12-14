@@ -127,6 +127,8 @@ exports.GetRDSInstanceUsageAndHealthStatus = async (lambdaFunctionName, payloadI
             Payload: JSON.stringify(payloadInfo)
         };
 
+        var dataPayloadResponse = null;
+
         lambda.invoke(params, (err, data) => {
             if (err) {
                 throw new Error(err.message);
@@ -136,10 +138,12 @@ exports.GetRDSInstanceUsageAndHealthStatus = async (lambdaFunctionName, payloadI
                 if (dataResponse.status != 200) {
                     throw new Error('Could not get usage report and health status');
                 } else {
-                    return dataResponse;
+                    dataPayloadResponse = dataResponse;
                 }
             }
         });
+
+        return dataPayloadResponse;
     } catch (error) {
         throw new Error(`Error getting RDS instance usage and health status: ${error.message}`);
     }
