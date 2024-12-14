@@ -34,7 +34,7 @@ exports.CreateDynamoDBTable = async (userCredentials, tableParams) => {
             return tableResponse;
         };
 
-        return executeWithRetry(operation, 3, 20, 2);
+        return await executeWithRetry(operation, 3, 20, 2);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -59,7 +59,7 @@ exports.DescribeTable = async (userCredentials, tableName) => {
             return tableResponse;
         };
 
-        return executeWithRetry(operation, 3, 20, 3);
+        return await executeWithRetry(operation, 3, 20, 3);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -84,7 +84,7 @@ exports.GetTableStatus = async (userCredentials, tableName) => {
             return tableResponse.TableDescription.TableStatus;
         };
 
-        return executeWithRetry(operation, 3, 20, 3);
+        return await executeWithRetry(operation, 3, 20, 3);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -105,7 +105,7 @@ exports.PutTableEntry = async (userCredentials, tableName, entryInfo) => {
             await docClient.put(params).promise();
         }
 
-        executeWithRetry(operation, 3, 20, 3);
+        await executeWithRetry(operation, 3, 20, 3);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -126,7 +126,7 @@ exports.DeleteTableEntry = async (userCredentials, tableName, keyValue) => {
             await docClient.delete(params).promise();
         }
 
-        executeWithRetry(operation, 3, 20, 3);
+       await executeWithRetry(operation, 3, 20, 3);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -149,7 +149,7 @@ exports.GetTableEntry = async (userCredentials, tableName, keyValue) => {
             return data.Item;
         };
 
-        return executeWithRetry(operation, 3, 20, 3);
+        return await executeWithRetry(operation, 3, 20, 3);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -176,7 +176,7 @@ exports.QueryTable = async (userCredentials, tableName, keyConditionExpression, 
             return data.Items;
         };
 
-        return executeWithRetry(operation, 3, 20, 3);
+        return await executeWithRetry(operation, 3, 20, 3);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -201,7 +201,7 @@ exports.BatchQueryTable = async (userCredentials, requestItems) => {
             return data.Responses;
         };
 
-        return executeWithRetry(operation, 3, 20, 3);
+        return await executeWithRetry(operation, 3, 20, 3);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -227,7 +227,7 @@ exports.ScanTable = async (userCredentials, tableName, filterExpression = null) 
             return data.Items;
         };
 
-        return executeWithRetry(operation, 3, 20, 3);
+        return await executeWithRetry(operation, 3, 20, 3);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -254,7 +254,7 @@ exports.UpdateItem = async (userCredentials, tableName, key, updateExpression, e
             await docClient.update(params).promise();
         };
 
-        executeWithRetry(operation, 3, 20, 3);
+        await executeWithRetry(operation, 3, 20, 3);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -277,7 +277,7 @@ exports.BatchWriteItems = async (userCredentials, requests) => {
             await docClient.batchWrite(params).promise();
         };
 
-        executeWithRetry(operation, 3, 20, 3);
+        await executeWithRetry(operation, 3, 20, 3);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -313,7 +313,7 @@ exports.CreateGSI = async (userCredentials, tableName, indexParams) => {
             return data;
         };
 
-        return executeWithRetry(operation, 3, 20, 3);
+        return await executeWithRetry(operation, 3, 20, 3);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -342,7 +342,7 @@ exports.UpdateProvisionedThroughPut = async (userCredentials, tableName, readCap
             return data;
         };
 
-        return executeWithRetry(operation, 3, 20, 3);
+        return await executeWithRetry(operation, 3, 20, 3);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -371,7 +371,7 @@ exports.EnableStreams = async (userCredentials, tableName, streamViewType) => {
             return data;
         };
 
-        return executeWithRetry(operation, 3, 20, 3);
+        return await executeWithRetry(operation, 3, 20, 3);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -400,7 +400,7 @@ exports.UpdateTTL = async (userCredentials, tableName, ttlAttribute) => {
             return data;
         };
 
-        return executeWithRetry(operation, 3, 20, 3);
+        return await executeWithRetry(operation, 3, 20, 3);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -426,7 +426,7 @@ exports.ModifyTagTable = async (userCredentials, resourceArn, tags) => {
             return data;
         };
 
-        return executeWithRetry(operation, 3, 20, 3);
+        return await executeWithRetry(operation, 3, 20, 3);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -450,7 +450,7 @@ exports.CreateBackup = async (userCredentials, tableName, backupName) => {
             return data;
         };
 
-        return executeWithRetry(operation, 3, 20, 3);
+        return await executeWithRetry(operation, 3, 20, 3);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -476,7 +476,7 @@ exports.RestoreBackup = async (userCredentials, backupArn, restoredTableName) =>
             return data;
         };
 
-        return executeWithRetry(operation, 3, 20, 3); 
+        return await executeWithRetry(operation, 3, 20, 3); 
     } catch (error) {
         throw new Error(error.message);
     }
@@ -499,7 +499,7 @@ exports.DeleteDynamoDBTable = async (userCredentials, tableName) => {
             await dynamodb.deleteTable(params).promise();
         };
 
-        executeWithRetry(operation, 3, 20, 3);
+        return await executeWithRetry(operation, 3, 20, 3);
     } catch (error) {
         throw new Error(error.message);
     }

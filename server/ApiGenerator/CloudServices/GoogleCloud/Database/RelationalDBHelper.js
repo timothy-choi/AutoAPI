@@ -4,37 +4,61 @@ const GCLOUD_CLIENT_ID = process.env.GCLOUD_CLIENT_ID;
 const GCLOUD_CLIENT_SECRET = process.env.GCLOUD_CLIENT_SECRET;
 const GCLOUD_REDIRECT_URL = process.env.GCLOUD_REDIRECT_URL;
 
-exports.trackGCloudDBOperationStatus = async (projectId, operationId, authClient) => {
-    try {
-        const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
+const executeWithRetry = async (operation, retries = 3, delayMs = 1000, backoffFactor = 2) => {
+    let attempt = 0;
 
-        const startTime = Date.now();
+    while (attempt < retries) {
+        try {
+            return await operation();
+        } catch (error) {
+            attempt++;
+            if (attempt >= retries) {
+                throw new Error(`Operation failed after ${attempt} retries: ${error.message}`);
+            }
 
-        while (true) {
-            const response = await sqlAdmin.operations.get({
-                project: projectId,
-                operation: operationId,
-                auth: authClient,
-            });
+            const backoffDelay = delayMs * Math.pow(backoffFactor, attempt - 1);
+            await new Promise(resolve => setTimeout(resolve, backoffDelay));
+        }
+    }
+};
+
+exports.trackGCloudDBOperationStatus = async (projectId, operationId, authClient, timeoutMs = 300000) => {
+    const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
+
+    const startTime = Date.now();
+    const backoffFactor = 2; 
+    let delayMs = 5000;     
+
+    while (true) {
+        try {
+            const response = await executeWithRetry(
+                () => sqlAdmin.operations.get({
+                    project: projectId,
+                    operation: operationId,
+                    auth: authClient,
+                }),
+                3, 1000);
 
             if (response.data.status === 'DONE') {
                 if (response.data.error) {
-                    throw new Error('Operation failed: ', response.data.error);
+                    throw new Error(`Operation failed: ${JSON.stringify(response.data.error)}`);
                 }
-                return response.data;
+                return response.data; 
             }
-
-            const elapsedTime = Date.now() - startTime;
-            if (elapsedTime > timeoutMs) {
-                throw new Error('Operation timed out.');
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 5000));
+        } catch (error) {
+            throw new Error(`Error tracking operation: ${error.message}`);
         }
-    } catch (error) {
-        throw new Error(error.message);
+
+        const elapsedTime = Date.now() - startTime;
+        if (elapsedTime > timeoutMs) {
+            throw new Error(`Operation timed out after ${timeoutMs}ms.`);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        delayMs = Math.min(delayMs * backoffFactor, 30000); 
     }
-}
+};
+
 
 exports.createOAuth2Client = async (accessToken, refreshToken) => {
     try {
