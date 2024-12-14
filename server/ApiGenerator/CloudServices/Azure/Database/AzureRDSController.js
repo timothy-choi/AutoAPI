@@ -1,6 +1,7 @@
 const MySQLHelper = require('./MySQL/MySQLHelper');
 const SQLServerHelper = require('./SQLServer/SQLServerHelper');
 const PostgreSQLHelper = require('./PostgreSQL/PostgreSQLHelper');
+const AzureHealthStatusAndMetricsHelper = require('./AzureRDSMetrics');
 
 exports.CreateDatabaseServer = async (req, res) => {
     try {
@@ -151,6 +152,16 @@ exports.UpdateDatabase = async (req, res) => {
         }
 
         return res.status(200).send({"databaseResponse": databaseResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.GetDatabaseInstanceHealthStatus = async (req, res) => {
+    try {
+        var healthStatusInfo = await AzureHealthStatusAndMetricsHelper.getDatabaseHealthStatus(req.resourceId, req.subscriptionId);
+
+        return res.status(200).send({"healthStatusInfo": healthStatusInfo});
     } catch (error) {
         return res.status(500).send(error.message);
     }
