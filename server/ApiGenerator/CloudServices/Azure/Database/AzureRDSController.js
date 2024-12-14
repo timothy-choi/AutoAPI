@@ -89,3 +89,55 @@ exports.StopDatabaseServer = async (req, res) => {
         return res.status(500).send(error.message);
     }
 }
+
+exports.CreateDatabase = async (req, res) => {
+    try {
+        var databaseResponse = null;
+
+        if (req.database === 'MySQL') {
+            databaseResponse = await MySQLHelper.createMySQLDatabase(req.body.databaseInfo, req.body.subscriptionId);
+        } else if (req.database === 'SQLServer') {
+            databaseResponse = await SQLServerHelper.createSQLDatabase(req.body.databaseInfo, req.body.subscriptionId);
+        } else {
+            databaseResponse = await PostgreSQLHelper.createPostgreSQLDatabase(req.body.databaseInfo, req.body.subscriptionId);
+        }
+
+        return res.status(201).send({"databaseResponse": databaseResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.UpdateDatabase = async (req, res) => {
+    try {
+        var databaseResponse = null;
+
+        if (req.database === 'MySQL') {
+            databaseResponse = await MySQLHelper.updateMySQLDatabase(req.body.databaseInfo, req.body.subscriptionId);
+        } else if (req.database === 'SQLServer') {
+            databaseResponse = await SQLServerHelper.updateSQLDatabase(req.body.databaseInfo, req.body.subscriptionId);
+        } else {
+            databaseResponse = await PostgreSQLHelper.updatePostgresDatabase(req.body.databaseInfo, req.body.subscriptionId);
+        }
+
+        return res.status(200).send({"databaseResponse": databaseResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.DeleteDatabase = async (req, res) => {
+    try {
+        if (req.database === 'MySQL') {
+            await MySQLHelper.deleteMySQLDatabase(req.body.databaseInfo, req.body.subscriptionId);
+        } else if (req.database === 'SQLServer') {
+            await SQLServerHelper.deleteSQLDatabase(req.body.databaseInfo, req.body.subscriptionId);
+        } else {
+            await PostgreSQLHelper.deletePostgreSQLDatabase(req.body.databaseInfo, req.body.subscriptionId);
+        }
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
