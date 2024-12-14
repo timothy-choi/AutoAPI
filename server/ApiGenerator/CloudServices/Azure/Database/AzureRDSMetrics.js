@@ -1,5 +1,6 @@
 const { DefaultAzureCredential } = require("@azure/identity");
 const { ResourceHealthManagementClient } = require("@azure/arm-resourcehealth");
+const axios = require('axios');
 
 exports.getDatabaseHealthStatus = async (resourceId, subscriptionId) => {
     try {
@@ -10,6 +11,26 @@ exports.getDatabaseHealthStatus = async (resourceId, subscriptionId) => {
         const healthStatus = await healthClient.availabilityStatuses.get(resourceId);
 
         return healthStatus;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.getDatabaseMetrics = async (azureFunctionUri, metricsRequestInfo) => {
+    try {
+        const response = await axios.post(azureFunctionUri, metricsRequestInfo);
+
+        return response.data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.stopDatabaseMetricsCollection = async (azureFunctionUri, stopVal = true) => {
+    try {
+        await axios.post(azureFunctionUri, {
+            stop: stopVal,
+        });
     } catch (error) {
         throw new Error(error.message);
     }
