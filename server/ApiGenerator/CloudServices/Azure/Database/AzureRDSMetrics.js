@@ -16,21 +16,15 @@ exports.getDatabaseHealthStatus = async (resourceId, subscriptionId) => {
     }
 }
 
-exports.getDatabaseMetrics = async (azureFunctionUri, metricsRequestInfo) => {
+exports.getDatabaseMetrics = async (azureFunctionUri, metricsRequestInfo, stopVal = false) => {
     try {
+        if (stopVal) {
+            throw new Error('Instance is not recieving any metrics');
+        }
+
         const response = await axios.post(azureFunctionUri, metricsRequestInfo);
 
         return response.data;
-    } catch (error) {
-        throw new Error(error.message);
-    }
-}
-
-exports.stopDatabaseMetricsCollection = async (azureFunctionUri, stopVal = true) => {
-    try {
-        await axios.post(azureFunctionUri, {
-            stop: stopVal,
-        });
     } catch (error) {
         throw new Error(error.message);
     }

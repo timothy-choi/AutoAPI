@@ -139,6 +139,24 @@ exports.CreateDatabase = async (req, res) => {
     }
 }
 
+exports.GetDatabaseInstanceStatus = async (req, res) => {
+    try {
+        var databaseResponse = null;
+
+        if (req.database === 'MySQL') {
+            databaseResponse = await MySQLHelper.getMySQLDatabase(req.body.databaseInfo, req.body.subscriptionId);
+        } else if (req.database === 'SQLServer') {
+            databaseResponse = await SQLServerHelper.getSQLDatabase(req.body.databaseInfo, req.body.subscriptionId);
+        } else {
+            databaseResponse = await PostgreSQLHelper.getPostgreSQLDatabase(req.body.databaseInfo, req.body.subscriptionId);
+        }
+
+        return res.status(200).send({"databaseStatus": databaseResponse.status})
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
 exports.UpdateDatabase = async (req, res) => {
     try {
         var databaseResponse = null;
