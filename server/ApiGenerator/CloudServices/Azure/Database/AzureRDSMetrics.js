@@ -1,6 +1,7 @@
 const { DefaultAzureCredential } = require("@azure/identity");
 const { ResourceHealthManagementClient } = require("@azure/arm-resourcehealth");
 const axios = require('axios');
+const { MonitorManagementClient } = require("@azure/arm-monitor");
 
 exports.getDatabaseHealthStatus = async (resourceId, subscriptionId) => {
     try {
@@ -25,6 +26,17 @@ exports.getDatabaseMetrics = async (azureFunctionUri, metricsRequestInfo, stopVa
         const response = await axios.post(azureFunctionUri, metricsRequestInfo);
 
         return response.data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.enableDiagnostics = async (resourceId, subscriptionId, diagnosticRequestInfo, diagosticRequestName) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const monitorClient = new MonitorManagementClient(credential, subscriptionId);
+
+        await monitorClient.diagnosticSettings.createOrUpdate(resourceId, diagosticRequestName, diagnosticRequestInfo);
     } catch (error) {
         throw new Error(error.message);
     }
