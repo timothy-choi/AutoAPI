@@ -21,6 +21,36 @@ exports.CreateDatabaseServer = async (req, res) => {
     }
 }
 
+exports.GetDatabaseServerStatus = async (req, res) => {
+    try {
+        var serverInfo = null;
+
+        var serverStatus = {};
+
+        if (req.database === 'MySQL') {
+            serverInfo = await MySQLHelper.getMySQLServer(req.body.MySqlServerInfo, req.body.subscriptionId);
+
+            serverStatus.state = serverInfo.userVisibleState;
+        } else if (req.database === 'SQLServer') {
+            serverInfo = await SQLServerHelper.getSQLServer(req.body.SqlServerInfo, req.body.subscriptionId);
+
+            serverStatus.state = serverInfo.state;
+        } else {
+            serverInfo = await PostgreSQLHelper.getPostgreSQLServer(req.body.PostgreSQLInfo, req.body.subscriptionId);
+
+            serverStatus.state = serverInfo.userVisibleState;
+        }
+
+        serverStatus.name = serverInfo.name;
+
+        serverStatus.location = serverInfo.location;
+
+        return res.status(200).send({"serverStatus": serverStatus});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
 exports.DeleteDatabaseServer = async (req, res) => {
     try {
         if (req.database === 'MySQL') {
