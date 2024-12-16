@@ -1,5 +1,6 @@
 const { CosmosDBManagementClient } = require("@azure/arm-cosmosdb");
 const { DefaultAzureCredential } = require("@azure/identity");
+const { CosmosClient } = require('@azure/cosmos');
 
 exports.CreateOrUpdateCosmosDBAccount = async (resourceGroupName, accountName, cosmosDbParams, subscriptionId) => {
     try {
@@ -37,6 +38,30 @@ exports.GetCosmosDBAccount = async (resourceGroupName, accountName, subscription
         var cosmosDbAccount = await cosmosClient.databaseAccounts.get(resourceGroupName, accountName);
 
         return cosmosDbAccount;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.CreateCosmosDBInstance = async (databaseName, accountEndpoint, accountKey) => {
+    try {
+        const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
+
+        await client.databases.createIfNotExists({ id: databaseName });
+
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.CreateCosmosDBContainer = async (accountEndpoint, accountKey, databaseName, containerInfo) => {
+    try {
+        const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
+        const database = client.database(databaseName);
+        
+        const { container } = await database.containers.create(containerInfo);
+
+        return container;
     } catch (error) {
         throw new Error(error.message);
     }
