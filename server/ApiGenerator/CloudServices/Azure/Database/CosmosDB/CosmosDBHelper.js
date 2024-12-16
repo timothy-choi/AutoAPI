@@ -89,3 +89,30 @@ exports.DeleteCosmosDBInstance = async (accountEndpoint, accountKey, databaseNam
         throw new Error(error.message);
     }
 };
+
+exports.GetDatabaseInfo = async (accountEndpoint, accountKey, databaseName) => {
+    try {
+        const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
+        const database = client.database(databaseName);
+
+        const databaseResponse = await database.read();
+
+        return response;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.GetContainerInfo = async (accountEndpoint, accountKey, databaseName, containerName) => {
+    try {
+        const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
+        const database = client.database(databaseName);
+        const container = database.container(containerName);
+
+        const containerResponse = await container.read();
+
+        return containerResponse;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
