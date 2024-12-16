@@ -66,3 +66,26 @@ exports.CreateCosmosDBContainer = async (accountEndpoint, accountKey, databaseNa
         throw new Error(error.message);
     }
 };
+
+exports.DeleteCosmosDBContainer = async (accountEndpoint, accountKey, databaseName, containerName) => {
+    try {
+        const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
+        const database = client.database(databaseName);
+        const container = database.container(containerName);
+
+        await container.delete();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.DeleteCosmosDBInstance = async (accountEndpoint, accountKey, databaseName) => {
+    try {
+        const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
+        const database = client.database(databaseName);
+
+        await database.delete();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
