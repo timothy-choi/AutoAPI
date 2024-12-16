@@ -482,6 +482,68 @@ exports.RestoreBackup = async (userCredentials, backupArn, restoredTableName) =>
     }
 }
 
+exports.StartOrStopDynamoMetricsFunction = async (lambdaFunctionName, payloadInfo, userCredentials, userRegion) => {
+    try {
+        const lambda = new AWS.Lambda({
+            credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+            region: userRegion
+        });
+
+        const params = {
+            FunctionName: lambdaFunctionName,
+            Payload: JSON.stringify(payloadInfo)
+        };
+
+        lambda.invoke(params, (err, data) => {
+            if (err) {
+                throw new Error(err.message);
+            } else {
+                var response = JSON.payload(data);
+
+                if (response.status != 200) {
+                    throw new Error('Could not start or stop the instance');
+                }
+            }
+        });
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.GetDynamoDBInstanceUsageAndHealthStatus = async (lambdaFunctionName, payloadInfo, userCredentials, userRegion) => {
+    try {
+        const lambda = new AWS.Lambda({
+            credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+            region: userRegion
+        });
+
+        const params = {
+            FunctionName: lambdaFunctionName,
+            Payload: JSON.stringify(payloadInfo)
+        };
+
+        var dataPayloadResponse = null;
+
+        lambda.invoke(params, (err, data) => {
+            if (err) {
+                throw new Error(err.message);
+            } else {
+                var dataResponse = JSON.parse(data.Payload);
+
+                if (dataResponse.status != 200) {
+                    throw new Error('Could not get usage report and health status');
+                } else {
+                    dataPayloadResponse = dataResponse;
+                }
+            }
+        });
+
+        return dataPayloadResponse;
+    } catch (error) {
+        throw new Error(`Error getting RDS instance usage and health status: ${error.message}`);
+    }
+}
+
 exports.DeleteDynamoDBTable = async (userCredentials, tableName) => {
     try {
         const dynamodb = new AWS.DynamoDB({
