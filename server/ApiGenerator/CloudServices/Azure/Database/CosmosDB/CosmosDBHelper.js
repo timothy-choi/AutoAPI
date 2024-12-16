@@ -116,3 +116,44 @@ exports.GetContainerInfo = async (accountEndpoint, accountKey, databaseName, con
         throw new Error(error.message);
     }
 }
+
+exports.UpdateDatabaseThroughput = async (accountEndpoint, accountKey, databaseName, throughput) => {
+    try {
+        const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
+        const database = client.database(databaseName);
+
+        const response = await database.replaceThroughput({ throughput });
+
+        return response;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.UpdateContainerThroughput = async (accountEndpoint, accountKey, databaseName, containerName, throughput) => {
+    try {
+        const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
+        const database = client.database(databaseName);
+        const container = database.container(containerName);
+
+        const response = await container.replaceThroughput({ throughput });
+
+        return response;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.UpdateOtherContainerSettings = async (accountEndpoint, accountKey, databaseName, containerName, containerInfo) => {
+    try {
+        const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
+        const database = client.database(databaseName);
+        const container = database.container(containerName);
+
+        const response = await container.replace(containerInfo);
+
+        return response;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
