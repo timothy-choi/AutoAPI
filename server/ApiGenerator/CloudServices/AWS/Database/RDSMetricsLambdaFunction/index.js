@@ -11,7 +11,7 @@ exports.handler = async (event) => {
     } else if (event.action === "collectMetrics") {
         var metricsData = await getRDSMetrics(event.metricsInfo, event.userInfo["secretName"]);
 
-        var events = await getRDSEvents(event.metricsInfo.currDbId);
+        var events = await getRDSEvents(event.metricsInfo.currDbId, event.userInfo["secretName"], event.userInfo["userRegion"]);
 
         var instanceHealthStatusReport = await assessInstanceHealth(metricsData.DataMatrics, events);
 
@@ -29,7 +29,24 @@ exports.handler = async (event) => {
     return { statusCode: 200, body: "Success" };
 };
 
-const getRDSEvents = async (dbInstanceId) => {
+const getRDSEvents = async (dbInstanceId, secretName, userRegion) => {
+    const keyInfo = await secretsManager.getSecretValue({ SecretId: secretName }).promise();
+
+    let secret;
+    if (keyInfo.SecretString) {
+        secret = JSON.parse(keyInfo.SecretString);
+    } else {
+        secret = JSON.parse(Buffer.from(keyInfo.SecretBinary, 'base64').toString('utf-8'));
+    }
+
+    const accessKey = secret.aws_access_key_id;
+    const secretKey = secret.aws_secret_access_key;
+    const sessionToken = secret.aws_session_token;
+
+    const userCredentials = new AWS.Credentials(accessKey, secretKey, sessionToken);
+
+    const rds = new AWS.RDS({credentials: userCredentials, region: userRegion});
+
     const params = {
         SourceIdentifier: dbInstanceId,
         SourceType: 'db-instance',
