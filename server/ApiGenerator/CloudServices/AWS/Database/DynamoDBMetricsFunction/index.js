@@ -211,5 +211,29 @@ const stopMetricsPolling = async (ruleName, secretName, targetIds) => {
 };
 
 exports.handler = async (event) => {
+    if (event.source === "aws.dynamodb") {
+        if (event.tableInfo["status"] === "active") {
+            await startMetricsPolling(event.tableInfo["ruleParams"], event.tableInfo["targetParams"], event.userInfo["secretName"], event.userInfo["userRegion"]);
+        } else if (event.tableInfo["status"] === "inactive") {
+            await stopMetricsPolling(event.metricsInfo["ruleName"], event.userInfo["secretName"], event.metricsInfo["targetIds"]);
+        }
+    } else if (event.action === "collectMetrics") {
+        var metricsData = await getDynamoDBMetrics(event.metricsInfo, event.userInfo["secretName"]);
 
+        var events = await getDynamoDBEvents(event.metricsInfo.currTableName, event.userInfo["secretName"], event.userInfo["userRegion"]);
+
+        var tableHealthStatusReport = await assessTableHealth(metricsData.DataMetrics, events);
+
+        var allMetricsInfoResponse = {
+            MetricsDataInfo: metricsData.DataMetrics,
+            MetricsStatsInfo: metricsData.DataMetricsStatsList,
+            HealthStatusReport: tableHealthStatusReport
+        };
+
+        return { statusCode: 200, body: JSON.stringify(allMetricsInfoResponse) };
+    } else {
+        return { statusCode: 400, body: "Unhandled event type" };
+    }
+
+    return { statusCode: 200, body: "Success" };
 };
