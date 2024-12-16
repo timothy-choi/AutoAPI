@@ -155,6 +155,61 @@ const assessTableHealth = async (metrics, events) => {
     return healthStatus;
 };
 
+const startMetricsPolling = async (ruleParams, targetParams, secretName, userRegion) => {
+    const keyInfo = await secretsManager.getSecretValue({ SecretId: secretName }).promise();
+
+    let secret;
+    if (keyInfo.SecretString) {
+        secret = JSON.parse(keyInfo.SecretString);
+    } else {
+        secret = JSON.parse(Buffer.from(keyInfo.SecretBinary, 'base64').toString('utf-8'));
+    }
+
+    const accessKey = secret.aws_access_key_id;
+    const secretKey = secret.aws_secret_access_key;
+    const sessionToken = secret.aws_session_token;
+
+    const credentials = new AWS.Credentials(accessKey, secretKey, sessionToken);
+
+    const eventBridge = new AWS.EventBridge({ credentials: credentials, region: userRegion });
+
+    try {
+        await eventBridge.putRule(ruleParams).promise();
+
+        await eventBridge.putTargets(targetParams).promise();
+    } catch (error) {
+        throw new Error("Error setting up scheduled event:", error);
+    }
+};
+
+const stopMetricsPolling = async (ruleName, secretName, targetIds) => {
+    try {
+        const keyInfo = await secretsManager.getSecretValue({ SecretId: secretName }).promise();
+
+        let secret;
+        if (keyInfo.SecretString) {
+            secret = JSON.parse(keyInfo.SecretString);
+        } else {
+            secret = JSON.parse(Buffer.from(keyInfo.SecretBinary, 'base64').toString('utf-8'));
+        }
+
+        const accessKey = secret.aws_access_key_id;
+        const secretKey = secret.aws_secret_access_key;
+        const sessionToken = secret.aws_session_token;
+
+        const credentials = new AWS.Credentials(accessKey, secretKey, sessionToken);
+
+        const eventBridge = new AWS.EventBridge({ credentials: credentials, region: userRegion });
+
+        const targetParams = { Rule: ruleName, Ids: targetIds };
+
+        await eventBridge.removeTargets(targetParams).promise();
+        await eventBridge.deleteRule({ Name: ruleName }).promise();
+    } catch (error) {
+        throw new Error("Error stopping scheduled event:", error);
+    }
+};
+
 exports.handler = async (event) => {
 
 };
