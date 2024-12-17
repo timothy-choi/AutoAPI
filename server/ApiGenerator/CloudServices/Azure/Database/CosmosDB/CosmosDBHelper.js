@@ -43,6 +43,18 @@ exports.GetCosmosDBAccount = async (resourceGroupName, accountName, subscription
     }
 };
 
+exports.ListCosmosDBAccounts = async (subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const cosmosClient = new CosmosDBManagementClient(credential, subscriptionId);
+
+        const accounts = await cosmosClient.databaseAccounts.list();
+        return accounts;
+    } catch (error) {
+        throw new Error(`Error listing Cosmos DB accounts: ${error.message}`);
+    }
+};
+
 exports.CreateCosmosDBInstance = async (databaseName, accountEndpoint, accountKey) => {
     try {
         const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
@@ -51,6 +63,18 @@ exports.CreateCosmosDBInstance = async (databaseName, accountEndpoint, accountKe
 
     } catch (error) {
         throw new Error(error.message);
+    }
+};
+
+exports.ListDatabases = async (accountEndpoint, accountKey) => {
+    try {
+        const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
+
+        const { resources: databases } = await client.databases.readAll().fetchAll();
+
+        return databases;
+    } catch (error) {
+        throw new Error(`Error listing databases: ${error.message}`);
     }
 };
 
@@ -116,6 +140,20 @@ exports.GetContainerInfo = async (accountEndpoint, accountKey, databaseName, con
         throw new Error(error.message);
     }
 }
+
+exports.ListContainers = async (accountEndpoint, accountKey, databaseName) => {
+    try {
+        const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
+
+        const database = client.database(databaseName);
+
+        const { resources: containers } = await database.containers.readAll().fetchAll();
+
+        return containers;
+    } catch (error) {
+        throw new Error(`Error listing containers: ${error.message}`);
+    }
+};
 
 exports.UpdateDatabaseThroughput = async (accountEndpoint, accountKey, databaseName, throughput) => {
     try {
@@ -230,4 +268,34 @@ exports.DeleteCosmosDBUser = async (accountEndpoint, accountKey, databaseName, u
     } catch (error) {
         throw new Error(error.message);
     }
-}
+};
+
+exports.CreatePermission = async (accountEndpoint, accountKey, databaseName, userId, permissionInfo) => {
+    try {
+        const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
+
+        const database = client.database(databaseName);
+
+        const user = database.user(userId);
+
+        const { resource: permission } = await user.permissions.create(permissionInfo);
+
+        return permission;
+    } catch (error) {
+        throw new Error(`Error creating permission: ${error.message}`);
+    }
+};
+
+exports.DeletePermission = async (accountEndpoint, accountKey, databaseName, userId, permissionId) => {
+    try {
+        const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
+
+        const database = client.database(databaseName);
+
+        const user = database.user(userId);
+        
+        await user.permission(permissionId).delete();
+    } catch (error) {
+        throw new Error(`Error deleting permission: ${error.message}`);
+    }
+};
