@@ -205,3 +205,16 @@ exports.deleteGCloudDBInstance = async (authClient, projectId, instanceId) => {
         throw new Error(error.message);
     }
 }
+
+exports.listGCloudDBInstances = async (authClient, projectId) => {
+    try {
+        const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
+
+        const res = await sqlAdmin.instances.list({ project: projectId });
+
+        return res.data.items || [];
+    } catch (error) {
+        throw new Error(`Failed to list instances: ${error.message}`);
+    }
+};
+

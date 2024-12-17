@@ -59,8 +59,9 @@ exports.CreateCosmosDBInstance = async (databaseName, accountEndpoint, accountKe
     try {
         const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
 
-        await client.databases.createIfNotExists({ id: databaseName });
+        var databaseResponse = await client.databases.createIfNotExists({ id: databaseName });
 
+        return databaseResponse;
     } catch (error) {
         throw new Error(error.message);
     }
