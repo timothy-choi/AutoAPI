@@ -300,3 +300,60 @@ exports.DeletePermission = async (accountEndpoint, accountKey, databaseName, use
         throw new Error(`Error deleting permission: ${error.message}`);
     }
 };
+
+//Database operations
+
+exports.InsertDocument = async (databaseId, containerId, documentInfo) => {
+    try {
+        const container = client.database(databaseId).container(containerId);
+
+        const { resource: createdItem } = await container.items.create(documentInfo);
+
+        return createdItem;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.QueryDocuments = async (databaseId, containerId, queryValue, params) => {
+    try {
+        const container = client.database(databaseId).container(containerId);
+
+        const query = {
+            query: queryValue,
+            parameters: params
+        };
+
+        const { resources: results } = await container.items.query(query).fetchAll();
+
+        return results;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.UpdateDocument = async (databaseId, containerId, documentId, partitionKey, attribute, newValue) => {
+    try {
+        const container = client.database(databaseId).container(containerId);
+
+        const { resource: document } = await container.item(documentId, partitionKey).read();
+
+        document[attribute] = newValue;
+
+        const { resource: updatedDocument } = await container.item(documentId, partitionKey).replace(document);
+
+        return updatedDocument;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.DeleteDocument = async (databaseId, containerId, documentId, partitionKey) => {
+    try {
+        const container = client.database(databaseId).container(containerId);
+
+        await container.item(documentId, partitionKey).delete();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
