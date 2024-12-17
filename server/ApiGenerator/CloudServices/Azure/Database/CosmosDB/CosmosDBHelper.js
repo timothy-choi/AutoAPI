@@ -171,7 +171,7 @@ exports.getDbInstanceKeys = async (resourceGroupName, accountName, subscriptionI
     }
 }
 
-exports.GenerateSASToken = async (accountEndpoint, accountKey, databaseName, containerName, permissionInfo, expiryInMinutes) => {
+exports.GenerateSASToken = async (accountEndpoint, accountKey, databaseName, containerName, permissionInfo) => {
     try {
         const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
 
@@ -187,6 +187,46 @@ exports.GenerateSASToken = async (accountEndpoint, accountKey, databaseName, con
         const sasToken = permissionResource._token;
 
         return sasToken;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.CreateCosmosDBUser = async (accountEndpoint, accountKey, databaseName, containerName) => {
+    try {
+        const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
+
+        const database = client.database(databaseName);
+
+        const { resource: user } = await database.users.createIfNotExists({ id: `user-${containerName}` });
+
+        return user;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.GetUser = async (accountEndpoint, accountKey, databaseName, userId) => {
+    try {
+        const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
+        const database = client.database(databaseName);
+
+        const user = database.user(userId);
+        const { resource: userDetails } = await user.read();
+
+        return userDetails;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.DeleteCosmosDBUser = async (accountEndpoint, accountKey, databaseName, userId) => {
+    try {
+        const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
+        const database = client.database(databaseName);
+
+        const user = database.user(userId);
+        await user.delete();
     } catch (error) {
         throw new Error(error.message);
     }
