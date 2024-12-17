@@ -157,3 +157,37 @@ exports.UpdateOtherContainerSettings = async (accountEndpoint, accountKey, datab
         throw new Error(error.message);
     }
 }
+
+exports.getDbInstanceKeys = async (resourceGroupName, accountName, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const cosmosClient = new CosmosDBManagementClient(credential, subscriptionId);
+
+        const keys = await cosmosClient.databaseAccounts.listKeys(resourceGroupName, accountName);
+
+        return keys;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.GenerateSASToken = async (accountEndpoint, accountKey, databaseName, containerName, permissionInfo, expiryInMinutes) => {
+    try {
+        const client = new CosmosClient({ endpoint: accountEndpoint, key: accountKey });
+
+        const permissionDefinition = {
+            id: `perm-${containerName}`,
+            permissionMode: permissionInfo.permissionMode,
+            resource: resourcePath,
+            resourcePartitionKey: permissionInfo.resourcePartitionKey || []
+        };
+
+        const { resource: permissionResource } = await client.database(databaseName).user(`user-${containerName}`).permissions.createIfNotExists(permissionDefinition);
+
+        const sasToken = permissionResource._token;
+
+        return sasToken;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
