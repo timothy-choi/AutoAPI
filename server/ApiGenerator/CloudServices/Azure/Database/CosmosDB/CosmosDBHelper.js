@@ -357,3 +357,29 @@ exports.DeleteDocument = async (databaseId, containerId, documentId, partitionKe
         throw new Error(error.message);
     }
 };
+
+exports.AggregateQuery = async (databaseId, containerId, aggregateQuery) => {
+    try {
+        const container = client.database(databaseId).container(containerId);
+
+        const { resources: results } = await container.items.query(aggregateQuery).fetchAll();
+
+        return results;
+    } catch (error) {
+        throw new Error(`Error executing aggregate query: ${error.message}`);
+    }
+};
+
+exports.BulkUpsertDocuments = async (databaseId, containerId, documents) => {
+    try {
+        const container = client.database(databaseId).container(containerId);
+
+        const operations = documents.map(doc => ({ operationType: "Upsert", resourceBody: doc }));
+
+        const { resources: results } = await container.items.bulk(operations);
+        
+        return results;
+    } catch (error) {
+        throw new Error(`Error performing bulk upsert: ${error.message}`);
+    }
+};
