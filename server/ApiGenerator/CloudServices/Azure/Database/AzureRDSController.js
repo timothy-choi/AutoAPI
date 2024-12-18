@@ -169,6 +169,58 @@ exports.StartDatabaseFailover = async (req, res) => {
     }
 }
 
+exports.StartDatabaseBackup = async (req, res) => {
+    try {
+        var backupResponse = null;
+
+        if (req.database === 'MySQL') {
+            backupResponse = await MySQLHelper.restoreBackup(req.body.restoreInfo, req.body.subscriptionId);
+        } else if (req.database === 'Postgres') {
+            backupResponse = await PostgreSQLHelper.restoreBackup(req.body.restoreInfo, req.body.subscriptionId);
+        } else {
+            backupResponse = await SQLServerHelper.restoreBackup(req.body.restoreInfo, req.body.subscriptionId);
+        }
+
+        return res.status(201).send({"backupResponse": backupResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.CreateOrUpdateFirewallRule = async (req, res) => {
+    try {
+        var firewallResponse = null;
+
+        if (req.database === 'MySQL') {
+            firewallResponse = await MySQLHelper.createOrUpdateFirewallRule(req.body.firewallInfo, req.body.subscriptionId);
+        } else if (req.database === 'Postgres') {
+            firewallResponse = await PostgreSQLHelper.createOrUpdateFirewallRule(req.body.firewallInfo, req.body.subscriptionId);
+        } else {
+            firewallResponse = await SQLServerHelper.createOrUpdateFirewallRule(req.body.firewallInfo, req.body.subscriptionId);
+        }
+
+        return res.status(200).send({"firewallResponse": firewallResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.RemoveFirewallRule = async (req, res) => {
+    try {
+        if (req.database === 'MySQL') {
+            await MySQLHelper.removeFirewallRule(req.body.firewallInfo, req.body.subscriptionId);
+        } else if (req.database === 'Postgres') {
+            await PostgreSQLHelper.removeFirewallRule(req.body.firewallInfo, req.body.subscriptionId);
+        } else {
+            await SQLServerHelper.removeFirewallRule(req.body.firewallInfo, req.body.subscriptionId);
+        }
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
 exports.CreateDatabase = async (req, res) => {
     try {
         var databaseResponse = null;
