@@ -89,3 +89,33 @@ exports.ListDBContainers = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.UpdateDatabaseThroughput = async (req, res) => {
+    try {
+        var databaseThroughputResponse = await CosmosDBHelper.UpdateDatabaseThroughput(req.body.accountEndpoint, req.body.accountKey, req.body.databaseName, req.body.throughput);
+
+        return res.status(200).send({"databaseThroughputResponse": databaseThroughputResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.UpdateContainerThroughput = async (req, res) => {
+    try {
+        var databaseContainerResponse = await CosmosDBHelper.UpdateContainerThroughput(req.body.accountEndpoint, req.body.accountKey, req.body.databaseName, req.body.containerName, req.body.throughput);
+
+        return res.status(200).send({"databaseContainerResponse": databaseContainerResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.UpdateOtherContainerSettings = async (req, res) => {
+    try {
+       var containerSettingsResponse = await CosmosDBHelper.UpdateOtherContainerSettings(req.body.accountEndpoint, req.body.accountKey, req.body.databaseName, req.body.containerName, req.body.containerInfo);
+       
+       return res.status(200).send({"containerSettingsResponse": containerSettingsResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
