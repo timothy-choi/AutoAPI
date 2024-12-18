@@ -42,6 +42,20 @@ exports.getSQLServer = async (resourceGroupName, serverName, subscriptionId) => 
     }
 }
 
+exports.ListSQLServers = async (subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const sqlClient = new SqlManagementClient(credential, subscriptionId);
+
+        const servers = await sqlClient.servers.list();
+
+        return servers;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.updateSQLServer = async (serverInfo, subscriptionId) => {
     try {
         const credential = new DefaultAzureCredential();

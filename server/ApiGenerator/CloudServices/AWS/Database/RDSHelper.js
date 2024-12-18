@@ -87,6 +87,21 @@ exports.GetRDSInstanceStatus = async (currDbId, userCredentials, userRegion) => 
     }
 }
 
+exports.ListAllRDSInstances = async (userCredentials, userRegion) => {
+    const rds = new AWS.RDS({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    try {
+        const data = await rds.describeDBInstances().promise();
+
+        return data;
+    } catch (error) {
+        throw new Error(`Error getting RDS instances list: ${error.message}`);
+    }
+}
+
 exports.StartOrStopRDSInstanceUsageMetricsFunction = async (lambdaFunctionName, payloadInfo, userCredentials, userRegion) => {
     try {
         const lambda = new AWS.Lambda({

@@ -41,6 +41,20 @@ exports.getMySQLServer = async (resourceGroupName, serverName, subscriptionId) =
     }
 }
 
+exports.ListMySQLServers = async (subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const mySqlClient = new MySQLManagementClient(credential, subscriptionId);
+
+        const servers = await mySqlClient.servers.list();
+
+        return servers;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.updateMySQLServer = async (serverInfo, subscriptionId) => {
     try {
         const credential = new DefaultAzureCredential();

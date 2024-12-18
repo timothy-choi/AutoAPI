@@ -65,6 +65,23 @@ exports.DescribeTable = async (userCredentials, tableName) => {
     }
 }
 
+exports.ListAllDynamoDBTables = async (userCredentials) => {
+    try {
+        const dynamodb = new AWS.DynamoDB({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+
+        const data = await dynamodb.listTables().promise();
+
+        return data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.GetTableStatus = async (userCredentials, tableName) => {
     try {
         const dynamodb = new AWS.DynamoDB({

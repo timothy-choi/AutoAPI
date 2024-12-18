@@ -51,6 +51,24 @@ exports.GetDatabaseServerStatus = async (req, res) => {
     }
 }
 
+exports.ListAllServers = async (req, res) => {
+    try {
+        var allServers = [];
+
+        if (req.database === 'MySQL') {
+            allServers = await MySQLHelper.ListMySQLServers(req.subscriptionId);
+        } else if (req.database === 'SQLServer') {
+            allServers = await SQLServerHelper.ListSQLServers(req.subscriptionId);
+        } else {
+            allServers = await PostgreSQLHelper.ListPostgresServers(req.subscriptionId);
+        }
+
+        return res.status(200).send({"allServers": allServers});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.DeleteDatabaseServer = async (req, res) => {
     try {
         if (req.database === 'MySQL') {

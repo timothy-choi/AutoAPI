@@ -41,6 +41,20 @@ exports.getPostgreSQLServer = async (resourceGroupName, serverName, subscription
     }
 }
 
+exports.ListPostgresServers = async (subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        
+        const postgresClient = new PostgreSQLManagementClient(credential, subscriptionId);
+
+        const servers = await postgresClient.servers.list();
+
+        return servers;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.updatePostgreSQLServer = async (serverInfo, subscriptionId) => {
     try {
         const credential = new DefaultAzureCredential();

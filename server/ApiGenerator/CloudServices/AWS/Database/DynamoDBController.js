@@ -43,6 +43,27 @@ exports.GetTableStatus = async (req, res) => {
     }
 }
 
+exports.GetListOfDynamoDBTables = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
+        const dynamoTables = await DynamoDBHelper.ListAllDynamoDBTables(userCredentials);
+
+        return res.status(200).send({"tables": dynamoTables});
+    } catch (error) {
+        return res.status(500).send("Error creating DynamoDB table: " + error);
+    }
+}
+
 exports.AddItemToTable = async (req, res) => {
     try {
         var userCredentials = {};
