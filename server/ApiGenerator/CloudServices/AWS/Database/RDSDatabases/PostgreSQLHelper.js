@@ -1,14 +1,16 @@
 const { Pool } = require('pg');
 
 exports.connectToPostgreSQLDatabase = async (connectionInfo) => {
-    try {
-        const pool = new Pool(connectionInfo);
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const pool = new Pool(connectionInfo);
 
-        const client = await pool.connect();
+            const client = await pool.connect();
 
-        return (pool, client);
-    } catch (error) {
-        throw new Error(error.message);
+            return [pool, client];
+        } catch (error) {
+            if (attempt == retries) throw new Error(error.message);
+        }
     }
 }
 

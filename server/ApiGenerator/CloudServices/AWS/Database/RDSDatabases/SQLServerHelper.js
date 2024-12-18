@@ -1,14 +1,16 @@
 const mssql = require('mssql');
 
 exports.connectToSQLServerDatabase = async (connectionInfo) => {
-    try {
-        const pool = new mssql.ConnectionPool(connectionInfo);
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const pool = new mssql.ConnectionPool(connectionInfo);
 
-        const poolInstance = await pool.connect();
+            const poolInstance = await pool.connect();
 
-        return (pool, poolInstance);
-    } catch (error) {
-        throw new Error(error.message);
+            return [pool, poolInstance];
+        } catch (error) {
+            if (attempt == retries) throw new Error(error.message);
+        }
     }
 }
 

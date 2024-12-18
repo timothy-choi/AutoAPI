@@ -1,14 +1,16 @@
 const mysql = require('mysql2');
 
 exports.connectToMySQLDatabase = async (connectionInfo) => {
-    try {
-        const pool = await mysql.createPool(connectionInfo);
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const pool = await mysql.createPool(connectionInfo);
 
-        const poolInstance = await pool.promise();
+            const poolInstance = await pool.promise();
 
-        return (pool, poolInstance);
-    } catch (error) {
-        throw new Error(error.message);
+            return [pool, poolInstance];
+        } catch (error) {
+            if (attempt == retries) throw new Error(error.message);
+        }
     }
 }
 
