@@ -1,6 +1,7 @@
 const { CosmosDBManagementClient } = require("@azure/arm-cosmosdb");
 const { DefaultAzureCredential } = require("@azure/identity");
 const { CosmosClient } = require('@azure/cosmos');
+const { uploadFile, downloadFile } = require('../../../../../aws-helper');
 
 exports.CreateOrUpdateCosmosDBAccount = async (resourceGroupName, accountName, cosmosDbParams, subscriptionId) => {
     try {
@@ -300,6 +301,42 @@ exports.DeletePermission = async (accountEndpoint, accountKey, databaseName, use
         throw new Error(`Error deleting permission: ${error.message}`);
     }
 };
+
+exports.BackupData = async (databaseId, containerId, bucketName, outputFileName) => {
+    try {
+        const container = client.database(databaseId).container(containerId);
+
+        const query = {
+            query: 'SELECT * FROM c'
+        };
+
+        const { resources: items } = await container.items.query(query).fetchAll();
+
+        const fileContent = JSON.stringify(items, null, 2);
+
+        fs.writeFileSync(outputFileName, fileContent);
+
+        await uploadFile(bucketName, outputFilename, fileContent);
+    } catch (error) {
+        throw new Error(`Error backing up data: ${error.message}`);
+    }
+};
+
+exports.RestoreBackup = async (databaseId, containerId, bucketName, objectKey) => {
+    try {
+        const container = client.database(databaseId).container(containerId);
+
+        var fileContent = await downloadFile(bucketName, objectKey);
+
+        const items = JSON.parse(fileContent);
+
+        for (const item of items) {
+            await container.items.create(item);
+        }
+    } catch (error) {
+        throw new Error(`Error backing up data: ${error.message}`);
+    }
+}
 
 //Database operations
 
