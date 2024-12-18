@@ -59,3 +59,33 @@ exports.GetCosmosDBInstanceList = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.CreateDBContainer = async (req, res) => {
+    try {
+        var containerInfo = await CosmosDBHelper.CreateCosmosDBContainer(req.body.accountEndpoint, req.body.accountKey, req.body.databaseName, req.body.containerInfo);
+
+        return res.status(201).send({"containerInfo": containerInfo});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.DeleteDBContainer = async (req, res) => {
+    try {
+        await CosmosDBHelper.DeleteCosmosDBContainer(req.body.accountEndpoint, req.body.accountKey, req.body.databaseName, req.body.containerName);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.ListDBContainers = async (req, res) => {
+    try {
+        var containers = CosmosDBHelper.ListContainers(req.body.accountEndpoint, req.body.accountKey, req.body.databaseName);
+
+        return res.status(200).send({"containers": containers});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
