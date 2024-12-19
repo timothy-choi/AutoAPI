@@ -15,14 +15,19 @@ const createOAuth2Client = async (accessToken, refreshToken) => {
         );
 
         oauth2Client.setCredentials({ access_token: accessToken, refresh_token: refreshToken });
+
+        return oauth2Client;
     } catch (error) {
         throw new Error(error.message);
     }
 }
 
-const createGCloudProject = async (projectInfo) => {
+const createGCloudProject = async (projectInfo, authClient) => {
     try {
-        const cloudResourceManager = google.cloudresourcemanager('v3');
+        const cloudResourceManager = google.cloudresourcemanager({
+            version: 'v3',
+            auth: authClient,
+        });
 
         const res = await cloudResourceManager.projects.create(projectInfo);
 
@@ -30,4 +35,21 @@ const createGCloudProject = async (projectInfo) => {
     } catch (error) {
         throw new Error(error.message);
     }
-}
+};
+
+
+exports.createGoogleCloudProject = async (req, res) => {
+    try {
+        const authHeader = req.headers['authorization'];
+
+        const accessToken = authHeader.split(' ')[1];
+
+        var oauthClient = createOAuth2Client(accessToken, req.body.refreshToken);
+
+        var projectResponse = await createGCloudProject(req.body.projectInfo, oauthClient);
+
+        return res.status(201).send({"projectResponse": projectResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
