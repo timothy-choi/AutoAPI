@@ -158,3 +158,27 @@ exports.deleteCollection = async (apiKey, collectionUri) => {
       throw new Error(error.message);
     }
 };
+
+exports.createIndex = async (apiKey, indexUri, indexDetails) => {
+  try {
+      const apiClient = GetApiClient(apiKey);
+
+      const response = await apiClient.post(indexUri, indexDetails);
+
+      return response.data;
+  } catch (error) {
+      throw new Error(`Failed to create index: ${error.message}`);
+  }
+};
+
+exports.updateIndex = async (apiKey, indexUri, indexConfig) => {
+  try {
+      const apiClient = GetApiClient(apiKey);
+
+      const response = await apiClient.patch(indexUri, indexConfig);
+
+      return response.data;
+  } catch (error) {
+      throw new Error(`Failed to update index: ${error.message}`);
+  }
+};
