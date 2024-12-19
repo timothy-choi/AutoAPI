@@ -1,15 +1,17 @@
-const apiClient = require('./MongoDBApiHelper');
+const GetApiClient = require('./MongoDBApiHelper');
 
-exports.createServiceAccount = async (mongoServiceAccountUri, name) => {
+exports.createServiceAccount = async (mongoServiceAccountUri, name, apiKey) => {
     try {
-      const response = await apiClient.post(mongoServiceAccountUri, {
-        name,
-        description: "Service account for connecting to cloud services",
-      });
+        const apiClient = GetApiClient(apiKey);
 
-      return response.data;
+        const response = await apiClient.post(mongoServiceAccountUri, {
+            name,
+            description: "Service account for connecting to cloud services",
+        });
+
+        return response.data;
     } catch (error) {
-      throw new Error(error.message);
+        throw new Error(error.message);
     }
-  };
+};
   
