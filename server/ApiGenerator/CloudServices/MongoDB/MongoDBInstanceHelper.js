@@ -27,6 +27,30 @@ exports.createCluster = async (apiKey, clusterUri, clusterInfo) => {
     }
 };
 
+exports.updateCluster = async (apiKey, clusterUri, clusterConfig) => {
+    try {
+      const apiClient = GetApiClient(apiKey);
+            
+      const response = await apiClient.patch(clusterUri, clusterConfig);
+  
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to update cluster: ${error.message}`);
+    }
+};
+
+exports.deleteCluster = async (apiKey, clusterUri) => {
+    try {
+      const apiClient = GetApiClient(apiKey);
+
+      const response = await apiClient.delete(clusterUri);
+
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to delete cluster: ${error.message}`);
+    }
+};
+
 exports.createDatabase = async (apiKey, dbName, collectionName, dbUri) => {
     try {
         const apiClient = GetApiClient(apiKey);
@@ -73,3 +97,26 @@ exports.createCollection = async (apiKey, collectionParams, collectionUri) => {
     }
 };
 
+exports.updateCollection = async (apiKey, collectionUri, updates) => {
+    try {
+      const apiClient = GetApiClient(apiKey);
+
+      const response = await apiClient.patch(collectionUri, updates);
+
+      return response.data;
+    } catch (error) {
+      throw new Error(error.message);
+    }
+};
+
+exports.deleteCollection = async (apiKey, collectionUri) => {
+    try {
+      const apiClient = GetApiClient(apiKey);
+
+      const response = await apiClient.delete(collectionUri);
+
+      return response.data;
+    } catch (error) {
+      throw new Error(error.message);
+    }
+};
