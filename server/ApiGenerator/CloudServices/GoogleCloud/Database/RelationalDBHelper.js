@@ -105,7 +105,7 @@ exports.getGCloudDBInstanceDetails = async (authClient, projectId, instanceId) =
     }
 }
 
-exports.startOrStopGCloudDBInstance = async (projectId, instanceId, action) => {
+exports.startOrStopGCloudDBInstance = async (authClient, projectId, instanceId, action) => {
     try {
         const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
 
@@ -145,7 +145,7 @@ exports.restoreGCloudBackup = async (authClient, projectId, instanceId, backupId
     try {
         const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
 
-        await sqlAdmin.instances.restoreBackup({
+        var res = await sqlAdmin.instances.restoreBackup({
             project: projectId,
             instance: instanceId,
             requestBody: {
@@ -154,6 +154,8 @@ exports.restoreGCloudBackup = async (authClient, projectId, instanceId, backupId
                 },
             },
         });
+
+        return res.data;
     } catch (error) {
         throw new Error(error.message);
     }
