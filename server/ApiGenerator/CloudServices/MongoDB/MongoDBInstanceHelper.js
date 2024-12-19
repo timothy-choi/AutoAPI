@@ -15,6 +15,18 @@ exports.createProject = async (apiKey, projectUri, projectName, organizationId) 
       }
 };
 
+exports.deleteProject = async (projectUri, apiKey) => {
+  try {
+    const apiClient = GetApiClient(apiKey);
+
+    const response = await apiClient.delete(projectUri);
+    
+    return response.data;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
 exports.createCluster = async (apiKey, clusterUri, clusterInfo) => {
     try {
       const apiClient = GetApiClient(apiKey);
@@ -76,6 +88,32 @@ exports.deleteDatabase = async (databaseUri) => {
     } catch (error) {
       throw new Error(error.message);
     }
+};
+
+exports.backupDatabase = async (databaseUri, apiKey) => {
+  try {
+    const apiClient = GetApiClient(apiKey);
+
+    const response = await apiClient.post(databaseUri);
+
+    return response.data;
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
+exports.restoreDatabase = async (projectUri, backupId, apiKey) => {
+  try {
+    const apiClient = GetApiClient(apiKey);
+
+    const response = await apiClient.post(projectUri,
+      { backupId }
+    );
+    
+    return response.data;
+  } catch (error) {
+    throw new Error(error.message);
+  }
 };
 
 exports.createCollection = async (apiKey, collectionParams, collectionUri) => {
