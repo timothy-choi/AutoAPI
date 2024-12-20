@@ -37,6 +37,82 @@ const createGCloudProject = async (projectInfo, authClient) => {
     }
 };
 
+const updateGCloudProject = async (authClient, updateInfo) => {
+    try {
+        const cloudResourceManager = google.cloudresourcemanager({
+            version: 'v3',
+            auth: authClient,
+        });
+
+        const res = await cloudResourceManager.projects.patch(updateInfo);
+
+        return res.data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+const waitForProjectDeletion = async (projectId, authClient, timeout = 60000, interval = 5000) => {
+    const cloudResourceManager = google.cloudresourcemanager({
+        version: 'v3',
+        auth: authClient,
+    });
+
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeout) {
+        try {
+            const res = await cloudResourceManager.projects.get({
+                name: `projects/${projectId}`,
+            });
+
+        } catch (error) {
+            if (error.code === 404) {
+                return; 
+            } else {
+                throw new Error(`Error checking project status: ${error.message}`);
+            }
+        }
+
+        await new Promise(resolve => setTimeout(resolve, interval));
+    }
+
+    throw new Error('Timeout: Project deletion not confirmed within the specified timeout.');
+};
+
+const deleteGCloudProject = async (authClient, projectName) => {
+    try {
+        const cloudResourceManager = google.cloudresourcemanager({
+            version: 'v3',
+            auth: authClient,
+        });
+
+        const res = await cloudResourceManager.projects.delete({
+            name: projectName
+        });
+
+        return res.data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+const getGCloudProject = async (authClient, projectName) => {
+    try {
+        const cloudResourceManager = google.cloudresourcemanager({
+            version: 'v3',
+            auth: authClient,
+        });
+
+        const res = await cloudResourceManager.projects.get({
+            name: projectName,
+        });
+
+        return res.data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
 
 exports.createGoogleCloudProject = async (req, res) => {
     try {
