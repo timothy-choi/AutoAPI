@@ -36,6 +36,22 @@ exports.DeleteGCloudDBInstance = async (req, res) => {
     }
 };
 
+exports.GetGCloudDBInstanceInfo = async (req, res) => {
+    try {
+        const authHeader = req.headers['authorization'];
+
+        const accessToken = authHeader.split(' ')[1];
+
+        var authClient = await RelationalDBHelper.createOAuth2Client(accessToken, req.body.refreshToken);
+
+        var instanceInfo = await RelationalDBHelper.getGCloudDBInstanceDetails(authClient, req.projectId, req.instanceId);
+
+        return res.status(200).send({"instanceInfo": instanceInfo});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.StartOrStopGCloudDBInstance = async (req, res) => {
     try {
         const authHeader = req.headers['authorization'];
@@ -88,4 +104,40 @@ exports.RestoreGCloudBackup = async (req, res) => {
     } catch (error) {
         return res.status(500).send(error.message);
     }
-}
+};
+
+exports.UpdateGCloudDBInstanceSettings = async (req, res) => {
+    try {
+        const authHeader = req.headers['authorization'];
+
+        const accessToken = authHeader.split(' ')[1];
+
+        var authClient = await RelationalDBHelper.createOAuth2Client(accessToken, req.body.refreshToken);
+
+        var instanceResponse = await RelationalDBHelper.updateGCloudDBInstanceSettings(authClient, req.body.projectId, req.body.instanceId, req.body.settings);
+
+        await RelationalDBHelper.trackGCloudDBOperationStatus(req.body.projectId, instanceResponse.name, authClient, req.body.timeoutMS);
+
+        return res.status(201).send({"instanceResponse": instanceResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.HandleGCloudDBInstanceFailover = async (req, res) => {
+    try {
+        const authHeader = req.headers['authorization'];
+
+        const accessToken = authHeader.split(' ')[1];
+
+        var authClient = await RelationalDBHelper.createOAuth2Client(accessToken, req.body.refreshToken);
+
+        var instanceResponse = await RelationalDBHelper.FailoverGCloudDBInstance(authClient, req.body.projectId, req.body.instanceId);
+
+        await RelationalDBHelper.trackGCloudDBOperationStatus(req.body.projectId, instanceResponse.name, authClient, req.body.timeoutMS);
+
+        return res.status(201).send({"instanceResponse": instanceResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
