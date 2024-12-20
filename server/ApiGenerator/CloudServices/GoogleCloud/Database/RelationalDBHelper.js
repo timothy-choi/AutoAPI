@@ -220,3 +220,28 @@ exports.listGCloudDBInstances = async (authClient, projectId) => {
     }
 };
 
+exports.getGCloudInstancesHealthStatus = async (authClient, projectId, instanceId) => {
+    try {
+        const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
+
+        const instanceInfo = await sqlAdmin.instances.get({
+            project: projectId,
+            instance: instanceId,
+        });
+
+        var healthStatusResult = {};
+
+        var healthStatusReasons = instanceInfo.data.suspensionReason || [];
+
+        if (healthStatusReasons.length == 0) {
+            healthStatusResult.healthStatus = 'Healthy';
+        } else {
+            healthStatusResult.healthStatus = 'Unhealthy';
+            healthStatusResult.reasons = healthStatusReasons;
+        }
+
+        return healthStatusResult;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};

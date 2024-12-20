@@ -141,3 +141,35 @@ exports.HandleGCloudDBInstanceFailover = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.GetGCloudInstanceStatus = async (req, res) => {
+    try {
+        const authHeader = req.headers['authorization'];
+
+        const accessToken = authHeader.split(' ')[1];
+
+        var authClient = await RelationalDBHelper.createOAuth2Client(accessToken, req.body.refreshToken);
+
+        var instanceInfo = await RelationalDBHelper.getGCloudDBInstanceDetails(authClient, req.projectId);
+
+        return res.status(200).send({"instanceStatus": instanceInfo.status});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.GetGCloudInstanceHealthStatus = async (req, res) => {
+    try {
+        const authHeader = req.headers['authorization'];
+
+        const accessToken = authHeader.split(' ')[1];
+
+        var authClient = await RelationalDBHelper.createOAuth2Client(accessToken, req.body.refreshToken);
+
+        var healthStatusInfo = await RelationalDBHelper.getGCloudInstancesHealthStatus(authClient, req.projectId, req.instanceId);
+
+        return res.status(200).send({"healthStatus": healthStatusInfo});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
