@@ -84,6 +84,40 @@ exports.updateCluster = async (apiKey, clusterUri, clusterConfig) => {
     }
 };
 
+exports.pauseCluster = async (apiKey, clusterUri) => {
+  try {
+      const apiClient = GetApiClient(apiKey);
+
+      const operation = async () => {
+          const response = await apiClient.patch(clusterUri, {
+              paused: true,
+          });
+          return response.data;
+      };
+
+      return await retryOperation(operation, 3, 1000);
+  } catch (error) {
+      throw new Error(`Failed to pause cluster: ${error.message}`);
+  }
+};
+
+exports.resumeCluster = async (apiKey, clusterUri) => {
+  try {
+      const apiClient = GetApiClient(apiKey);
+
+      const operation = async () => {
+          const response = await apiClient.patch(clusterUri, {
+              paused: false,
+          });
+          return response.data;
+      };
+
+      return await retryOperation(operation, 3, 1000);
+  } catch (error) {
+      throw new Error(`Failed to resume cluster: ${error.message}`);
+  }
+};
+
 exports.deleteCluster = async (apiKey, clusterUri) => {
     try {
       const apiClient = GetApiClient(apiKey);

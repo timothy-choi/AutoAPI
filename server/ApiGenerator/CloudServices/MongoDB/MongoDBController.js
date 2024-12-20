@@ -51,6 +51,26 @@ exports.updateMongoDBCluster = async (req, res) => {
     }
 };
 
+exports.pauseMongoDBCluster = async (req, res) => {
+    try {
+        var clusterResponse = await MongoDBInstanceHelper.pauseCluster(req.body.apiKey, req.body.clusterUri);
+
+        return res.status(200).send({"clusterResponse": clusterResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.resumeMongoDBCluster = async (req, res) => {
+    try {
+        var clusterResponse = await MongoDBInstanceHelper.resumeCluster(req.body.apiKey, req.body.clusterUri);
+
+        return res.status(200).send({"clusterResponse": clusterResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
 exports.deleteMongoDBCluster = async (req, res) => {
     try {
         await MongoDBInstanceHelper.deleteCluster(req.body.apiKey, req.body.clusterUri);
