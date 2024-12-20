@@ -129,3 +129,53 @@ exports.createGoogleCloudProject = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.updateGoogleCloudProject = async (req, res) => {
+    try {
+        const authHeader = req.headers['authorization'];
+
+        const accessToken = authHeader.split(' ')[1];
+
+        var oauthClient = createOAuth2Client(accessToken, req.body.refreshToken);
+
+        var projectResponse = await updateGCloudProject(oauthClient, req.body.updateInfo);
+
+        return res.status(200).send({"projectResponse": projectResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.deleteGoogleCloudProject = async (req, res) => {
+    try {
+        const authHeader = req.headers['authorization'];
+
+        const accessToken = authHeader.split(' ')[1];
+
+        var oauthClient = createOAuth2Client(accessToken, req.body.refreshToken);
+
+        var projectResponse = await deleteGCloudProject(oauthClient, req.body.projectName);
+
+        await waitForProjectDeletion(req.body.projectId, oauthClient, req.body.timeout, req.body.interval);
+
+        return res.status(200).send({"projectResponse": projectResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.getGoogleCloudProject = async (req, res) => {
+    try {
+        const authHeader = req.headers['authorization'];
+
+        const accessToken = authHeader.split(' ')[1];
+
+        var oauthClient = createOAuth2Client(accessToken, req.body.refreshToken);
+
+        var projectInfo = await getGCloudProject(oauthClient, req.body.projectName);
+
+        return res.status(200).send({"projectInfo": projectInfo});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
