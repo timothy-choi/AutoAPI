@@ -14,6 +14,7 @@ const AWS_COGNITO_DOMAIN = process.env.AWS_COGNITO_DOMAIN;
 const axios = require('axios');
 
 const AWS = require('aws-sdk');
+const { trusted } = require("mongoose");
 
 exports.LoginToAWS = async (req, res) => {
     const authorizationUrl = `${AWS_AUTH_URL}?response_type=code&client_id=${AWS_CLIENT_ID}&redirect_uri=${encodeURIComponent(
@@ -47,10 +48,42 @@ exports.GetTokenFromAWS = async (req, res) => {
             return res.status(500).send("Failed to authenticate");
         }
 
+        const isIAMUser = await checkIfIAMUser(tokenResponse.data.id_token);
+
+        if (!isIAMUser) {
+            return res.status(403).send("User does not have an associated AWS IAM account");
+        }
+
         return res.status(200).send({"AccessToken": tokenResponse.data.access_token, "RefreshToken": tokenResponse.data.refresh_token, "id_token": tokenResponse.data.id_token});
     } catch (error) {
         return res.status(500).send("Failed to authenticate");
       }
+}
+
+async function checkIfIAMUser(id_token) {
+  const lambda = new AWS.Lambda();
+
+  const params = {
+      FunctionName: 'AWSOauthHelperFunction', 
+      InvocationType: 'RequestResponse',
+      Payload: JSON.stringify({
+          idToken: id_token
+      })
+  };
+
+  try {
+      const result = await lambda.invoke(params).promise();
+
+      const payload = JSON.parse(result.Payload);
+      
+      if (payload.errorMessage) {
+        throw new Error(payload.errorMessage); 
+      }
+
+      return true;
+  } catch (error) {
+      return false;
+  }
 }
 
 exports.refreshAccessToken = async (refreshToken) => {
