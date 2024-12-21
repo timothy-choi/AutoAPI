@@ -1,0 +1,16 @@
+{
+  "name": "cloudsqlmetricsfunction",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@google-cloud/monitoring": "^4.1.0",
+    "google-auth-library": "^9.15.0"
+  }
+}
