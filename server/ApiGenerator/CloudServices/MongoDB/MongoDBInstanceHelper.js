@@ -118,6 +118,21 @@ exports.resumeCluster = async (apiKey, clusterUri) => {
   }
 };
 
+exports.scaleCluster = async (apiKey, clusterUri, scaleParams) => {
+  try {
+      const apiClient = GetApiClient(apiKey);
+
+      const operation = async () => {
+          const response = await apiClient.patch(clusterUri, scaleParams);
+          return response.data;
+      };
+
+      return await retryOperation(operation, 3, 1000);
+  } catch (error) {
+      throw new Error(`Failed to scale cluster: ${error.message}`);
+  }
+};
+
 exports.deleteCluster = async (apiKey, clusterUri) => {
     try {
       const apiClient = GetApiClient(apiKey);
@@ -155,7 +170,7 @@ exports.createDatabase = async (apiKey, dbName, collectionName, dbUri) => {
       }
 };
 
-exports.deleteDatabase = async (databaseUri) => {
+exports.deleteDatabase = async (databaseUri, apiKey) => {
     try {
       const apiClient = GetApiClient(apiKey);
 
