@@ -49,6 +49,37 @@ exports.GCloudOAuthCallback = async (req, res) => {
         const { tokens } = await oauth2Client.getToken(code);
         oauth2Client.setCredentials(tokens);
 
+        const cloudResourceManager = google.cloudresourcemanager('v1');
+        const iam = google.iam('v1');
+        const oauth2 = google.oauth2('v2');
+
+        const projectsResponse = await cloudResourceManager.projects.list({
+            auth: oauth2Client,
+        });
+        const projects = projectsResponse.data.projects || [];
+
+        const testIamPermissionsResponse = await iam.projects.testIamPermissions({
+            auth: oauth2Client,
+            permissions: ['resourcemanager.projects.get'],
+            resource: 'projects/',
+        });
+
+        const hasIAMPermissions = testIamPermissionsResponse.data.permissions && testIamPermissionsResponse.data.permissions.length > 0;
+
+        const userInfoResponse = await oauth2.userinfo.get({
+            auth: oauth2Client,
+        });
+
+        const userEmail = userInfoResponse.data.email;
+        const userDomain = userInfoResponse.data.hd || null;
+
+        if (projects.length === 0 && !hasIAMPermissions) {
+            return res.status(403).send({
+                message: 'No active Google Cloud projects or IAM roles found.',
+                user: { email: userEmail, domain: userDomain },
+            });
+        }
+
         return res.status(200).send({"accessToken": tokens.access_token, "refreshToken": tokens.refresh_token});
     } catch (error) {
         return res.status(500).send("Failed to authenticate");
