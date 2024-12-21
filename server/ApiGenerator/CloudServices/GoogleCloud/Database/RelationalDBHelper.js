@@ -245,3 +245,18 @@ exports.getGCloudInstancesHealthStatus = async (authClient, projectId, instanceI
         throw new Error(error.message);
     }
 };
+
+exports.RebootGCloudInstance = async (authClient, projectId, instanceId) => {
+    try {
+        const sqlAdmin = google.sqladmin({ version: 'v1beta4', auth: authClient });
+
+        const res = await sqlAdmin.instances.restart({
+            project: projectId,
+            instance: instanceId,
+        });
+
+        return res.data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};

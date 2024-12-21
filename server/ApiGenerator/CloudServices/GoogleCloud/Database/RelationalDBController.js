@@ -172,4 +172,22 @@ exports.GetGCloudInstanceHealthStatus = async (req, res) => {
     } catch (error) {
         return res.status(500).send(error.message);
     }
-}
+};
+
+exports.RebootGCloudInstance = async (req, res) => {
+    try {
+        const authHeader = req.headers['authorization'];
+
+        const accessToken = authHeader.split(' ')[1];
+
+        var authClient = await RelationalDBHelper.createOAuth2Client(accessToken, req.body.refreshToken);
+
+        var rebootResponse = await RelationalDBHelper.RebootGCloudInstance(authClient, req.body.projectId, req.body.instanceId);
+
+        await RelationalDBHelper.trackGCloudDBOperationStatus(req.body.projectId, rebootResponse.name, authClient, req.body.timeoutMS);
+
+        return res.status(201).send({"rebootResponse": rebootResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
