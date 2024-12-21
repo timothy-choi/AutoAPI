@@ -130,3 +130,53 @@ exports.restoreMongoDBBackup = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.CreateCollection = async (req, res) => {
+    try {
+        var collectionResponse = await MongoDBInstanceHelper.createCollection(req.body.apiKey, req.body.collectionParams, req.body.collectionUri);
+
+        return res.status(201).send({"collectionResponse": collectionResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.UpdateCollection = async (req, res) => {
+    try {
+        var collectionResponse = await MongoDBInstanceHelper.updateCollection(req.body.apiKey, req.body.collectionUri, req.body.updates);
+
+        return res.status(200).send({"collectionResponse": collectionResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.DeleteCollection = async (req, res) => {
+    try {
+        await MongoDBInstanceHelper.deleteCollection(req.body.apiKey, req.body.collectionUri);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.CreateIndex = async (req, res) => {
+    try {
+        var indexResponse = await MongoDBInstanceHelper.createIndex(req.body.apiKey, req.body.indexUri, req.body.indexDetails);
+
+        return res.status(201).send({"indexResponse": indexResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.UpdateIndex = async (req, res) => {
+    try {
+        var indexResponse = await MongoDBInstanceHelper.updateIndex(req.body.apiKey, req.body.indexUri, req.body.indexConfig);
+
+        return res.status(200).send({"indexResponse": indexResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
