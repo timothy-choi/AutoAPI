@@ -191,3 +191,17 @@ exports.RebootGCloudInstance = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.GetGCloudInstanceMetrics = async (req, res) => {
+    try {
+        if (!req.body.projectOn) {
+            return res.status(401).send({"error": "metrics monitoring has already stopped"});
+        }
+        
+        var metricsResults = await RelationalDBHelper.GetGCloudInstanceMetrics(req.body.metricsFunctionUri, req.body.accessToken, req.body.metricsInfo);
+
+        return res.status(201).send({'metricsResults': metricsResults});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}

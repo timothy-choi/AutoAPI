@@ -1,4 +1,5 @@
 const { google } = require('googleapis');
+const axios = require('axios');
 
 const GCLOUD_CLIENT_ID = process.env.GCLOUD_CLIENT_ID;
 const GCLOUD_CLIENT_SECRET = process.env.GCLOUD_CLIENT_SECRET;
@@ -260,3 +261,18 @@ exports.RebootGCloudInstance = async (authClient, projectId, instanceId) => {
         throw new Error(error.message);
     }
 };
+
+exports.GetGCloudInstanceMetrics = async (metricsFunctionUri, accessToken, metricsInfo) => {
+    try {
+        var metricsResponse = await axios.post(metricsFunctionUri, metricsInfo, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        return metricsResponse.data.metricsResults;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
