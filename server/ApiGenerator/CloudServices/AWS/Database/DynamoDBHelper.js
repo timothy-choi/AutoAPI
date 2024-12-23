@@ -19,6 +19,27 @@ const executeWithRetry = async (operation, maxRetries = 3, initialDelay = 100, b
     }
 }
 
+const generateUpdateExpression = (updates) => {
+    const updateExpressions = [];
+    const expressionAttributeNames = {};
+    const expressionAttributeValues = {};
+
+    Object.keys(updates).forEach((field, index) => {
+        const placeholder = `#field${index}`;
+        const valuePlaceholder = `:value${index}`;
+
+        updateExpressions.push(`${placeholder} = ${valuePlaceholder}`);
+        expressionAttributeNames[placeholder] = field;
+        expressionAttributeValues[valuePlaceholder] = updates[field];
+    });
+
+    return {
+        UpdateExpression: `set ${updateExpressions.join(', ')}`,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues
+    };
+}
+
 exports.CreateDynamoDBTable = async (userCredentials, tableParams) => {
     try {
         const dynamodb = new AWS.DynamoDB({
@@ -292,6 +313,70 @@ exports.BatchWriteItems = async (userCredentials, requests) => {
             };
 
             await docClient.batchWrite(params).promise();
+        };
+
+        await executeWithRetry(operation, 3, 20, 3);
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.BatchDeleteItems = async (userCredentials, tableName, keys) => {
+    try {
+        const docClient = new AWS.DynamoDB.DocumentClient({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+
+        const operation = async () => {
+            const params = {
+                RequestItems: {
+                    [tableName]: keys.map(key => ({
+                        DeleteRequest: {
+                            Key: key
+                        }
+                    }))
+                }
+            };
+
+            await docClient.batchWrite(params).promise();
+        };
+
+        await executeWithRetry(operation, 3, 20, 3);
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.BatchUpdateItems = async (userCredentials, tableName, itemsToUpdate) => {
+    try {
+        const docClient = new AWS.DynamoDB.DocumentClient({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+
+        const operation = async () => {
+            for (const item of itemsToUpdate) {
+                const { key, updates } = item;
+
+                const { UpdateExpression, ExpressionAttributeNames, ExpressionAttributeValues } =
+                    generateUpdateExpression(updates);
+
+                const params = {
+                    TableName: tableName,
+                    Key: key,
+                    UpdateExpression,
+                    ExpressionAttributeNames,
+                    ExpressionAttributeValues,
+                    ReturnValues: 'ALL_NEW'
+                };
+
+                await docClient.update(params).promise();
+            }
         };
 
         await executeWithRetry(operation, 3, 20, 3);

@@ -232,6 +232,48 @@ exports.BatchWriteItems = async (req, res) => {
     }
 }
 
+exports.BatchDelete = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
+        await DynamoDBHelper.BatchDeleteItems(userCredentials, req.body.tableName, req.body.keys);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.BatchUpdate = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
+        await DynamoDBHelper.BatchUpdateItems(userCredentials, req.body.tableName, req.body.itemsToUpdate);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
 exports.CreateGSI = async (req, res) => {
     try {
         var userCredentials = {};
