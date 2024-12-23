@@ -358,6 +358,48 @@ exports.EnableStreams = async (req, res) => {
     }
 }
 
+exports.CreateReplica = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
+        var replicaResponse = await DynamoDBHelper.CreateReplica(userCredentials, req.body.replicaTableName, req.body.replicaUpdates);
+
+        return res.status(200).send({"replicaResponse": replicaResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.DeleteReplica = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
+        var replicaResponse = await DynamoDBHelper.DeleteReplica(userCredentials, req.body.replicaTableName, req.body.replicaRegion);
+
+        return res.status(200).send({"replicaResponse": replicaResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
 exports.UpdateTTL = async (req, res) => {
     try {
         var userCredentials = {};

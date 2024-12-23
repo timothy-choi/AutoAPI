@@ -503,6 +503,64 @@ exports.EnableStreams = async (userCredentials, tableName, streamViewType) => {
     }
 }
 
+exports.CreateReplica = async (userCredentials, replicaTableName, replicaUpdates) => {
+    try {
+        const dynamodb = new AWS.DynamoDB({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+
+        var operation = async () => {
+            const updateTableParams = {
+                TableName: replicaTableName,
+                ReplicaUpdates: replicaUpdates
+            };
+
+            const data = await dynamodb.updateTable(updateTableParams).promise();
+
+            return data;
+        };
+
+        return await executeWithRetry(operation, 3, 20, 3);
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.DeleteReplica = async (userCredentials, replicaTableName, replicaRegion) => {
+    try {
+        const dynamodb = new AWS.DynamoDB({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+
+        var operation = async () => {
+            const updateTableParams = {
+                TableName: replicaTableName,
+                ReplicaUpdates: [
+                    {
+                        Delete: {
+                            RegionName: replicaRegion
+                        }
+                    }
+                ]
+            };
+
+            const data = await dynamodb.updateTable(updateTableParams).promise();
+
+            return data;
+        };
+
+        return await executeWithRetry(operation, 3, 20, 3);
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
 exports.UpdateTTL = async (userCredentials, tableName, ttlAttribute) => {
     try {
         const dynamodb = new AWS.DynamoDB({
