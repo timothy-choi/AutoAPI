@@ -271,6 +271,30 @@ exports.ScanTable = async (userCredentials, tableName, filterExpression = null) 
     }
 }
 
+exports.QueryWithIndex = async (userCredentials, tableName, indexName, keyConditionExpression, expressionValues) => {
+    try {
+        const docClient = new AWS.DynamoDB.DocumentClient({
+            accessKeyId: userCredentials.accessKey,
+            secretAccessKey: userCredentials.secretKey,
+            sessionToken: userCredentials.sessionToken,
+            region: userCredentials.region
+        });
+
+        const params = {
+            TableName: tableName,
+            IndexName: indexName,
+            KeyConditionExpression: keyConditionExpression,
+            ExpressionAttributeValues: expressionValues
+        };
+
+        var data = await documentClient.query(params).promise();
+
+        return data.Items;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+} 
+
 exports.UpdateItem = async (userCredentials, tableName, key, updateExpression, expressionAttributeValues, returnValues) => {
     try {
         const docClient = new AWS.DynamoDB.DocumentClient({

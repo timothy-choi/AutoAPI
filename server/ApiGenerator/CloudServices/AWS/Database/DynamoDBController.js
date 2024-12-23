@@ -190,6 +190,27 @@ exports.ScanTable = async (req, res) => {
     }
 }
 
+exports.QueryWithIndex = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
+        var queryResponse = await DynamoDBHelper.QueryWithIndex(userCredentials, req.body.tableName, req.body.indexName, req.body.keyConditionExpression, req.body.expressionValues);
+
+        return res.status(200).send({"queryResponse": queryResponse});
+    } catch (error) {
+        return res.status(500).send("Error getting item from DynamoDB table: " + error);
+    }
+}
+
 exports.UpdateItemInTable = async (req, res) => {
     try {
         var userCredentials = {};
