@@ -34,7 +34,7 @@ exports.ExecuteQuery = async (req, res) => {
         }
     }
 
-    return res.status(200).send({"queryResponse": queryResponse});
+    return res.status(201).send({"queryResponse": queryResponse});
 }
 
 exports.ModifyItemInDBInstance = async (req, res) => {
@@ -46,7 +46,7 @@ exports.ModifyItemInDBInstance = async (req, res) => {
         if (req.database === 'MySQL') {
             [pool, client] = await MySQLHelper.connectToMySQLDatabase(req.body.connectionInfo);
 
-            response = await MySQLHelper.RemoveOrModifyInMySQLDatabase(req.body.query, req.body.values, client);
+            response = await MySQLHelper.RemoveOrModifyInMySQLDatabase(req.body.query, req.body.params, client);
         } else if (req.database === 'SqlServer') {
             [pool, client] = await SQLServerHelper.connectToSQLServerDatabase(req.body.connectionInfo);
 
@@ -77,7 +77,7 @@ exports.InsertToDBInstance = async (req, res) => {
         if (req.database === 'MySQL') {
             [pool, client] = await MySQLHelper.connectToMySQLDatabase(req.body.connectionInfo);
 
-            await MySQLHelper.InsertToMySQLDatabase(req.body.query, req.body.values, client);
+            await MySQLHelper.InsertToMySQLDatabase(req.body.query, req.body.params, client);
         } else if (req.database === 'SqlServer') {
             [pool, client] = await SQLServerHelper.connectToSQLServerDatabase(req.body.connectionInfo);
 
@@ -110,7 +110,7 @@ exports.RemoveItemInDBInstance = async (req, res) => {
         if (req.database === 'MySQL') {
             [pool, client] = await MySQLHelper.connectToMySQLDatabase(req.body.connectionInfo);
 
-            response = await MySQLHelper.RemoveOrModifyInMySQLDatabase(req.body.query, req.body.values, client);
+            response = await MySQLHelper.RemoveOrModifyInMySQLDatabase(req.body.query, req.body.params, client);
         } else if (req.database === 'SqlServer') {
             [pool, client] = await SQLServerHelper.connectToSQLServerDatabase(req.body.connectionInfo);
 
