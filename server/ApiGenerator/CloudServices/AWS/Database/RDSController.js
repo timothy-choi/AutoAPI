@@ -172,6 +172,40 @@ exports.rebootRDSInstance = async (req, res) => {
     }
 }
 
+exports.createReadReplica = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var replicaResponse = await RDSHelper.createReadReplica(req.body.sourceDbId, req.body.replicaDbId, userCredentials, req.body.userRegion);
+
+        return res.status(200).send({"replicaResponse": replicaResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.DeleteReadReplica = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var replicaResponse = await RDSHelper.deleteReadReplica(req.body.replicaDbId, userCredentials, req.body.userRegion);
+
+        return res.status(200).send({"replicaResponse": replicaResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
 exports.createRDSBackup = async (req, res) => {
     try {
         let userCredentials = {};

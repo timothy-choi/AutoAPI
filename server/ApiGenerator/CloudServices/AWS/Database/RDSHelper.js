@@ -308,6 +308,92 @@ exports.rebootRDSInstance = async (currDbId, userCredentials, userRegion) => {
     }
 }
 
+exports.createReadReplica = async (sourceDbId, replicaDbId, userCredentials, userRegion) => {
+    const rds = new AWS.RDS({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    const params = {
+        SourceDBInstanceIdentifier: sourceDbId,
+        DBInstanceIdentifier: replicaDbId
+    };
+
+    try {
+        const replicaData = await rds.createDBInstanceReadReplica(params).promise();
+
+        let isCreating = true;
+        const MAX_WAIT_TIME = 30 * 60 * 1000;  
+        let elapsedTime = 0;
+        const POLLING_INTERVAL = 15000;  
+
+        
+        while (isCreating && elapsedTime < MAX_WAIT_TIME) {
+            await new Promise(res => setTimeout(res, POLLING_INTERVAL));
+            elapsedTime += POLLING_INTERVAL;
+
+            const data = await rds.describeDBInstances({
+                DBInstanceIdentifier: replicaDbId,
+            }).promise();
+            const status = data.DBInstances[0].DBInstanceStatus;
+
+            if (status === 'available') {
+                isCreating = false;  
+            }
+        }
+
+        if (elapsedTime >= MAX_WAIT_TIME) {
+            throw new Error('Read replica creation timed out');
+        }
+
+        return replicaData;  
+    } catch (error) {
+        throw new Error(`Error creating read replica: ${error.message}`);
+    }
+};
+
+exports.deleteReadReplica = async (replicaDbId, userCredentials, userRegion) => {
+    const rds = new AWS.RDS({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    const params = {
+        DBInstanceIdentifier: replicaDbId
+    };
+
+    try {
+        const deleteData = await rds.deleteDBInstance(params).promise();
+
+        let isDeleting = true;
+        const MAX_WAIT_TIME = 30 * 60 * 1000;  
+        let elapsedTime = 0;
+        const POLLING_INTERVAL = 15000;  
+
+        while (isDeleting && elapsedTime < MAX_WAIT_TIME) {
+            await new Promise(res => setTimeout(res, POLLING_INTERVAL));
+            elapsedTime += POLLING_INTERVAL;
+
+            const data = await rds.describeDBInstances({
+                DBInstanceIdentifier: replicaDbId,
+            }).promise();
+            const status = data.DBInstances[0].DBInstanceStatus;
+
+            if (status === 'deleted') {
+                isDeleting = false;  
+            }
+        }
+
+        if (elapsedTime >= MAX_WAIT_TIME) {
+            throw new Error('Read replica deletion timed out');
+        }
+
+        return deleteData;  
+    } catch (error) {
+        throw new Error(`Error deleting read replica: ${error.message}`);
+    }
+};
+
 exports.createRDSBackup = async (currDbId, snapshotId, userCredentials, userRegion) => {
     const rds = new AWS.RDS({
         credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
