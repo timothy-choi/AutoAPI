@@ -637,3 +637,37 @@ exports.SetProjectCloudInfo = async (projectId, projectCloudInfo) => {
         throw new Error('could not delete model');
     }
 }
+
+exports.AddProjectViewRequestsRecieved = async (projectId, viewRequest) => {
+    try {
+        var project = await GetProjectById(projectId);
+
+        if (!project) {
+            throw new Error('Model does not exist');
+        } 
+
+        project.ProjectViewRequestsRecieved.push(viewRequest);
+
+        await project.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+exports.RemoveProjectViewRequestsRecieved = async (projectId, viewRequestId) => {
+    try {
+        var project = await GetProjectById(projectId);
+
+        if (!project) {
+            throw new Error('Project does not exist');
+        } 
+
+        project.ProjectViewRequestsRecieved.filter(request => request.id != viewRequestId);
+
+        project.ModifiedAt = Date.now();
+
+        await project.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}

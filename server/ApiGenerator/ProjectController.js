@@ -350,3 +350,23 @@ exports.SetProjectCloudInfo = async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 }
+
+exports.AddProjectViewRequestsRecieved = async (req, res) => {
+    try {
+        await ProjectService.AddProjectViewRequestsRecieved(req.projectId, req.body);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+exports.RemoveProjectViewRequestsRecieved = async (req, res) => {
+    try {
+        await ProjectService.RemoveProjectViewRequestsRecieved(req.projectId, req.viewRequestId);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
