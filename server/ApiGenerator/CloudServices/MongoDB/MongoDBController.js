@@ -11,6 +11,74 @@ exports.CreateServiceAccount = async (req, res) => {
     }
 };
 
+exports.UpdateServiceAccount = async (req, res) => {
+    try {
+        const base64Credentials = req.headers.get('Authorization').slice(6);
+
+        var headerInfo = {
+            'Authorization': `Bearer ${base64Credentials}`,
+            'Content-Type': 'application/json'
+        };
+
+        var updateResponse = await MongoDBServiceHelper.updateServiceAccount(req.body.organizationId, req.body.apiKeyId, headerInfo, req.body.updates);
+
+        return res.status(200).send({"updateResponse": updateResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.GetServiceAccountInfo = async (req, res) => {
+    try {
+        const base64Credentials = req.headers.get('Authorization').slice(6);
+
+        var headerInfo = {
+            'Authorization': `Bearer ${base64Credentials}`,
+            'Content-Type': 'application/json'
+        };
+
+        var serviceAccountResponse = await MongoDBServiceHelper.getServiceAccountInfo(req.body.organizationId, req.body.apiKeyId, headerInfo);
+
+        return res.status(200).send({"serviceAccount": serviceAccountResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.DeleteServiceAccount = async (req, res) => {
+    try {
+        const base64Credentials = req.headers.get('Authorization').slice(6);
+
+        var headerInfo = {
+            'Authorization': `Bearer ${base64Credentials}`,
+            'Content-Type': 'application/json'
+        };
+
+        await MongoDBServiceHelper.deleteServiceAccount(req.body.organizationId, req.body.apiKeyId, headerInfo);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.AddWhitelistEntry = async (req, res) => {
+    try {
+        const base64Credentials = req.headers.get('Authorization').slice(6);
+
+        var headerInfo = {
+            'Authorization': `Bearer ${base64Credentials}`,
+            'Content-Type': 'application/json'
+        };
+
+        var whitelistEntryResponse = await MongoDBServiceHelper.addWhitelistEntry(req.body.organizationId, req.body.apiKeyId, req.body.whitelistEntry, headerInfo);
+
+        return res.status(201).send({"whitelistEntryResponse": whitelistEntryResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
 exports.createMongoDBProject = async (req, res) => {
     try {
         var projectResponse = await MongoDBInstanceHelper.createProject(req.body.apiKey, req.body.projectUri, req.body.name, req.body.organizationId);
