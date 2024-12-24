@@ -307,3 +307,59 @@ exports.updateIndex = async (apiKey, indexUri, indexConfig) => {
       throw new Error(`Failed to update index: ${error.message}`);
   }
 };
+
+exports.deleteIndex = async (apiKey, indexUri) => {
+  try {
+    const apiClient = GetApiClient(apiKey);
+
+    var operation = async () => {
+        const response = await apiClient.delete(indexUri);
+
+        return response.data;
+    };
+
+    return await retryOperation(operation, 3, 1000);
+  } catch (error) {
+    throw new Error(`Failed to delete index: ${error.message}`);
+  }
+};
+
+exports.addIPWhitelist = async (apiKey, projectUri, ipAddress) => {
+  try {
+    const payload = {
+      cidrBlock: ipAddress,
+      comment: "Added via API",
+    };
+
+    const uri = `${projectUri}/accessList`;
+    const response = await axios.post(uri, payload, {
+        headers: BASE_HEADERS(apiKey),
+    });
+
+    return response.data; 
+  } catch (error) {
+    throw new Error(`Failed to delete index: ${error.message}`);
+  }
+};
+
+exports.enableEncryptionAtRest = async (apiKey, projectUri, encryptionAtRestConfig) => {
+  try {
+      const headers = { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" };
+
+      const response = await axios.patch(projectUri, encryptionAtRestConfig, { headers });
+      return response.data;
+  } catch (error) {
+      throw new Error(`Failed to enable encryption at rest: ${error.message}`);
+  }
+}
+
+exports.updateSecuritySettings = async (apiKey, projectUri, securityConfig) => {
+  try {
+      const headers = { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" };
+
+      const response = await axios.patch(projectUri, securityConfig, { headers });
+      return response.data;
+  } catch (error) {
+      throw new Error(`Failed to update security settings: ${error.message}`);
+  }
+}

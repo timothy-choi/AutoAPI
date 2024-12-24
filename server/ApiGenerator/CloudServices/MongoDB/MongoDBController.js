@@ -180,3 +180,43 @@ exports.UpdateIndex = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.DeleteIndex = async (req, res) => {
+    try {
+        await MongoDBInstanceHelper.deleteIndex(req.body.apiKey, req.body.indexUri);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.AddIPWhitelist = async (req, req) => {
+    try {
+        var whitelistResponse = await MongoDBInstanceHelper.addIPWhitelist(req.body.apiKey, req.body.projectUri, req.body.ipAddress);
+
+        return res.status(200).send({"whitelistResponse": whitelistResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.EnableEncryptionAtRest = async (req, res) => {
+    try {
+        var encryptionResponse = await MongoDBInstanceHelper.enableEncryptionAtRest(req.body.apiKey, req.body.projectUri, req.body.encryptionConfig);
+
+        return res.status(200).send({"encryptionResponse": encryptionResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.UpdateSecuritySettings = async (req, res) => {
+    try {
+        var securityResponse = await MongoDBInstanceHelper.updateSecuritySettings(req.body.apiKey, req.body.projectUri, req.body.securityConfig);
+
+        return res.status(200).send({"securityResponse": securityResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
