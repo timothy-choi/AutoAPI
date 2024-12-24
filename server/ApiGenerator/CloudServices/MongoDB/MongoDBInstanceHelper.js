@@ -363,3 +363,46 @@ exports.updateSecuritySettings = async (apiKey, projectUri, securityConfig) => {
       throw new Error(`Failed to update security settings: ${error.message}`);
   }
 }
+
+exports.createDatabaseUser = async (apiKey, projectId, username, password, dbName, roles) => {
+  try {
+      const url = `${BASE_URL}/groups/${projectId}/databaseUsers`;
+      const headers = { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" };
+      const data = {
+          username,
+          password,
+          databaseName: dbName,
+          roles,
+      };
+
+      const response = await axios.post(url, data, { headers });
+      return response.data;
+  } catch (error) {
+      throw new Error(`Failed to create database user: ${error.message}`);
+  }
+}
+
+exports.updateDatabaseUser = async (apiKey, projectId, username, roles) => {
+  try {
+      const url = `${BASE_URL}/groups/${projectId}/databaseUsers/admin/${username}`;
+      const headers = { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" };
+      const data = { roles };
+
+      const response = await axios.patch(url, data, { headers });
+      return response.data;
+  } catch (error) {
+      throw new Error(`Failed to update database user: ${error.message}`);
+  }
+}
+
+exports.deleteDatabaseUser = async (apiKey, projectId, username) => {
+  try {
+      const url = `${BASE_URL}/groups/${projectId}/databaseUsers/admin/${username}`;
+      const headers = { "Authorization": `Bearer ${apiKey}` };
+
+      const response = await axios.delete(url, { headers });
+      return response.data;
+  } catch (error) {
+      throw new Error(`Failed to delete database user: ${error.message}`);
+  }
+}

@@ -220,3 +220,33 @@ exports.UpdateSecuritySettings = async (req, res) => {
         return res.status(500).send(error.message);
     }
 }
+
+exports.CreateUser = async (req, res) => {
+    try {
+        var userResponse = await MongoDBInstanceHelper.createDatabaseUser(req.body.apiKey, req.body.projectId, req.body.username, req.body.password, req.body.dbName, req.body.roles);
+
+        return res.status(201).send({"userResponse": userResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.UpdateUser = async (req, res) => {
+    try {
+        var userResponse = await MongoDBInstanceHelper.updateDatabaseUser(req.body.apiKey, req.body.projectId, req.body.username, req.body.roles);
+
+        return res.status(200).send({"userResponse": userResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.DeleteUser = async (req, res) => {
+    try {
+        await MongoDBInstanceHelper.deleteDatabaseUser(req.body.apiKey, req.body.projectId, req.body.username);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
