@@ -14,6 +14,15 @@ exports.connectToMySQLDatabase = async (connectionInfo) => {
     }
 }
 
+exports.DefineSchema = async (schemaSQL, poolInstance) => {
+    try {
+        const [result] = await poolInstance.query(schemaSQL);
+        return result;
+    } catch (error) {
+        throw new Error(`Failed to define schema: ${error.message}`);
+    }
+};
+
 exports.ExecuteQuery = async (query, params, poolInstance) => {
     try {
         const [results] = await poolInstance.query(query, params);

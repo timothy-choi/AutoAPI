@@ -14,6 +14,19 @@ exports.connectToSQLServerDatabase = async (connectionInfo) => {
     }
 }
 
+exports.defineSchema = async (pool, schemaSQL) => {
+    try {
+        const request = pool.request();
+
+        const response = await request.query(schemaSQL);
+
+        return response;
+    } catch (error) {
+        throw new Error(`Failed to define schema: ${error.message}`);
+    }
+};
+
+
 exports.executeQuery = async (pool, query, params = []) => {
     try {
         const request = pool.request();

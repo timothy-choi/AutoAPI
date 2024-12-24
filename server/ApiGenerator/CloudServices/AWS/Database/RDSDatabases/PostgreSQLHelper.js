@@ -22,6 +22,18 @@ const ReleaseClient = async (client) => {
     }
 }
 
+exports.DefineSchema = async (schemaSQL, client) => {
+    try {
+        const result = await client.query(schemaSQL);
+
+        return result;
+    } catch (error) {
+        throw new Error(`Failed to define schema: ${error.message}`);
+    } finally {
+        ReleaseClient(client);
+    }
+};
+
 exports.ExecuteQuery = async (query, params, client) => {
     try {
         const result = await client.query(query, params);

@@ -2,6 +2,37 @@ const MySQLHelper = require('./MySQLHelper');
 const SQLServerHelper = require('./SQLServerHelper');
 const PostgreSQLHelper = require('./PostgreSQLHelper');
 
+exports.DefineSchema = async (req, res) => {
+    var pool = null 
+    try {
+        if (req.database === 'MySQL') {
+            [pool, poolInstance] = await MySQLHelper.connectToMySQLDatabase(req.body.connectionInfo);
+
+            queryResponse = await MySQLHelper.DefineSchema(req.body.query, poolInstance);
+        } else if (req.database === 'SQLServer') {
+            [pool, poolInstance] = await SQLServerHelper.connectToSQLServerDatabase(req.body.connectionInfo);
+
+            queryResponse = await SQLServerHelper.DefineSchema(req.body.query, poolInstance);
+        } else {
+            [pool, client] = await PostgreSQLHelper.connectToPostgreSQLDatabase(req.body.connectionInfo);
+
+            queryResponse = await PostgreSQLHelper.DefineSchema(req.body.query, client);
+        }
+    } catch (error) {
+        return res.status(500).send(error.message);
+    } finally {
+        if (req.database === 'MySQL') {
+            await MySQLHelper.endMySQLConnection(pool);
+        } else if (req.database === 'SQLServer') {
+            await SQLServerHelper.endSqlServerConnection(pool);
+        } else {
+            await PostgreSQLHelper.endPostgreSQLConnection(pool);
+        }
+    }
+
+    return res.status(201).send(null);
+}
+
 
 exports.ExecuteQuery = async (req, res) => {
     var queryResponse = null;
