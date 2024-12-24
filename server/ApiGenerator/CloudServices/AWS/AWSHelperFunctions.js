@@ -218,3 +218,49 @@ exports.getAWSCredentials = async (secretName) => {
         sessionTokenVal: sessionToken
     };
 }
+
+exports.addTagsToResource = async (awsServiceClient, resourceArn, tags) => {
+    const params = {
+        ResourceName: resourceArn,
+        Tags: tags
+    };
+
+    try {
+        await awsServiceClient.addTagsToResource(params).promise();
+
+        const data = await awsServiceClient.listTagsForResource({ ResourceName: resourceArn }).promise();
+        const tagKeys = data.Tags.map(tag => tag.Key);
+
+        const allTagsAdded = tags.every(tag => tagKeys.includes(tag.Key));
+        if (!allTagsAdded) {
+            throw new Error(`Some tags were not added to the resource: ${resourceArn}`);
+        }
+
+        return data;
+    } catch (error) {
+        throw new Error(`Error adding tags to resource ${resourceArn}: ${error.message}`);
+    }
+};
+
+exports.removeTagsFromResource = async (awsServiceClient, resourceArn, tagKeysToRemove) => {
+    const params = {
+        ResourceName: resourceArn,
+        TagKeys: tagKeysToRemove
+    };
+
+    try {
+        await awsServiceClient.removeTagsFromResource(params).promise();
+
+        const data = await awsServiceClient.listTagsForResource({ ResourceName: resourceArn }).promise();
+        const remainingTagKeys = data.Tags.map(tag => tag.Key);
+
+        const allTagsRemoved = tagKeysToRemove.every(tagKey => !remainingTagKeys.includes(tagKey));
+        if (!allTagsRemoved) {
+            throw new Error(`Some tags were not removed from the resource: ${resourceArn}`);
+        }
+
+        return data;
+    } catch (error) {
+        throw new Error(`Error removing tags from resource ${resourceArn}: ${error.message}`);
+    }
+};
