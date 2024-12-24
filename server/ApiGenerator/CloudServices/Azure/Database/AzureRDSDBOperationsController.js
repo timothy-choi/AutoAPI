@@ -20,6 +20,25 @@ exports.ExecuteQuery = async (req, res) => {
     }
 };
 
+exports.DefineDBSchema = async (req, res) => {
+    try {
+        var queryInfo = {
+            connectionInfo: req.body.connectionInfo,
+            query: req.body.query
+        };
+
+        var schemaResponse = await axios.post("/sqlOperations/schema/" + req.database, queryInfo);
+
+        if (schemaResponse.status != 201) {
+            return res.status(401).send(schemaResponse.json());
+        }
+
+        return res.status(201).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.InsertIntoDB = async (req, res) => {
     try {
         var queryInfo = {
