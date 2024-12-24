@@ -179,3 +179,13 @@ exports.BulkUpsertDocuments = async (req, res) => {
         return res.status(500).send(error.message);
     }
 }
+
+exports.BulkDeleteDocuments = async (req, res) => {
+    try {
+        await CosmosDBHelper.BulkDeleteDocuments(req.body.databaseName, req.body.containerName, req.body.query);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}

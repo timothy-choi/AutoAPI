@@ -420,3 +420,24 @@ exports.BulkUpsertDocuments = async (databaseId, containerId, documents) => {
         throw new Error(`Error performing bulk upsert: ${error.message}`);
     }
 };
+
+exports.BulkDeleteDocuments = async (databaseName, containerName, query) => {
+    try {
+        const database = cosmosClient.database(databaseName);
+        const container = database.container(containerName);
+
+        const { resources: items } = await container.items.query(query).fetchAll();
+
+        if (items.length === 0) {
+            return;
+        }
+
+        const deletePromises = items.map((item) => {
+            return container.item(item.id, item.partitionKey).delete();
+        });
+
+        await Promise.all(deletePromises);
+    } catch (error) {
+        throw new Error(`Error performing bulk delete: ${error.message}`);
+    }
+};
