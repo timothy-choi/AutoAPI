@@ -1,4 +1,5 @@
 const AWS = require('aws-sdk');
+const AWSHelperFunctions = require('../AWSHelperFunctions');
 
 exports.createRDSInstance = async (dbInstanceInfo, userCredentials, userRegion) => {
     const rds = new AWS.RDS({
@@ -480,6 +481,88 @@ exports.restoreRDSBackup = async (newCurrDbId, snapshotId, instanceClass, public
     }
 }
 
+exports.addTagsToResource = async (resourceArn, tags, userCredentials, userRegion) => {
+    const rds = new AWS.RDS({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    try {
+        const addTagsData = await AWSHelperFunctions.addTagsToResource(rds, resourceArn, tags).promise();
+
+        let isAdding = true;
+        const MAX_WAIT_TIME = 30 * 60 * 1000;  
+        let elapsedTime = 0;
+        const POLLING_INTERVAL = 15000; 
+
+        while (isAdding && elapsedTime < MAX_WAIT_TIME) {
+            await new Promise(res => setTimeout(res, POLLING_INTERVAL));
+            elapsedTime += POLLING_INTERVAL;
+
+            const data = await rds.listTagsForResource({
+                ResourceName: resourceArn,
+            }).promise();
+
+            const tagKeys = data.Tags.map(tag => tag.Key);
+            
+            const allTagsAdded = tags.every(tag => tagKeys.includes(tag.Key));
+
+            if (allTagsAdded) {
+                isAdding = false;  
+            }
+        }
+
+        if (elapsedTime >= MAX_WAIT_TIME) {
+            throw new Error('Tag addition timed out');
+        }
+
+        return addTagsData;  
+    } catch (error) {
+        throw new Error(`Error adding tags to resource: ${error.message}`);
+    }
+};
+
+exports.removeTagsFromResource = async (resourceArn, tagsToRemove, userCredentials, userRegion) => {
+    const rds = new AWS.RDS({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    try {
+        const removeTagsData = await AWSHelperFunctions.removeTagsFromResource(rds, resourceArn, tagsToRemove).promise();
+
+        let isRemoving = true;
+        const MAX_WAIT_TIME = 30 * 60 * 1000;  
+        let elapsedTime = 0;
+        const POLLING_INTERVAL = 15000;  
+
+        
+        while (isRemoving && elapsedTime < MAX_WAIT_TIME) {
+            await new Promise(res => setTimeout(res, POLLING_INTERVAL));
+            elapsedTime += POLLING_INTERVAL;
+
+            const data = await rds.listTagsForResource({
+                ResourceName: resourceArn,
+            }).promise();
+
+            const tagKeys = data.Tags.map(tag => tag.Key);
+            
+            const allTagsRemoved = !tagsToRemove.some(tag => tagKeys.includes(tag));
+
+            if (allTagsRemoved) {
+                isRemoving = false;  
+            }
+        }
+
+        if (elapsedTime >= MAX_WAIT_TIME) {
+            throw new Error('Tag removal timed out');
+        }
+
+        return removeTagsData;  
+    } catch (error) {
+        throw new Error(`Error removing tags from resource: ${error.message}`);
+    }
+};
 
 exports.deleteRDSInstance = async (dbId, skipFinalSnapshot = true, userCredentials, userRegion) => {
     const rds = new AWS.RDS({

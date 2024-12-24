@@ -240,6 +240,40 @@ exports.restoreRDSBackup = async (req, res) => {
     }
 }
 
+exports.addResourceTags = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var tagResponse = await RDSHelper.addTagsToResource(req.body.resourceArn, req.body.tags, userCredentials, req.body.userRegion);
+
+        return res.status(200).send({"tagResponse": tagResponse});
+    } catch (error) {
+        return res.status(500).send("Error creating RDS instance: " + error.message);
+    }
+}
+
+exports.removeResourceTags = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var tagResponse = await RDSHelper.removeTagsFromResource(req.body.resourceArn, req.body.tagsToRemove, userCredentials, req.body.userRegion);
+
+        return res.status(200).send({"tagResponse": tagResponse});
+    } catch (error) {
+        return res.status(500).send("Error creating RDS instance: " + error.message);
+    }
+}
+
 exports.deleteRDSInstance = async (req, res) => {
     try {
         let userCredentials = {};
