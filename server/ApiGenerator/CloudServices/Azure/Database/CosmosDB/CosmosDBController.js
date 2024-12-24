@@ -119,3 +119,63 @@ exports.UpdateOtherContainerSettings = async (req, res) => {
         return res.status(500).send(error.message);
     }
 }
+
+exports.InsertDocument = async (req, res) => {
+    try {
+        var insertResponse = await CosmosDBHelper.InsertDocument(req.body.databaseId, req.body.containerId, req.body.documentInfo);
+
+        return res.status(201).send({"insertResponse": insertResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.QueryDocument = async (req, res) => {
+    try {
+        var queryResponse = await CosmosDBHelper.QueryDocuments(req.body.databaseId, req.body.containerId, req.body.queryValue, req.body.params);
+
+        return res.status(201).send({"queryResponse": queryResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.UpdateDocument = async (req, res) => {
+    try {
+        var updateResponse = await CosmosDBHelper.UpdateDocument(req.body.databaseId, req.body.containerId, req.body.documentId, req.body.partitionKey, req.body.attribute, req.body.newValue);
+
+        return res.status(200).send({"updateResponse": updateResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.DeleteDocument = async (req, res) => {
+    try {
+        await CosmosDBHelper.DeleteDocument(req.body.databaseId, req.body.containerId, req.body.documentId, req.body.partitionKey);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.AggregrateQuery = async (req, res) => {
+    try {
+        var queryResponse = await CosmosDBHelper.AggregateQuery(req.body.databaseId, req.body.containerId, req.body.aggregateQuery);
+
+        return res.status(201).send({"queryResponse": queryResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.BulkUpsertDocuments = async (req, res) => {
+    try {
+        var modifyResponse = await CosmosDBHelper.BulkUpsertDocuments(req.body.databaseId, req.body.containerId, req.body.documents);
+
+        return res.status(200).send({"modifyResponse": modifyResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
