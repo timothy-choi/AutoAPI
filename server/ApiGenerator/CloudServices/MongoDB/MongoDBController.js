@@ -3,7 +3,14 @@ const MongoDBServiceHelper = require('./MongoDBServiceAccount');
 
 exports.CreateServiceAccount = async (req, res) => {
     try {
-        var serviceAccountResponse = await MongoDBServiceHelper.createServiceAccount(req.body.mongoServiceAccountUri, req.body.name, req.body.apiKey);
+        const base64Credentials = req.headers.get('Authorization').slice(6);
+
+        var headerInfo = {
+            'Authorization': `Bearer ${base64Credentials}`,
+            'Content-Type': 'application/json'
+        };
+
+        var serviceAccountResponse = await MongoDBServiceHelper.createServiceAccount(req.body.mongoServiceAccountUri, req.body.name, req.body.apiKey, headerInfo);
 
         return res.status(201).send({"serviceAccountResponse": serviceAccountResponse});
     } catch (error) {
@@ -20,7 +27,7 @@ exports.UpdateServiceAccount = async (req, res) => {
             'Content-Type': 'application/json'
         };
 
-        var updateResponse = await MongoDBServiceHelper.updateServiceAccount(req.body.organizationId, req.body.apiKeyId, headerInfo, req.body.updates);
+        var updateResponse = await MongoDBServiceHelper.updateServiceAccount(req.body.projectId, req.body.apiKeyId, headerInfo, req.body.updates);
 
         return res.status(200).send({"updateResponse": updateResponse});
     } catch (error) {
@@ -37,7 +44,7 @@ exports.GetServiceAccountInfo = async (req, res) => {
             'Content-Type': 'application/json'
         };
 
-        var serviceAccountResponse = await MongoDBServiceHelper.getServiceAccountInfo(req.body.organizationId, req.body.apiKeyId, headerInfo);
+        var serviceAccountResponse = await MongoDBServiceHelper.getServiceAccountInfo(req.body.projectId, req.body.apiKeyId, headerInfo);
 
         return res.status(200).send({"serviceAccount": serviceAccountResponse});
     } catch (error) {
@@ -54,7 +61,7 @@ exports.DeleteServiceAccount = async (req, res) => {
             'Content-Type': 'application/json'
         };
 
-        await MongoDBServiceHelper.deleteServiceAccount(req.body.organizationId, req.body.apiKeyId, headerInfo);
+        await MongoDBServiceHelper.deleteServiceAccount(req.body.projectId, req.body.apiKeyId, headerInfo);
 
         return res.status(200).send(null);
     } catch (error) {
@@ -71,13 +78,30 @@ exports.AddWhitelistEntry = async (req, res) => {
             'Content-Type': 'application/json'
         };
 
-        var whitelistEntryResponse = await MongoDBServiceHelper.addWhitelistEntry(req.body.organizationId, req.body.apiKeyId, req.body.whitelistEntry, headerInfo);
+        var whitelistEntryResponse = await MongoDBServiceHelper.addWhitelistEntry(req.body.projectId, req.body.apiKeyId, req.body.whitelistEntry, headerInfo);
 
         return res.status(201).send({"whitelistEntryResponse": whitelistEntryResponse});
     } catch (error) {
         return res.status(500).send(error.message);
     }
 }
+
+exports.ConnectAccountToProject = async (req, res) => {
+    try {
+        const base64Credentials = req.headers.get('Authorization').slice(6);
+
+        var headerInfo = {
+            'Authorization': `Bearer ${base64Credentials}`,
+            'Content-Type': 'application/json'
+        };
+
+        var linkingResponse = await MongoDBServiceHelper.linkServiceAccountToProject(req.body.apiKeyId, req.body.projectId, req.body.roles, headerInfo);
+
+        return res.status(201).send({"linkingResponse": linkingResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
 
 exports.createMongoDBProject = async (req, res) => {
     try {

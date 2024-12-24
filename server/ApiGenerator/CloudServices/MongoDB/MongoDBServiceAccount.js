@@ -15,15 +15,15 @@ const retryOperation = async (operation, retries = 3, delay = 1000) => {
     }
   };
 
-exports.createServiceAccount = async (mongoServiceAccountUri, name, apiKey) => {
+exports.createServiceAccount = async (mongoServiceAccountUri, name, apiKey, headerInfo) => {
     try {
         const apiClient = GetApiClient(apiKey);
 
         var operation = async () => {
-            const response = await apiClient.post(mongoServiceAccountUri, {
+            const response = await apiClient.post(mongoServiceAccountUri, JSON.stringify({
                 name,
                 description: "Service account for connecting to cloud services",
-            });
+            }), { headerInfo });
 
             return response.data;
         };
@@ -34,9 +34,11 @@ exports.createServiceAccount = async (mongoServiceAccountUri, name, apiKey) => {
     }
 };
 
-exports.getServiceAccountInfo = async (organizationId, apiKeyId, headerInfo) => {
+exports.getServiceAccountInfo = async (projectId, apiKeyId, headerInfo) => {
     try {
-        const url = `https://cloud.mongodb.com/api/atlas/v1.0/orgs/${organizationId}/apiKeys/${apiKeyId}`;
+        const apiClient = GetApiClient(apiKey);
+
+        const url = `https://cloud.mongodb.com/api/atlas/v1.0/groups/${projectId}/apiKeys/${apiKeyId}`;
 
         var response = await apiClient.get(url, { headerInfo });
 
@@ -46,9 +48,11 @@ exports.getServiceAccountInfo = async (organizationId, apiKeyId, headerInfo) => 
     }
 };
 
-exports.updateServiceAccount = async (organizationId, apiKeyId, headerInfo, updates) => {
+exports.updateServiceAccount = async (projectId, apiKeyId, headerInfo, updates) => {
     try {
-        const url = `https://cloud.mongodb.com/api/atlas/v1.0/orgs/${organizationId}/apiKeys/${apiKeyId}`;
+        const apiClient = GetApiClient(apiKey);
+
+        const url = `https://cloud.mongodb.com/api/atlas/v1.0/groups/${projectId}/apiKeys/${apiKeyId}`;
 
         var operation = async () => {
             var response = await apiClient.patch(url, updates, { headerInfo });
@@ -62,9 +66,11 @@ exports.updateServiceAccount = async (organizationId, apiKeyId, headerInfo, upda
     }
 };
 
-exports.deleteServiceAccount = async (organizationId, apiKeyId, headerInfo) => {
+exports.deleteServiceAccount = async (projectId, apiKeyId, headerInfo) => {
     try {
-        const url = `https://cloud.mongodb.com/api/atlas/v1.0/orgs/${organizationId}/apiKeys/${apiKeyId}`;
+        const apiClient = GetApiClient(apiKey);
+
+        const url = `https://cloud.mongodb.com/api/atlas/v1.0/groups/${projectId}/apiKeys/${apiKeyId}`;
 
         var operation = async () => {
             await apiClient.delete(url, { headerInfo });
@@ -76,9 +82,11 @@ exports.deleteServiceAccount = async (organizationId, apiKeyId, headerInfo) => {
     }
 };
 
-exports.addWhitelistEntry = async (organizationId, apiKeyId, whitelistEntry, headerInfo) => {
+exports.addWhitelistEntry = async (projectId, apiKeyId, whitelistEntry, headerInfo) => {
     try {
-        const url = `https://cloud.mongodb.com/api/atlas/v1.0/orgs/${organizationId}/apiKeys/${apiKeyId}`;
+        const apiClient = GetApiClient(apiKey);
+
+        const url = `https://cloud.mongodb.com/api/atlas/v1.0/groups/${projectId}/apiKeys/${apiKeyId}`;
 
         var operation = async () => {
             var response = await apiClient.post(url, { ipddress: whitelistEntry}, { headerInfo });
@@ -90,4 +98,22 @@ exports.addWhitelistEntry = async (organizationId, apiKeyId, whitelistEntry, hea
     } catch (error) {
         throw new Error(error.message);
     }
-}
+};
+
+exports.linkServiceAccountToProject = async (apiKeyId, projectId, roles, headerInfo) => {
+    try {
+        const apiClient = GetApiClient(apiKey);
+
+        const url = `https://cloud.mongodb.com/api/atlas/v1.0/groups/${projectId}/apiKeys/${apiKeyId}`;
+
+        var operation = async () => {
+            var response = await apiClient.post(url, JSON.stringify({roles: roles}), { headerInfo });
+
+            return response.data;
+        };
+
+        return await retryOperation(operation, 3, 20, 3);
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
