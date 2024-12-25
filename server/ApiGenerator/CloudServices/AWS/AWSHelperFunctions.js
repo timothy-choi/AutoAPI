@@ -264,3 +264,54 @@ exports.removeTagsFromResource = async (awsServiceClient, resourceArn, tagKeysTo
         throw new Error(`Error removing tags from resource ${resourceArn}: ${error.message}`);
     }
 };
+
+exports.addSecret = async (secretName, secretValue, region) => {
+    try {
+        const secretsManager = new AWS.SecretsManager({ region });
+
+        const params = {
+            Name: secretName,
+            SecretString: JSON.stringify(secretValue), 
+        };
+
+        const result = await secretsManager.createSecret(params).promise();
+
+        return result;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.updateSecret = async (secretName, secretValue, region) => {
+    try {
+      const secretsManager = new AWS.SecretsManager({ region });
+
+      const params = {
+        SecretId: secretName,
+        SecretString: JSON.stringify(secretValue), 
+      };
+  
+      const result = await secretsManager.putSecretValue(params).promise();
+
+      return result;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.deleteSecret = async (secretName, region) => {
+    try {
+      const secretsManager = new AWS.SecretsManager({ region });
+
+      const params = {
+        SecretId: secretName,
+        ForceDeleteWithoutRecovery: true, 
+      };
+  
+      const result = await secretsManager.deleteSecret(params).promise();
+
+      return result;
+    } catch (error) {
+      console.error('Error deleting secret:', error);
+    }
+  }
