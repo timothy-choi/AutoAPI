@@ -91,3 +91,61 @@ exports.queryMany = async (collection, filter, options = {}) => {
         throw new Error(error.message);
     }
 };
+
+const confirmInsertOne = async (collection, query, timeout = 5000) => {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+        const doc = await collection.findOne(query);
+        if (doc) {
+            return doc;
+        }
+        await new Promise(resolve => setTimeout(resolve, 500)); 
+    }
+    throw new Error('Operation confirmation timed out');
+};
+
+exports.InsertOne = async (collection, document) => {
+    try {
+        var operation = async () => {
+            var result = await collection.insertOne(document);
+
+            return result;
+        };
+
+        const resultVal = await retryOperation(operation);
+
+        await confirmInsertOne(collection, { _id: resultVal.insertedId });
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+const confirmInsertMany = async (collection, query, timeout = 5000) => {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+        const docs = await collection.find(query).toArray();
+        if (docs.length > 0) {
+            return docs;
+        }
+        await new Promise(resolve => setTimeout(resolve, 500)); 
+    }
+    throw new Error('Operation confirmation timed out');
+};
+
+exports.InsertMany = async (collection, documents) => {
+    try {
+        const operation = async () => {
+            const result = await collection.insertMany(documents);
+
+            return result;  
+        };
+
+        const resultVal = await retryOperation(operation);
+
+        const insertedDocs = await confirmInsertMany(collection, { _id: { $in: resultVal.insertedIds } });
+
+        return insertedDocs;
+    } catch (error) {
+        throw new Error(error.message); 
+    }
+};
