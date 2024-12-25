@@ -92,6 +92,35 @@ exports.queryMany = async (collection, filter, options = {}) => {
     }
 };
 
+exports.aggregate = async (collection, pipeline) => {
+    try {
+        const operation = async () => {
+            const result = await collection.aggregate(pipeline).toArray();
+            return result;
+        };
+
+        const result = await retryOperation(operation);
+
+        return result; 
+    } catch (error) {
+        throw new Error(`Error during aggregation operation: ${error.message}`);
+    }
+};
+
+exports.countDocuments = async (collection, query) => {
+    try {
+        const operation = async () => {
+            const count = await collection.countDocuments(query);
+            return count;
+        };
+
+        const count = await retryOperation(operation);
+        return count;
+    } catch (error) {
+        throw new Error(`Error during count operation: ${error.message}`);
+    }
+};
+
 const confirmInsertOne = async (collection, query, timeout = 5000) => {
     const startTime = Date.now();
     while (Date.now() - startTime < timeout) {
@@ -147,6 +176,44 @@ exports.InsertMany = async (collection, documents) => {
         return insertedDocs;
     } catch (error) {
         throw new Error(error.message); 
+    }
+};
+
+const confirmUpsert = async (collection, query, updateDoc, timeout = 5000) => {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+        const doc = await collection.findOne(query);
+        if (doc) {
+            const matchesUpdate = Object.keys(updateDoc).every(key => {
+                return doc[key] === updateDoc[key];
+            });
+            if (matchesUpdate) {
+                return doc; 
+            }
+        }
+        await new Promise(resolve => setTimeout(resolve, 500)); 
+    }
+    throw new Error('Operation confirmation timed out');
+};
+
+exports.upsert = async (collection, query, updateDoc) => {
+    try {
+        const operation = async () => {
+            const result = await collection.updateOne(
+                query,
+                { $set: updateDoc },
+                { upsert: true }
+            );
+            return result;
+        };
+
+        const result = await retryOperation(operation);
+
+        const confirmedDoc = await confirmUpsert(collection, query, updateDoc);
+
+        return confirmedDoc; 
+    } catch (error) {
+        throw new Error(`Error during upsert operation: ${error.message}`);
     }
 };
 
