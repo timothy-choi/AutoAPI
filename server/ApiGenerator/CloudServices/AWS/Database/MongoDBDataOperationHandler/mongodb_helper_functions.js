@@ -149,3 +149,66 @@ exports.InsertMany = async (collection, documents) => {
         throw new Error(error.message); 
     }
 };
+
+const confirmUpdateOne = async (collection, query, updatedDocument, timeout = 5000) => {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+        const doc = await collection.findOne(query);
+        if (doc && JSON.stringify(doc) !== JSON.stringify(updatedDocument)) {
+            return doc;  
+        }
+        await new Promise(resolve => setTimeout(resolve, 500));  
+    }
+    throw new Error('Operation confirmation timed out');
+};
+
+exports.updateOne = async (collection, query, updateDoc) => {
+    try {
+        const operation = async () => {
+            const result = await collection.updateOne(query, { $set: updateDoc });
+
+            return result;  
+        };
+
+        const resultVal = await retryOperation(operation);
+
+        const confirmedDocument = await confirmUpdateOne(collection, query, resultVal);
+
+        return confirmedDocument;
+    } catch (error) {
+        throw new Error(error.message);  
+    }
+};
+
+const confirmUpdateMany = async (collection, query, updateDoc, timeout = 5000) => {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+        const docs = await collection.find(query).toArray();  
+        const allUpdated = docs.every(doc => {
+            return Object.keys(updateDoc).every(key => doc[key] === updateDoc[key]);
+        });
+
+        if (allUpdated) {
+            return docs; 
+        }
+        await new Promise(resolve => setTimeout(resolve, 500));  
+    }
+    throw new Error('Operation confirmation timed out');
+};
+
+exports.updateMany = async (collection, query, updateDoc) => {
+    try {
+        const operation = async () => {
+            const result = await collection.updateMany(query, { $set: updateDoc });
+            return result; 
+        };
+
+        await retryOperation(operation);
+
+        var confirmedUpdatedDocuments = await confirmUpdateMany(collection, query, updateDoc);
+
+        return confirmedUpdatedDocuments;
+    } catch (error) {
+        throw new Error(error);  
+    }
+};
