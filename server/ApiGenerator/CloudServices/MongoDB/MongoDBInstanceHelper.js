@@ -221,6 +221,20 @@ exports.restoreDatabase = async (projectUri, backupId, apiKey) => {
   }
 };
 
+exports.enableAutomatedBackups = async (apiKey, clusterUri, backupConfig) => {
+  try {
+    const apiClient = GetApiClient(apiKey);
+
+    var operation = async () => {
+      await apiClient.post(clusterUri, JSON.stringify(backupConfig));
+    };
+
+    await retryOperation(operation, 3, 20, 3); 
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+
 exports.createCollection = async (apiKey, collectionParams, collectionUri) => {
     try {
         const apiClient = GetApiClient(apiKey);
@@ -361,6 +375,22 @@ exports.updateSecuritySettings = async (apiKey, projectUri, securityConfig) => {
       return response.data;
   } catch (error) {
       throw new Error(`Failed to update security settings: ${error.message}`);
+  }
+}
+
+exports.updateClusterMaintenanceWindow = async (apiKey, clusterUri, maintenanceConfig) => {
+  try {
+    const apiClient = GetApiClient(apiKey);
+
+    var operation = async () => {
+        const response = await apiClient.post(clusterUri, JSON.stringify(maintenanceConfig));
+
+        return response.data; 
+    };
+
+    return retryOperation(operation, 3, 20, 3);
+  } catch (error) {
+    throw new Error(error.message);
   }
 }
 

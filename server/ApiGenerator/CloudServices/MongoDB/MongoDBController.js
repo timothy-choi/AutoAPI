@@ -223,6 +223,16 @@ exports.restoreMongoDBBackup = async (req, res) => {
     }
 };
 
+exports.enableAutomatedBackups = async (req, res) => {
+    try {
+        await MongoDBInstanceHelper.enableAutomatedBackups(req.body.apiKey, req.body.clusterUri, req.body.backupConfig);
+
+        return res.status(201).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.CreateCollection = async (req, res) => {
     try {
         var collectionResponse = await MongoDBInstanceHelper.createCollection(req.body.apiKey, req.body.collectionParams, req.body.collectionUri);
@@ -308,6 +318,16 @@ exports.UpdateSecuritySettings = async (req, res) => {
         var securityResponse = await MongoDBInstanceHelper.updateSecuritySettings(req.body.apiKey, req.body.projectUri, req.body.securityConfig);
 
         return res.status(200).send({"securityResponse": securityResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
+exports.UpdateClusterMaintenenceWindow = async (req, res) => {
+    try {
+        var maintenenceResponse = await MongoDBInstanceHelper.updateClusterMaintenanceWindow(req.body.apiKey, req.body.clusterUri, req.body.maintenanceConfig);
+
+        return res.status(201).send({"maintenenceRespone": maintenenceResponse});
     } catch (error) {
         return res.status(500).send(error.message);
     }
