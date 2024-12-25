@@ -398,3 +398,150 @@ exports.bulkWrite = async (collection, operations) => {
         throw new Error(`Error during bulk write operation: ${error.message}`);
     }
 };
+
+const confirmIncrement = async (collection, query, field, incrementBy, timeout = 5000) => {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+        const doc = await collection.findOne(query);
+        if (doc && doc[field] >= incrementBy) {
+            return doc;
+        }
+        await new Promise(resolve => setTimeout(resolve, 500)); 
+    }
+    throw new Error('Increment confirmation timed out');
+};
+
+exports.incrementField = async (collection, query, field, incrementBy) => {
+    try {
+        const operation = async () => {
+            const result = await collection.updateOne(query, { $inc: { [field]: incrementBy } });
+            return result;
+        };
+
+        await retryOperation(operation);
+
+        const confirmedDoc = await confirmIncrement(collection, query, field, incrementBy);
+
+        return confirmedDoc;
+    } catch (error) {
+        throw new Error(`Error during increment operation: ${error.message}`);
+    }
+};
+
+const confirmSetField = async (collection, query, field, value, timeout = 5000) => {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+        const doc = await collection.findOne(query);
+        if (doc && doc[field] === value) {
+            return doc;
+        }
+        await new Promise(resolve => setTimeout(resolve, 500)); 
+    }
+    throw new Error('Set field confirmation timed out');
+};
+
+exports.setField = async (collection, query, field, value) => {
+    try {
+        const operation = async () => {
+            const result = await collection.updateOne(query, { $set: { [field]: value } });
+            return result;
+        };
+
+        await retryOperation(operation);
+
+        const confirmedDoc = await confirmSetField(collection, query, field, value);
+        return confirmedDoc;
+    } catch (error) {
+        throw new Error(`Error during set field operation: ${error.message}`);
+    }
+};
+
+const confirmAddToArray = async (collection, query, field, value, timeout = 5000) => {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+        const doc = await collection.findOne(query);
+        if (doc && doc[field] && doc[field].includes(value)) {
+            return doc;
+        }
+        await new Promise(resolve => setTimeout(resolve, 500)); 
+    }
+    throw new Error('Add to array confirmation timed out');
+};
+
+exports.addToArray = async (collection, query, field, value) => {
+    try {
+        const operation = async () => {
+            const result = await collection.updateOne(query, { $addToSet: { [field]: value } });
+            return result;
+        };
+
+        const result = await retryOperation(operation);
+        const confirmedDoc = await confirmAddToArray(collection, query, field, value);
+        return confirmedDoc;
+    } catch (error) {
+        throw new Error(`Error during add to array operation: ${error.message}`);
+    }
+};
+
+const confirmRemoveFromArray = async (collection, query, field, value, timeout = 5000) => {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+        const doc = await collection.findOne(query);
+        if (doc && doc[field] && !doc[field].includes(value)) {
+            return doc;
+        }
+        await new Promise(resolve => setTimeout(resolve, 500)); 
+    }
+    throw new Error('Remove from array confirmation timed out');
+};
+
+exports.removeFromArray = async (collection, query, field, value) => {
+    try {
+        const operation = async () => {
+            const result = await collection.updateOne(query, { $pull: { [field]: value } });
+            return result;
+        };
+
+        const result = await retryOperation(operation);
+        const confirmedDoc = await confirmRemoveFromArray(collection, query, field, value);
+        return confirmedDoc;
+    } catch (error) {
+        throw new Error(`Error during remove from array operation: ${error.message}`);
+    }
+};
+
+const confirmUpdateArrayElement = async (collection, query, arrayField, expectedValue, timeout = 5000) => {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeout) {
+        const document = await collection.findOne(query);
+
+        if (document && document[arrayField].includes(expectedValue)) {
+            return true;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 500)); 
+    }
+
+    throw new Error('Operation confirmation timed out: Array element not updated');
+};
+
+exports.updateArrayElement = async (collection, query, arrayField, oldValue, newValue) => {
+    try {
+        const operation = async () => {
+            return await collection.updateOne(
+                { ...query, [arrayField]: oldValue }, 
+                { $set: { [`${arrayField}.$`]: newValue } } 
+            );
+        };
+
+        const result = await retryOperation(operation);
+
+        await confirmUpdateArrayElement(collection, query, arrayField, newValue);
+
+        return result;
+    } catch (error) {
+        console.error('Error during update array element operation:', error);
+        throw error;
+    }
+};
