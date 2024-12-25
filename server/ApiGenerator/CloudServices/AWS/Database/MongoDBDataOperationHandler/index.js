@@ -21,6 +21,18 @@ exports.handler = async (event) => {
         let operation = requestData.operation;
 
         switch (operation) {
+            case 'queryOne':
+                result = await MongoDBHelper.QueryOne(collection, requestData.filter, requestData.projection);
+                break;
+            case 'queryMany':
+                result = await MongoDBHelper.queryMany(collection, requestData.filter, requestData.options);
+                break;
+            case 'aggregate':
+                result = await MongoDBHelper.aggregate(collection, requestData.pipeline);
+                break;
+            case 'countDocuments':
+                result = await MongoDBHelper.countDocuments(collection, requestData.query);
+                break;
             case 'insertOne':
                 await MongoDBHelper.InsertOne(collection, requestData.document);
                 break;
@@ -38,6 +50,27 @@ exports.handler = async (event) => {
                 break;
             case 'deleteMany':
                 result = await MongoDBHelper.deleteMany(collection, requestData.query);
+                break;
+            case 'upsert':
+                result = await MongoDBHelper.upsert(collection, requestData.query, requestData.updateDoc);
+                break;
+            case 'bulkWrite':
+                result = await MongoDBHelper.bulkWrite(collection, requestData.operations);
+                break;
+            case 'incrementField':
+                result = await MongoDBHelper.incrementField(collection, requestData.query, requestData.field, requestData.incrementBy);
+                break;
+            case 'setField':
+                result = await MongoDBHelper.setField(collection, requestData.query, requestData.field, requestData.value);
+                break;
+            case 'addToArray':
+                result = await MongoDBHelper.addToArray(collection, requestData.query, requestData.field, requestData.value);
+                break;
+            case 'removeFromArray':
+                result = await MongoDBHelper.removeFromArray(collection, requestData.query, requestData.field, requestData.value);
+                break;
+            case 'updateArrayElement':
+                result = await MongoDBHelper.updateArrayElement(collection, requestData.query, requestData.arrayField, requestData.oldValue, requestData.newValue);
                 break;
             default:
                 throw new Error(`Unsupported operation: ${operation}`);
