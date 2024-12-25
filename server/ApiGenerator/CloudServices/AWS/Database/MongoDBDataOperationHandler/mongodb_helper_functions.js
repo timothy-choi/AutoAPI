@@ -212,3 +212,61 @@ exports.updateMany = async (collection, query, updateDoc) => {
         throw new Error(error);  
     }
 };
+
+const confirmDeleteOne = async (collection, query, timeout = 5000) => {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+        const doc = await collection.findOne(query);  
+        if (!doc) {
+            return null;  
+        }
+        await new Promise(resolve => setTimeout(resolve, 500)); 
+    }
+    throw new Error('Operation confirmation timed out');
+};
+
+exports.deleteOne = async (collection, query) => {
+    try {
+        const operation = async () => {
+            const result = await collection.deleteOne(query);
+            return result;  
+        };
+
+        const resultVal = await retryOperation(operation);
+
+        await confirmDeleteOne(collection, query);
+
+        return resultVal;  
+    } catch (error) {
+        throw new Error(error.message);  
+    }
+};
+
+const confirmDeleteMany = async (collection, query, timeout = 5000) => {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+        const docs = await collection.find(query).toArray();  
+        if (docs.length === 0) {
+            return [];  
+        }
+        await new Promise(resolve => setTimeout(resolve, 500)); 
+    }
+    throw new Error('Operation confirmation timed out');
+};
+
+exports.deleteMany = async (collection, query) => {
+    try {
+        const operation = async () => {
+            const result = await collection.deleteMany(query);
+            return result;  
+        };
+
+        const resultVal = await retryOperation(operation);
+
+        await confirmDeleteMany(collection, query);
+
+        return resultVal;  
+    } catch (error) {
+        throw new Error(error.message);  
+    }
+};
