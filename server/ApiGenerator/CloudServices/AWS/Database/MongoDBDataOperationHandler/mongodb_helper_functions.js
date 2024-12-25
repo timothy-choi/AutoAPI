@@ -337,3 +337,64 @@ exports.deleteMany = async (collection, query) => {
         throw new Error(error.message);  
     }
 };
+
+const confirmBulkWrite = async (collection, operations, timeout = 5000) => {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeout) {
+        let allConfirmed = true;
+
+        for (const op of operations) {
+            if (op.insertOne) {
+                const doc = await collection.findOne(op.insertOne.document);
+                if (!doc) {
+                    allConfirmed = false;
+                    break;
+                }
+            } else if (op.updateOne || op.updateMany) {
+                const query = op.updateOne ? op.updateOne.filter : op.updateMany.filter;
+                const updateDoc = op.updateOne ? op.updateOne.update.$set : op.updateMany.update.$set;
+                const docs = await collection.find(query).toArray();
+                const allUpdated = docs.every(doc =>
+                    Object.keys(updateDoc).every(key => doc[key] === updateDoc[key])
+                );
+                if (!allUpdated) {
+                    allConfirmed = false;
+                    break;
+                }
+            } else if (op.deleteOne || op.deleteMany) {
+                const query = op.deleteOne ? op.deleteOne.filter : op.deleteMany.filter;
+                const docCount = await collection.countDocuments(query);
+                if (docCount > 0) {
+                    allConfirmed = false;
+                    break;
+                }
+            }
+        }
+
+        if (allConfirmed) {
+            return true; 
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 500)); 
+    }
+
+    throw new Error('Operation confirmation timed out');
+};
+
+exports.bulkWrite = async (collection, operations) => {
+    try {
+        const operation = async () => {
+            const result = await collection.bulkWrite(operations, { ordered: true });
+            return result;
+        };
+
+        const result = await retryOperation(operation);
+
+        await confirmBulkWrite(collection, operations);
+
+        return result; 
+    } catch (error) {
+        throw new Error(`Error during bulk write operation: ${error.message}`);
+    }
+};
