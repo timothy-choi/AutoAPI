@@ -1,4 +1,5 @@
 const GetApiClient = require('./MongoDBApiHelper');
+const AWS = require('aws-sdk');
 
 const retryOperation = async (operation, retries = 3, delay = 1000) => {
   let attempt = 0;
@@ -436,3 +437,32 @@ exports.deleteDatabaseUser = async (apiKey, projectId, username) => {
       throw new Error(`Failed to delete database user: ${error.message}`);
   }
 }
+
+exports.getMongoDBClusterMetrics = async (userRegion, payloadInfo) => {
+  try {
+    var lambda = new AWS.Lambda({
+      credentials: new AWS.Credentials('', '', ''),
+      region: userRegion
+    });
+
+    var params = {
+      FunctionName: "MongoDBMetricsFunction", 
+      InvocationType: 'RequestResponse', 
+      Payload: JSON.stringify(payloadInfo)
+    };
+
+    var metricsData = null;
+
+    lambda.invoke(params, (error, data) => {
+      if (error) {
+        console.error('Error invoking Lambda:', error);
+      } else {
+        metricsData = JSON.parse(data.Payload);
+      }
+    });
+
+    return metricsData;
+  } catch (error) {
+    throw new Error(`Failed to get database metrics: ${error.message}`);
+  }
+};

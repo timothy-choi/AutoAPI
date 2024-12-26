@@ -362,3 +362,13 @@ exports.DeleteUser = async (req, res) => {
         return res.status(500).send(error.message);
     }
 }
+
+exports.getMongoDBMetrics = async (req, res) => {
+    try {
+        var metricsData = await MongoDBInstanceHelper.getMongoDBClusterMetrics(req.body.userRegion, req.body.payloadInfo);
+
+        return res.status(201).send({"metricsData": metricsData});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
