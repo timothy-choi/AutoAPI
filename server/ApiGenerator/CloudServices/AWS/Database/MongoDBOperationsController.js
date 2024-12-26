@@ -258,3 +258,76 @@ exports.Upsert = async (req, res) => {
         return res.status(500).send(null);
     }
 };
+
+exports.UpdateOne = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretAccessName);
+        }
+
+        const lambda = new AWS.Lambda({
+            credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+            region: req.body.userRegion
+        });
+
+        if (!("query" in req.body.payloadInfo) || req.body.payloadInfo.query == null || !("updateDoc" in req.body.payloadInfo) || req.body.payloadInfo.updateDoc == null) {
+            return res.status(400).send({"error": "invalid input"});
+        }
+
+        const params = {
+            FunctionName: req.body.lambdaFunctionName,
+            Payload: JSON.stringify(req.body.payloadInfo)
+        };
+
+        const lambdaResponse = await lambda.invoke(params).promise();
+        const queryResponse = JSON.parse(lambdaResponse.Payload);
+
+        if (queryResponse.status !== 200) {
+            return res.status(500).send({ error: "Could not get usage report and health status" });
+        }
+
+        return res.status(200).send({"queryResponse": queryResponse});
+    } catch (error) {
+        return res.status(500).send(null);
+    }
+};
+
+exports.UpdateMany = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretAccessName);
+        }
+
+        const lambda = new AWS.Lambda({
+            credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+            region: req.body.userRegion
+        });
+
+        if (!("query" in req.body.payloadInfo) || req.body.payloadInfo.query == null || !("updateDoc" in req.body.payloadInfo) || req.body.payloadInfo.updateDoc == null) {
+            return res.status(400).send({"error": "invalid input"});
+        }
+
+        const params = {
+            FunctionName: req.body.lambdaFunctionName,
+            Payload: JSON.stringify(req.body.payloadInfo)
+        };
+
+        const lambdaResponse = await lambda.invoke(params).promise();
+        const queryResponse = JSON.parse(lambdaResponse.Payload);
+
+        if (queryResponse.status !== 200) {
+            return res.status(500).send({ error: "Could not get usage report and health status" });
+        }
+
+
+        return res.status(200).send({"queryResponse": queryResponse});
+    } catch (error) {
+        return res.status(500).send(null);
+    }
+};
