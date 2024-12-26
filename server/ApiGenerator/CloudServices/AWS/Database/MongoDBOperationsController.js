@@ -147,3 +147,114 @@ exports.CountDocuments = async (req, res) => {
         return res.status(500).send(null);
     }
 };
+
+exports.InsertOne = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretAccessName);
+        }
+
+        const lambda = new AWS.Lambda({
+            credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+            region: req.body.userRegion
+        });
+
+        if (!("document" in req.body.payloadInfo) || (req.body.payloadInfo.document == null)) {
+            return res.status(400).send({"error": "invalid input"});
+        }
+
+        const params = {
+            FunctionName: req.body.lambdaFunctionName,
+            Payload: JSON.stringify(req.body.payloadInfo)
+        };
+
+        const lambdaResponse = await lambda.invoke(params).promise();
+        const queryResponse = JSON.parse(lambdaResponse.Payload);
+
+        if (queryResponse.status !== 200) {
+            return res.status(500).send({ error: "Could not get usage report and health status" });
+        }
+
+
+        return res.status(201).send({"queryResponse": queryResponse});
+    } catch (error) {
+        return res.status(500).send(null);
+    }
+};
+
+exports.InsertMany = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretAccessName);
+        }
+
+        const lambda = new AWS.Lambda({
+            credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+            region: req.body.userRegion
+        });
+
+        if (!("documents" in req.body.payloadInfo) || (req.body.payloadInfo.documents == null || req.body.payloadInfo.documents.length == 0)) {
+            return res.status(400).send({"error": "invalid input"});
+        }
+
+        const params = {
+            FunctionName: req.body.lambdaFunctionName,
+            Payload: JSON.stringify(req.body.payloadInfo)
+        };
+
+        const lambdaResponse = await lambda.invoke(params).promise();
+        const queryResponse = JSON.parse(lambdaResponse.Payload);
+
+        if (queryResponse.status !== 200) {
+            return res.status(500).send({ error: "Could not get usage report and health status" });
+        }
+
+
+        return res.status(201).send({"queryResponse": queryResponse});
+    } catch (error) {
+        return res.status(500).send(null);
+    }
+};
+
+exports.Upsert = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretAccessName);
+        }
+
+        const lambda = new AWS.Lambda({
+            credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+            region: req.body.userRegion
+        });
+
+        if (!("query" in req.body.payloadInfo) || req.body.payloadInfo.query == null || !("updateDoc" in req.body.payload) || req.body.payloadInfo.updateDoc == null) {
+            return res.status(400).send({"error": "invalid input"});
+        }
+
+        const params = {
+            FunctionName: req.body.lambdaFunctionName,
+            Payload: JSON.stringify(req.body.payloadInfo)
+        };
+
+        const lambdaResponse = await lambda.invoke(params).promise();
+        const queryResponse = JSON.parse(lambdaResponse.Payload);
+
+        if (queryResponse.status !== 200) {
+            return res.status(500).send({ error: "Could not get usage report and health status" });
+        }
+
+
+        return res.status(201).send({"queryResponse": queryResponse});
+    } catch (error) {
+        return res.status(500).send(null);
+    }
+};
