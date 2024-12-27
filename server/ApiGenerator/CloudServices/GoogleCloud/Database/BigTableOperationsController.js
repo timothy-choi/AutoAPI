@@ -100,11 +100,31 @@ exports.updateTableColumnFamily = async (req, res) => {
     }
 };
 
+exports.checkIfFamilyColumnExists = async (req, res) => {
+    try {
+        var exists = await BigTableHelper.checkColumnFamilyExists(req.instanceId, req.tableId, req.columnFamilyName);
+
+        return res.status(200).send({"exists": exists});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.deleteTableColumnFamily = async (req, res) => {
     try {
         await BigTableHelper.deleteColumnFamily(req.instanceId, req.tableId, req.columnFamilyId);
 
         return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.checkIfTableExists = async (req, res) => {
+    try {
+        var exists = await BigTableHelper.checkTableExists(req.instanceId, req.tableId);
+
+        return res.status(200).send({"exists": exists});
     } catch (error) {
         return res.status(500).send(error.message);
     }
@@ -163,6 +183,16 @@ exports.queryFilteredRows = async (req, res) => {
 exports.queryColumnsByQualifier = async (req, res) => {
     try {
         var queryResult = await BigTableHelper.getColumnsByQualifier(req.instanceId, req.tableId, req.columnFamilyId, req.columnQualifier);
+
+        return res.status(200).send({"queryResult": queryResult});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.queryRowsByValue = async (req, res) => {
+    try {
+        var queryResult = await BigTableHelper.getFilteredRowsByValue(req.instanceId, req.tableId, req.columnFamilyId, req.columnQualifier, req.value);
 
         return res.status(200).send({"queryResult": queryResult});
     } catch (error) {

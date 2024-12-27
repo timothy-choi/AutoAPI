@@ -255,6 +255,35 @@ exports.deleteColumnFamily = async (instanceId, tableId, columnFamilyId) => {
     }
 };
 
+exports.checkColumnFamilyExists = async (instanceId, tableId, columnFamilyName) => {
+    try {
+        const instance = bigtable.instance(instanceId);
+        const table = instance.table(tableId);
+
+        const [metadata] = await table.getMetadata();
+        const columnFamilies = metadata.columnFamilies || {};
+
+        const exists = Object.hasOwnProperty.call(columnFamilies, columnFamilyName);
+        
+        return exists;
+    } catch (err) {
+        throw new Error('Error checking column family existence:', err.message);
+    }
+};
+
+exports.checkTableExists = async (instanceId, tableId) => {
+    try {
+        const instance = bigtable.instance(instanceId);
+        const table = instance.table(tableId);
+
+        const [exists] = await table.exists();
+        
+        return exists;
+    } catch (err) {
+        throw new Error('Error checking table existence:', err.message);
+    }
+};
+
 exports.deleteTable = async (instanceId, tableId) => {
     try {
       const table = bigtable.instance(instanceId).table(tableId);
@@ -347,6 +376,31 @@ exports.getColumnsByQualifier = async (instanceId, tableId, columnFamilyId, colu
     
         const [rows] = await table.getRows({ filter });
   
+        return rows;
+    } catch (err) {
+        throw new Error('Error querying rows by prefix:', err.message);
+    }
+};
+
+exports.getFilteredRowsByValue = async (instanceId, tableId, columnFamily, columnQualifier, value) => {
+    try {
+        const instance = bigtable.instance(instanceId);
+        const table = instance.table(tableId);
+
+        const rows = await table.getRows({
+            filter: [
+                {
+                    family: columnFamily,
+                },
+                {
+                    column: columnQualifier,
+                },
+                {
+                    value: value,
+                },
+            ],
+        });
+
         return rows;
     } catch (err) {
         throw new Error('Error querying rows by prefix:', err.message);
