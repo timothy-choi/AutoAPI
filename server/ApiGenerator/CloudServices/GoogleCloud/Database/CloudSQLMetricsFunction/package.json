@@ -11,6 +11,7 @@
   "description": "",
   "dependencies": {
     "@google-cloud/monitoring": "^4.1.0",
+    "amqplib": "^0.10.5",
     "google-auth-library": "^9.15.0"
   }
 }
