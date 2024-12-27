@@ -1,5 +1,21 @@
 const { DefaultAzureCredential } = require('@azure/identity');
 const { MetricsQueryClient } = require('@azure/monitor-query');
+const amqp = require('amqplib');
+
+const publishMetricsData = async (metricsData) => {
+    try {
+        const connection = await amqp.connect('');  
+        const channel = await connection.createChannel();
+
+        channel.assertQueue("", { durable: true });
+        channel.sendToQueue("", Buffer.from(metricsData), { persistent: true });
+
+        await channel.close();
+        await connection.close();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
 
 const getCosmosDBMetrics = async (subscriptionId, resourceGroup, accountName, minuteDuration, metricStatistics, metricList) => {
     try {
@@ -50,6 +66,10 @@ module.exports = async (context, req) => {
         var metricsResponse = await getCosmosDBMetrics(req.body.subscriptionId, req.body.resourceGroup, req.body.accountName, req.body.minuteDuration, req.body.metricStatistics, req.body.metricList);
 
         var processedMetricsResults = await organizeMetricsResults(metricsResponse);
+
+        if (req.body.autoTrigger) {
+            await publishMetricsData(JSON.stringify(processedMetricsResults));
+        }
 
         context.res = {
             status: 200,
