@@ -141,3 +141,83 @@ exports.deleteTable = async (instanceId, tableId) => {
       throw new Error('Error deleting table:', err.message);
     }
 };
+
+//query operations
+
+exports.getRowsByPrefix = async (instanceId, tableId, rowKeyPrefix) => {
+  try {
+    const table = bigtable.instance(instanceId).table(tableId);
+
+    const filter = {
+      rowKey: { regex: `^${rowKeyPrefix}` },  
+    };
+
+    const [rows] = await table.getRows({ filter });
+
+    return rows;
+  } catch (err) {
+    throw new Error('Error querying rows by prefix:', err.message);
+  }
+};
+
+exports.getRowsByColumnFamily = async (instanceId, tableId, columnFamilyId) => {
+    try {
+      const table = bigtable.instance(instanceId).table(tableId);
+  
+      const filter = {
+        columnFamilyId: columnFamilyId,  
+      };
+  
+      const [rows] = await table.getRows({ filter });
+  
+      return rows;
+    } catch (err) {
+      throw new Error('Error querying rows by prefix:', err.message);
+    }
+};
+
+exports.getSpecificRow = async (instanceId, tableId, rowKey) => {
+    try {
+      const table = bigtable.instance(instanceId).table(tableId);
+
+      const row = await table.row(rowKey).get();
+  
+      return row;
+    } catch (err) {
+      throw new Error('Error querying rows by prefix:', err.message);
+    }
+};
+
+exports.getFilteredRows = async (instanceId, tableId, rowKeyPrefix, columnFamilyId) => {
+    try {
+      const table = bigtable.instance(instanceId).table(tableId);
+  
+      const filter = {
+        rowKey: { regex: `^${rowKeyPrefix}` },
+        columnFamilyId: columnFamilyId,  
+      };
+  
+      const [rows] = await table.getRows({ filter });
+  
+      return rows;
+    } catch (err) {
+      throw new Error('Error querying rows by prefix:', err.message);
+    }
+};
+
+exports.getColumnsByQualifier = async (instanceId, tableId, columnFamilyId, columnQualifier) => {
+    try {
+        const table = bigtable.instance(instanceId).table(tableId);
+
+        const filter = {
+          columnQualifier: columnQualifier,
+          columnFamilyId: columnFamilyId,
+        };
+    
+        const [rows] = await table.getRows({ filter });
+  
+        return rows;
+    } catch (err) {
+        throw new Error('Error querying rows by prefix:', err.message);
+    }
+};
