@@ -1,5 +1,6 @@
 const axios = require('axios');
-const aws = require('aws-sdk');
+const AWS = require('aws-sdk');
+const amqp = require('amqplib');
 
 const getCredentials = async (secretName, region) => {
     try {
@@ -30,7 +31,22 @@ const fetchMetrics = async (clusterName, username, password, projectId) => {
     });
   
     return response.data;
-  }
+};
+
+const publishMetricsData = async (metricsData) => {
+    try {
+        const connection = await amqp.connect('');  
+        const channel = await connection.createChannel();
+
+        channel.assertQueue("", { durable: true });
+        channel.sendToQueue("", Buffer.from(metricsData), { persistent: true });
+
+        await channel.close();
+        await connection.close();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
   
 
 exports.handler = async (event) => {
@@ -38,6 +54,10 @@ exports.handler = async (event) => {
         var credentials = await getCredentials(event.secretName, event.region);
 
         var metricsData = await fetchMetrics(event.clusterName, credentials.username, credentials.password, event.projectId);
+
+        if (event.autoTrigger) {
+            await publishMetricsData(JSON.stringify(metricsData));
+        }
 
         return {
             status: 200,
