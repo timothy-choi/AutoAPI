@@ -79,3 +79,43 @@ exports.getCluster = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.createTable = async (req, res) => {
+    try {
+        var tableResponse = await BigTableHelper.createTable(req.body.instanceId, req.body.tableId, req.body.columnFamilies);
+
+        return res.status(201).send({"tableResponse": tableResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.updateTableColumnFamily = async (req, res) => {
+    try {
+        var instanceResponse = await BigTableHelper.updateTableColumnFamily(req.body.instanceId, req.body.tableId, req.body.columnFamilyId, req.body.options);
+
+        return res.status(200).send({"instanceResponse": instanceResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.deleteTableColumnFamily = async (req, res) => {
+    try {
+        await BigTableHelper.deleteColumnFamily(req.instanceId, req.tableId, req.columnFamilyId);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.deleteTable = async (req, res) => {
+    try {
+        await BigTableHelper.deleteTable(req.instanceId, req.tableId);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
