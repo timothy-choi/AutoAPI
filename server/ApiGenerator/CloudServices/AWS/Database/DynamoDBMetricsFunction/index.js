@@ -1,5 +1,21 @@
 const AWS = require('aws-sdk');
+const amqp = require('amqplib');
 const secretsManager = new AWS.SecretsManager();
+
+const publishMetricsData = async (metricsData) => {
+    try {
+        const connection = await amqp.connect('');  
+        const channel = await connection.createChannel();
+
+        channel.assertQueue("", { durable: true });
+        channel.sendToQueue("", Buffer.from(metricsData), { persistent: true });
+
+        await channel.close();
+        await connection.close();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
 
 const getDynamoDBEvents = async (tableName, secretName, userRegion) => {
     const keyInfo = await secretsManager.getSecretValue({ SecretId: secretName }).promise();
@@ -229,6 +245,10 @@ exports.handler = async (event) => {
             MetricsStatsInfo: metricsData.DataMetricsStatsList,
             HealthStatusReport: tableHealthStatusReport
         };
+
+        if (event.autoTrigger) {
+            await publishMetricsData(JSON.stringify(allMetricsInfoResponse));
+        }
 
         return { statusCode: 200, body: JSON.stringify(allMetricsInfoResponse) };
     } else {

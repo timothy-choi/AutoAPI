@@ -1,5 +1,6 @@
 const AWS = require('aws-sdk');
 const secretsManager = new AWS.SecretsManager();
+const amqp = require('amqplib');
 
 exports.handler = async (event) => {
     if (event.source === "aws.rds") {
@@ -20,6 +21,10 @@ exports.handler = async (event) => {
             MetricsStatsInfo: metricsData.DataMetricsStatsList,
             HealthStatusReport: instanceHealthStatusReport
         };
+
+        if (event.autoTrigger) {
+            await publishMetricsData(JSON.stringify(allMetricsInfoResponse));
+        }
 
         return { statusCode: 200, body: JSON.stringify(allMetricsInfoResponse)};
     } else {
@@ -237,4 +242,19 @@ const stopMetricsPolling = async (ruleName, secretName, targetIds) => {
         throw new Error("Error setting up scheduled event:", error);
     }
     
+}
+
+const publishMetricsData = async (metricsData) => {
+    try {
+        const connection = await amqp.connect('');  
+        const channel = await connection.createChannel();
+
+        channel.assertQueue("", { durable: true });
+        channel.sendToQueue("", Buffer.from(metricsData), { persistent: true });
+
+        await channel.close();
+        await connection.close();
+    } catch (error) {
+        throw new Error(error.message);
+    }
 }
