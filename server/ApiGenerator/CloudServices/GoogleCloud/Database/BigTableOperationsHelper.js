@@ -294,3 +294,84 @@ exports.insertWithCondition = async (instanceId, tableId, rowKey, data, conditio
     }
   }
   
+  exports.updateSingleRow = async (instanceId, tableId, rowKey, mutations) => {
+    try {
+      const table = bigtable.instance(instanceId).table(tableId);
+  
+      await table.row(rowKey).mutate(mutations);
+    } catch (err) {
+        throw new Error('Error updating row:', err.message);
+    }
+   };
+
+   exports.updateMultipleRows = async (instanceId, tableId, rowsData) => {
+    try {
+      const table = bigtable.instance(instanceId).table(tableId);
+  
+      const rows = rowsData.map(row => {
+        const mutations = [];
+        for (const [columnFamily, columnData] of Object.entries(row.data)) {
+          for (const [columnQualifier, value] of Object.entries(columnData)) {
+            mutations.push({
+              setCell: {
+                columnFamilyId: columnFamily,
+                columnQualifier: columnQualifier,
+                value: value,
+              },
+            });
+          }
+        }
+        return { key: row.rowKey, mutations };
+      });
+  
+      await table.mutate(rows);
+    } catch (err) {
+      throw new Error('Error updating rows:', err.message);
+    }
+  };
+
+  exports.conditionalUpdate = async (instanceId, tableId, rowKey, filter, mutations) => {
+    try {
+      const table = bigtable.instance(instanceId).table(tableId);
+  
+      await table.row(rowKey).mutate(mutations, { filter });
+    } catch (err) {
+      throw new Error('Error performing conditional update:', err.message);
+    }
+  };
+
+  exports.incrementCellValue = async (instanceId, tableId, rowKey, columnFamily, columnQualifier, incrementValue) => {
+    try {
+      const table = bigtable.instance(instanceId).table(tableId);
+  
+      await table.row(rowKey).increment(columnFamily, columnQualifier, incrementValue);
+    } catch (err) {
+      throw new Error('Error incrementing cell:', err.message);
+    }
+  };
+
+  exports.deleteAndUpdateRow = async (instanceId, tableId, rowKey, newData) => {
+    try {
+      const table = bigtable.instance(instanceId).table(tableId);
+  
+      await table.row(rowKey).delete();
+  
+      const mutations = [];
+      for (const [columnFamily, columnData] of Object.entries(newData)) {
+        for (const [columnQualifier, value] of Object.entries(columnData)) {
+          mutations.push({
+            setCell: {
+              columnFamilyId: columnFamily,
+              columnQualifier: columnQualifier,
+              value: value,
+            },
+          });
+        }
+      }
+  
+      await table.row(rowKey).mutate(mutations);
+    } catch (err) {
+      throw new Error('Error updating row:', err.message);
+    }
+  };
+  
