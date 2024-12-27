@@ -99,4 +99,45 @@ exports.getClusterInfo = async (instanceId, clusterId) => {
     } catch (err) {
         throw new Error('Error getting cluster information:', err.message);
     }
-}
+};
+
+exports.createTable = async (instanceId, tableId, columnFamilies) => {
+    try {
+        const instance = bigtable.instance(instanceId);
+        const table = instance.table(tableId);
+    
+        var tableResponse = await table.create({ columnFamilies });
+
+        return tableResponse;
+    } catch (err) {
+        throw new Error('Error creating table:', err.message);
+    }
+};
+
+exports.updateTableColumnFamily = async (instanceId, tableId, columnFamilyId, options) => {
+    try {
+      const table = bigtable.instance(instanceId).table(tableId);
+  
+      const [metadata] = await table.getMetadata();
+  
+      metadata.columnFamilies[columnFamilyId] = options;
+  
+      const [operation] = await table.setMetadata(metadata);
+
+      await operation.promise();
+
+      return operation;
+    } catch (err) {
+      throw new Error('Error updating table:', err.message);
+    }
+};
+
+exports.deleteTable = async (instanceId, tableId) => {
+    try {
+      const table = bigtable.instance(instanceId).table(tableId);
+  
+      await table.delete();
+    } catch (err) {
+      throw new Error('Error deleting table:', err.message);
+    }
+};
