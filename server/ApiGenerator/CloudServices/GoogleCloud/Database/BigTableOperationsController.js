@@ -22,7 +22,7 @@ exports.updateInstance = async (req, res) => {
 
 exports.deleteInstance = async (req, res) => {
     try {
-        await BigTableHelper.deleteInstance(req.body.instanceId);
+        await BigTableHelper.deleteInstance(req.instanceId);
 
         return res.status(200).send(null);
     } catch (error) {
@@ -32,9 +32,49 @@ exports.deleteInstance = async (req, res) => {
 
 exports.getInstance = async (req, res) => {
     try {
-        var instanceInfo = await BigTableHelper.getInstance(req.body.instanceId);
+        var instanceInfo = await BigTableHelper.getInstance(req.instanceId);
 
         return res.status(200).send({"instanceInfo": instanceInfo});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.createCluster = async (req, res) => {
+    try {
+        var clusterResponse = await BigTableHelper.createCluster(req.body.instanceId, req.body.clusterId, req.body.options);
+
+        return res.status(201).send({"clusterResponse": clusterResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.updateCluster = async (req, res) => {
+    try {
+        var clusterResponse = await BigTableHelper.updateCluster(req.body.instanceId, req.body.clusterId, req.body.options);
+
+        return res.status(200).send({"clusterResponse": clusterResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.deleteCluster = async (req, res) => {
+    try {
+        await BigTableHelper.deleteCluster(req.instanceId, req.instanceId);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.getCluster = async (req, res) => {
+    try {
+        var clusterInfo = await BigTableHelper.getClusterInfo(req.instanceId, req.clusterId);
+
+        return res.status(200).send({"clusterInfo": clusterInfo});
     } catch (error) {
         return res.status(500).send(error.message);
     }
