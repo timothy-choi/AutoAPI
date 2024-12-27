@@ -369,8 +369,16 @@ exports.insertData = async (instanceId, tableId, rowKey, data) => {
           });
         }
       }
-  
-      await table.row(rowKey).mutate(mutations);
+
+      var operation = async () => {
+        var res = await table.row(rowKey).mutate(mutations);
+
+        return res;
+      };
+
+      var insertResponse = await retryOperation(operation);
+
+      await waitForOperationCompletion(insertResponse);
     } catch (err) {
       throw new Error('Error inserting data:', err.message);
     }
@@ -396,7 +404,15 @@ exports.insertMultipleRows = async (instanceId, tableId, rowsData) => {
       return { key: row.rowKey, mutations };
     });
 
-    await table.insertRows(rows);
+    var operation = async () => {
+        var res = await table.insertRows(rows);
+
+        return res;
+    };
+
+    var insertResponse = await retryOperation(operation);
+
+    await waitForOperationCompletion(insertResponse);
   } catch (err) {
     throw new Error('Error inserting multiple rows:', err.message);
   }
@@ -419,7 +435,15 @@ exports.insertWithCondition = async (instanceId, tableId, rowKey, data, conditio
         }
       }
 
-      await table.row(rowKey).mutate(mutations, { condition });
+      var operation = async () => {
+        var res = await table.row(rowKey).mutate(mutations, { condition });
+
+        return res;
+      };
+
+      var insertResponse = await retryOperation(operation);
+
+      await waitForOperationCompletion(insertResponse);
     } catch (err) {
       console.error('Error inserting with condition:', err.message);
     }
@@ -428,8 +452,16 @@ exports.insertWithCondition = async (instanceId, tableId, rowKey, data, conditio
   exports.updateSingleRow = async (instanceId, tableId, rowKey, mutations) => {
     try {
       const table = bigtable.instance(instanceId).table(tableId);
-  
-      await table.row(rowKey).mutate(mutations);
+
+      var operation = async () => {
+        var res = await table.row(rowKey).mutate(mutations);
+
+        return res;
+      };
+
+      var updateResponse = await retryOperation(operation);
+
+      await waitForOperationCompletion(updateResponse);
     } catch (err) {
         throw new Error('Error updating row:', err.message);
     }
@@ -454,8 +486,16 @@ exports.insertWithCondition = async (instanceId, tableId, rowKey, data, conditio
         }
         return { key: row.rowKey, mutations };
       });
-  
-      await table.mutate(rows);
+
+      var operation = async () => {
+            var res = await table.mutate(rows);
+
+            return res;
+      };
+
+      var updateResponse = await retryOperation(operation);
+
+      await waitForOperationCompletion(updateResponse);
     } catch (err) {
       throw new Error('Error updating rows:', err.message);
     }
@@ -464,8 +504,16 @@ exports.insertWithCondition = async (instanceId, tableId, rowKey, data, conditio
   exports.conditionalUpdate = async (instanceId, tableId, rowKey, filter, mutations) => {
     try {
       const table = bigtable.instance(instanceId).table(tableId);
-  
-      await table.row(rowKey).mutate(mutations, { filter });
+
+      var operation = async () => {
+        var res = await table.row(rowKey).mutate(mutations, { filter });
+
+        return res;
+      };
+
+      var updateResponse = await retryOperation(operation);
+
+      await waitForOperationCompletion(updateResponse);
     } catch (err) {
       throw new Error('Error performing conditional update:', err.message);
     }
@@ -474,8 +522,16 @@ exports.insertWithCondition = async (instanceId, tableId, rowKey, data, conditio
   exports.incrementCellValue = async (instanceId, tableId, rowKey, columnFamily, columnQualifier, incrementValue) => {
     try {
       const table = bigtable.instance(instanceId).table(tableId);
-  
-      await table.row(rowKey).increment(columnFamily, columnQualifier, incrementValue);
+
+      var operation = async () => {
+            var res = await table.row(rowKey).increment(columnFamily, columnQualifier, incrementValue);
+
+            return res;
+       };
+
+       var updateResponse = await retryOperation(operation);
+
+       await waitForOperationCompletion(updateResponse);
     } catch (err) {
       throw new Error('Error incrementing cell:', err.message);
     }
@@ -499,8 +555,16 @@ exports.insertWithCondition = async (instanceId, tableId, rowKey, data, conditio
           });
         }
       }
-  
-      await table.row(rowKey).mutate(mutations);
+
+      var operation = async () => {
+            var res = await table.row(rowKey).mutate(mutations);
+
+            return res;
+       };
+
+       var updateResponse = await retryOperation(operation);
+
+       await waitForOperationCompletion(updateResponse);
     } catch (err) {
       throw new Error('Error updating row:', err.message);
     }
@@ -509,8 +573,16 @@ exports.insertWithCondition = async (instanceId, tableId, rowKey, data, conditio
   exports.deleteRow = async (instanceId, tableId, rowKey) => {
     try {
       const table = bigtable.instance(instanceId).table(tableId);
-  
-      await table.row(rowKey).delete();
+
+      var operation = async () => {
+            var res = await table.row(rowKey).delete();
+
+            return res;
+      };
+
+      var deleteResponse = await retryOperation(operation);
+
+      await waitForOperationCompletion(deleteResponse);
     } catch (err) {
       throw new Error('Error deleting row:', err.message);
     }
@@ -519,10 +591,18 @@ exports.insertWithCondition = async (instanceId, tableId, rowKey, data, conditio
   exports.deleteCells = async (instanceId, tableId, rowKey, columnFamily, columnQualifier) => {
     try {
       const table = bigtable.instance(instanceId).table(tableId);
-  
-      await table.row(rowKey).deleteCells([
-        `${columnFamily}:${columnQualifier}`,
-      ]);
+
+      var operation = async () => {
+            var res = await table.row(rowKey).deleteCells([
+                `${columnFamily}:${columnQualifier}`,
+            ]);
+
+            return res;
+       };
+
+       var deleteResponse = await retryOperation(operation);
+
+       await waitForOperationCompletion(deleteResponse);
     } catch (err) {
       throw new Error('Error deleting cell:', err.message);
     }
@@ -538,8 +618,16 @@ exports.insertWithCondition = async (instanceId, tableId, rowKey, data, conditio
           { deleteFromRow: {} }, 
         ],
       }));
-  
-      await table.mutate(rows);
+
+      var operation = async () => {
+            var res = await table.mutate(rows);
+
+            return res;
+      };
+
+      var deleteResponse = await retryOperation(operation);
+
+      await waitForOperationCompletion(deleteResponse);
     } catch (err) {
       throw new Error('Error deleting rows:', err.message);
     }
@@ -548,8 +636,16 @@ exports.insertWithCondition = async (instanceId, tableId, rowKey, data, conditio
   exports.deleteRowsByPrefix = async (instanceId, tableId, rowKeyPrefix) => {
     try {
       const table = bigtable.instance(instanceId).table(tableId);
-  
-      await table.deleteRows(rowKeyPrefix);
+
+      var operation = async () => {
+            var res = await table.deleteRows(rowKeyPrefix);
+
+            return res;
+      };
+
+      var deleteResponse = await retryOperation(operation);
+
+      await waitForOperationCompletion(deleteResponse);
     } catch (err) {
       throw new Error('Error deleting rows by prefix:', err.message);
     }
