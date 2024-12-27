@@ -169,3 +169,33 @@ exports.queryColumnsByQualifier = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.insertData = async (req, res) => {
+    try {
+        await BigTableHelper.insertData(req.body.instanceId, req.body.tableId, req.body.rowKey, req.body.data);
+
+        return res.status(201).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.insertMultipleRows = async (req, res) => {
+    try {
+        await BigTableHelper.insertMultipleRows(req.body.instanceId, req.body.tableId, req.body.rowsData);
+
+        return res.status(201).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.insertWithCondition = async (req, res) => {
+    try {
+        await BigTableHelper.insertWithCondition(req.body.instanceId, req.body.tableId, req.body.rowKey, req.body.data, req.body.condition);
+
+        return res.status(201).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
