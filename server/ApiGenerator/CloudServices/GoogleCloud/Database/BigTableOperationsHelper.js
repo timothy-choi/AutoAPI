@@ -221,3 +221,76 @@ exports.getColumnsByQualifier = async (instanceId, tableId, columnFamilyId, colu
         throw new Error('Error querying rows by prefix:', err.message);
     }
 };
+
+exports.insertData = async (instanceId, tableId, rowKey, data) => {
+    try {
+      const table = bigtable.instance(instanceId).table(tableId);
+  
+      const mutations = [];
+      for (const [columnFamily, columnData] of Object.entries(data)) {
+        for (const [columnQualifier, value] of Object.entries(columnData)) {
+          mutations.push({
+            setCell: {
+              columnFamilyId: columnFamily,
+              columnQualifier: columnQualifier,
+              value: value,
+            },
+          });
+        }
+      }
+  
+      await table.row(rowKey).mutate(mutations);
+    } catch (err) {
+      throw new Error('Error inserting data:', err.message);
+    }
+};
+
+exports.insertMultipleRows = async (instanceId, tableId, rowsData) => {
+  try {
+    const table = bigtable.instance(instanceId).table(tableId);
+
+    const rows = rowsData.map(row => {
+      const mutations = [];
+      for (const [columnFamily, columnData] of Object.entries(row.data)) {
+        for (const [columnQualifier, value] of Object.entries(columnData)) {
+          mutations.push({
+            setCell: {
+              columnFamilyId: columnFamily,
+              columnQualifier: columnQualifier,
+              value: value,
+            },
+          });
+        }
+      }
+      return { key: row.rowKey, mutations };
+    });
+
+    await table.insertRows(rows);
+  } catch (err) {
+    throw new Error('Error inserting multiple rows:', err.message);
+  }
+};
+
+exports.insertWithCondition = async (instanceId, tableId, rowKey, data, condition) => {
+    try {
+      const table = bigtable.instance(instanceId).table(tableId);
+  
+      const mutations = [];
+      for (const [columnFamily, columnData] of Object.entries(data)) {
+        for (const [columnQualifier, value] of Object.entries(columnData)) {
+          mutations.push({
+            setCell: {
+              columnFamilyId: columnFamily,
+              columnQualifier: columnQualifier,
+              value: value,
+            },
+          });
+        }
+      }
+
+      await table.row(rowKey).mutate(mutations, { condition });
+    } catch (err) {
+      console.error('Error inserting with condition:', err.message);
+    }
+  }
+  
