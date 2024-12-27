@@ -199,3 +199,53 @@ exports.insertWithCondition = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.updateSingleRow = async (req, res) => {
+    try {
+        await BigTableHelper.updateSingleRow(req.body.instanceId, req.body.tableId, req.body.rowKey, req.body.mutations);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.updateMultipleRows = async (req, res) => {
+    try {
+        await BigTableHelper.updateMultipleRows(req.body.instanceId, req.body.tableId, req.body.rowsData);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.conditionalUpdate = async (req, res) => {
+    try {
+        await BigTableHelper.conditionalUpdate(req.body.instanceId, req.body.tableId, req.body.rowKey, req.body.filter, req.body.mutations);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.incrementCellValue = async (req, res) => {
+    try {
+        await BigTableHelper.incrementCellValue(req.body.instanceId, req.body.tableId, req.body.rowKey, req.body.columnFamily, req.body.columnQualifier, req.body.incrementValue);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.deleteAndUpdateRow = async (req, res) => {
+    try {
+        await BigTableHelper.deleteAndUpdateRow(req.body.instanceId, req.body.tableId, req.body.rowKey, req.body.newData);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
