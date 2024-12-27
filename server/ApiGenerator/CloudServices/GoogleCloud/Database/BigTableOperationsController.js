@@ -249,3 +249,43 @@ exports.deleteAndUpdateRow = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.deleteRow = async (req, res) => {
+    try {
+        await BigTableHelper.deleteRow(req.instanceId, req.tableId, req.rowKey);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.deleteCells = async (req, res) => {
+    try {
+        await BigTableHelper.deleteCells(req.instanceId, req.tableId, req.rowKey, req.columnFamily);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.deleteRows = async (req, res) => {
+    try {
+        await BigTableHelper.deleteRows(req.body.instanceId, req.body.tableId, req.body.rowKeys);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.deleteRowsByPrefix = async (req, res) => {
+    try {
+        await BigTableHelper.deleteRowsByPrefix(req.instanceId, req.tableId, req.rowKeyPrefix);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
