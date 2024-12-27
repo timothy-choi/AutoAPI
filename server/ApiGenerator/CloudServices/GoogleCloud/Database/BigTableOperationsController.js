@@ -119,3 +119,53 @@ exports.deleteTable = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.queryRowsByPrefix = async (req, res) => {
+    try {
+        var queryResult = await BigTableHelper.getRowsByPrefix(req.instanceId, req.tableId, req.rowKeyPrefix);
+
+        return res.status(200).send({"queryResult": queryResult});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.queryRowsByColumnFamily = async (req, res) => {
+    try {
+        var queryResult = await BigTableHelper.getRowsByColumnFamily(req.instanceId, req.tableId, req.columnFamilyId);
+
+        return res.status(200).send({"queryResult": queryResult});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.querySpecificRow = async (req, res) => {
+    try {
+        var queryResult = await BigTableHelper.getSpecificRow(req.instanceId, req.tableId, req.rowKey);
+
+        return res.status(200).send({"queryResult": queryResult});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.queryFilteredRows = async (req, res) => {
+    try {
+        var queryResult = await BigTableHelper.getFilteredRows(req.instanceId, req.tableId, req.rowKeyPrefix, req.columnFamilyId);
+
+        return res.status(200).send({"queryResult": queryResult});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.queryColumnsByQualifier = async (req, res) => {
+    try {
+        var queryResult = await BigTableHelper.getColumnsByQualifier(req.instanceId, req.tableId, req.columnFamilyId, req.columnQualifier);
+
+        return res.status(200).send({"queryResult": queryResult});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
