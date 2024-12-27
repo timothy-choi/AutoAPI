@@ -132,6 +132,25 @@ exports.updateTableColumnFamily = async (instanceId, tableId, columnFamilyId, op
     }
 };
 
+exports.deleteColumnFamily = async (instanceId, tableId, columnFamilyId) => {
+    try {
+      const table = bigtable.instance(instanceId).table(tableId);
+  
+      const [metadata] = await table.getMetadata();
+      const columnFamilies = metadata.columnFamilies || {};
+  
+      if (!columnFamilies[columnFamilyId]) {
+        throw new Error(`Column family ${columnFamilyId} does not exist.`);
+      }
+  
+      delete columnFamilies[columnFamilyId];
+  
+      await table.setMetadata({ columnFamilies });
+    } catch (err) {
+      throw new Error('Error deleting column family:', err.message);
+    }
+};
+
 exports.deleteTable = async (instanceId, tableId) => {
     try {
       const table = bigtable.instance(instanceId).table(tableId);
@@ -374,4 +393,52 @@ exports.insertWithCondition = async (instanceId, tableId, rowKey, data, conditio
       throw new Error('Error updating row:', err.message);
     }
   };
+
+  exports.deleteRow = async (instanceId, tableId, rowKey) => {
+    try {
+      const table = bigtable.instance(instanceId).table(tableId);
   
+      await table.row(rowKey).delete();
+    } catch (err) {
+      throw new Error('Error deleting row:', err.message);
+    }
+  };
+
+  exports.deleteCells = async (instanceId, tableId, rowKey, columnFamily, columnQualifier) => {
+    try {
+      const table = bigtable.instance(instanceId).table(tableId);
+  
+      await table.row(rowKey).deleteCells([
+        `${columnFamily}:${columnQualifier}`,
+      ]);
+    } catch (err) {
+      throw new Error('Error deleting cell:', err.message);
+    }
+  };
+
+  exports.deleteRows = async (instanceId, tableId, rowKeys) => {
+    try {
+      const table = bigtable.instance(instanceId).table(tableId);
+  
+      const rows = rowKeys.map(rowKey => ({
+        key: rowKey,
+        mutations: [
+          { deleteFromRow: {} }, 
+        ],
+      }));
+  
+      await table.mutate(rows);
+    } catch (err) {
+      throw new Error('Error deleting rows:', err.message);
+    }
+  };
+
+  exports.deleteRowsByPrefix = async (instanceId, tableId, rowKeyPrefix) => {
+    try {
+      const table = bigtable.instance(instanceId).table(tableId);
+  
+      await table.deleteRows(rowKeyPrefix);
+    } catch (err) {
+      throw new Error('Error deleting rows by prefix:', err.message);
+    }
+  };
