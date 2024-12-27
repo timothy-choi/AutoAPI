@@ -2,13 +2,57 @@ const { Bigtable } = require('@google-cloud/bigtable');
 
 const bigtable = new Bigtable();
 
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const retryOperation = async (operation, retries = 3, delayMs = 1000) => {
+    let attempt = 0;
+    while (attempt < retries) {
+        try {
+            return await operation();
+        } catch (err) {
+            attempt++;
+            if (attempt >= retries) {
+                throw new Error(`Operation failed after ${retries} attempts: ${err.message}`);
+            }
+            console.log(`Retrying operation (attempt ${attempt + 1})...`);
+            await delay(delayMs);
+            delayMs *= 2;  
+        }
+    }
+};
+
+const waitForOperationCompletion = async (operation, interval = 5000, maxAttempts = 20) => {
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+        const [status] = await operation.getMetadata();
+        if (status.done) {
+            return status;
+        }
+        attempts++;
+        console.log(`Waiting for operation to complete... Attempt ${attempts}/${maxAttempts}`);
+        await delay(interval); 
+    }
+
+    throw new Error('Operation did not complete within the expected time');
+};
+
 exports.createInstance = async (options, clusters, instanceId) => {
     try {
         options.clusters = clusters;
 
-        var [createInstanceResponse] = await bigtable.createInstance(instanceId, options);
+        var operation = async () => {
 
-        return createInstanceResponse;
+            var [createInstanceResponse] = await bigtable.createInstance(instanceId, options);
+
+            return createInstanceResponse;
+        };
+
+        const instanceResponse = await retryOperation(operation);
+        
+        await waitForOperationCompletion(instanceResponse);
+
+        return instanceResponse;
     } catch (err) {
       throw new Error('Error creating instance:', err.message);
     }
@@ -17,10 +61,18 @@ exports.createInstance = async (options, clusters, instanceId) => {
 exports.updateInstance = async (instanceId, options) => {
     try {
       const instance = bigtable.instance(instanceId); 
-  
-      const [updatedInstance] = await instance.partialUpdate(options);
 
-      return updatedInstance;
+      var operation = async () => {
+        const [updatedInstance] = await instance.partialUpdate(options);
+
+        return updatedInstance;
+      };
+
+      var instanceResponse = await retryOperation(operation);
+
+      await waitForOperationCompletion(instanceResponse);
+
+      return instanceResponse;
     } catch (err) {
       throw new Error('Error updating instance:', err.message);
     }
@@ -29,8 +81,16 @@ exports.updateInstance = async (instanceId, options) => {
 exports.deleteInstance = async (instanceId) => {
     try {
         const instance = bigtable.instance(instanceId);
-    
-        await instance.delete();
+
+        var operation = async () => {
+            var deleteResponse = await instance.delete();
+
+            return deleteResponse;
+        };
+
+        var deleteResponse = await retryOperation(operation);
+
+        await waitForOperationCompletion(deleteResponse);
     } catch (err) {
         throw new Error('Error updating instance:', err.message);
     }
@@ -54,8 +114,16 @@ exports.createCluster = async (instanceId, clusterId, options) => {
   
       const cluster = instance.cluster(clusterId);
 
-      var clusterResponse = await cluster.create(options);
+      var operation = async () => {
+        var clusterResponse = await cluster.create(options);
   
+        return clusterResponse;
+      };
+
+      var clusterResponse = await retryOperation(operation);
+
+      await waitForOperationCompletion(clusterResponse);
+      
       return clusterResponse;
     } catch (err) {
       throw new Error('Error creating cluster:', err.message);
@@ -68,9 +136,17 @@ exports.deleteCluster = async (instanceId, clusterId) => {
 
       const cluster = instance.cluster(clusterId);
 
-      await cluster.delete();
+      var operation = async () => {
+        var deleteResponse = await cluster.delete();
+
+        return deleteResponse;
+      };
+
+      var deleteResponse = await retryOperation(operation);
+
+      await waitForOperationCompletion(deleteResponse);
     } catch (err) {
-      console.error('Error deleting cluster:', err.message);
+      throw new Error('Error deleting cluster:', err.message);
     }
 };
 
@@ -79,10 +155,16 @@ exports.updateCluster = async (instanceId, clusterId, options, ) => {
         const instance = bigtable.instance(instanceId);
         const cluster = instance.cluster(clusterId);
 
-        const [operation] = await cluster.setMetadata(options);
-        await operation.promise();
-    
-        return operation;
+        const updateClusterOperation = async () => {
+            const [operation] = await cluster.setMetadata(options);
+            return operation;
+        };
+
+        const res = await retryOperation(updateClusterOperation);
+
+        await waitForOperationCompletion(res);
+
+        return res;
     } catch (err) {
         throw new Error('Error updating cluster:', err.message);
     }
@@ -105,8 +187,16 @@ exports.createTable = async (instanceId, tableId, columnFamilies) => {
     try {
         const instance = bigtable.instance(instanceId);
         const table = instance.table(tableId);
-    
-        var tableResponse = await table.create({ columnFamilies });
+
+        var operation = async () => {
+            var tableResponse = await table.create({ columnFamilies });
+
+            return tableResponse;
+        };
+
+        var tableResponse = await retryOperation(operation);
+
+        await waitForOperationCompletion(tableResponse);
 
         return tableResponse;
     } catch (err) {
@@ -121,12 +211,18 @@ exports.updateTableColumnFamily = async (instanceId, tableId, columnFamilyId, op
       const [metadata] = await table.getMetadata();
   
       metadata.columnFamilies[columnFamilyId] = options;
-  
-      const [operation] = await table.setMetadata(metadata);
 
-      await operation.promise();
+      var operation = async () => {
+        const [updateResponse] = await table.setMetadata(metadata);
 
-      return operation;
+        return updateResponse;
+      };
+
+      var updateResponse = await retryOperation(operation);
+
+      await waitForOperationCompletion(updateResponse);
+
+      return updateResponse;
     } catch (err) {
       throw new Error('Error updating table:', err.message);
     }
@@ -142,10 +238,18 @@ exports.deleteColumnFamily = async (instanceId, tableId, columnFamilyId) => {
       if (!columnFamilies[columnFamilyId]) {
         throw new Error(`Column family ${columnFamilyId} does not exist.`);
       }
-  
-      delete columnFamilies[columnFamilyId];
-  
-      await table.setMetadata({ columnFamilies });
+
+      var operation = async () => {
+        delete columnFamilies[columnFamilyId];
+    
+        var res = await table.setMetadata({ columnFamilies });
+
+        return res;
+      };
+
+      var deleteResponse = await retryOperation(operation);
+
+      await waitForOperationCompletion(deleteResponse);
     } catch (err) {
       throw new Error('Error deleting column family:', err.message);
     }
@@ -154,8 +258,16 @@ exports.deleteColumnFamily = async (instanceId, tableId, columnFamilyId) => {
 exports.deleteTable = async (instanceId, tableId) => {
     try {
       const table = bigtable.instance(instanceId).table(tableId);
-  
-      await table.delete();
+
+      var operation = async () => {
+        var deleteResponse = await table.delete();
+
+        return deleteResponse;
+      };
+
+      var deleteResponse = await retryOperation(operation);
+
+      await waitForOperationCompletion(deleteResponse);
     } catch (err) {
       throw new Error('Error deleting table:', err.message);
     }
