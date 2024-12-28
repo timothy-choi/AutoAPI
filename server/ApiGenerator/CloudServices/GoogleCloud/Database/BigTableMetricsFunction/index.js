@@ -1,5 +1,4 @@
 const { Monitoring } = require('@google-cloud/monitoring');
-const monitoring = new Monitoring.MetricServiceClient();
 
 const createOAuth2Client = async (accessToken, refreshToken) => {
     try {
@@ -18,7 +17,7 @@ const createOAuth2Client = async (accessToken, refreshToken) => {
     }
 };
 
-const getMetricsByMetricType = async (projectId, metricType, interval, intervalMinutes) => {
+const getMetricsByMetricType = async (monitoring, projectId, metricType, interval, intervalMinutes) => {
     try {
         const request = {
             name: `projects/${projectId}`,
@@ -63,8 +62,29 @@ const getMetricsByMetricType = async (projectId, metricType, interval, intervalM
 
 exports.monitorBigTableMetrics = async (req, res) => {
     try {
+        var oauthClient = await createOAuth2Client(req.body.accessToken, req.body.refreshToken);
 
+        const client = new Monitoring.MetricServiceClient({ oauthClient });
+
+        var allMetrics = [];
+
+        const now = Date.now();
+        const startTime = new Date(now - req.body.intervalMinutes * 60 * 1000); // X minutes ago
+        const endTime = new Date(now);
+
+        var interval = {
+            startTime: { seconds: startTime.getTime() / 1000 },
+            endTime: { seconds: endTime.getTime() / 1000 },
+        };
+
+        for (let i = 0; i < req.body.metricTypes.length; ++i) {
+            var metricsData = await getMetricsByMetricType(client, req.body.projectId, req.body.metricTypes[i], interval, req.body.intervalMinutes);
+
+            allMetrics.push({ metricType: req.body.metricTypes[i], data: metricsData });
+        }
+
+        return res.status(201).send({"metricsData": allMetrics});
     } catch (error) {
-        
+        return res.status(500).send(error.message);
     }
 };
