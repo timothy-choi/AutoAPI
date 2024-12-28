@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@google-cloud/monitoring": "^4.1.0"
+    "@google-cloud/monitoring": "^4.1.0",
+    "amqplib": "^0.10.5"
   }
 }

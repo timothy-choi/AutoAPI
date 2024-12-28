@@ -1,4 +1,20 @@
 const { Monitoring } = require('@google-cloud/monitoring');
+const amqp = require('amqplib');
+
+const publishMetricsData = async (metricsData) => {
+    try {
+        const connection = await amqp.connect('');  
+        const channel = await connection.createChannel();
+
+        channel.assertQueue("", { durable: true });
+        channel.sendToQueue("", Buffer.from(metricsData), { persistent: true });
+
+        await channel.close();
+        await connection.close();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
 
 const createOAuth2Client = async (accessToken, refreshToken) => {
     try {
@@ -80,7 +96,17 @@ exports.monitorBigTableMetrics = async (req, res) => {
         for (let i = 0; i < req.body.metricTypes.length; ++i) {
             var metricsData = await getMetricsByMetricType(client, req.body.projectId, req.body.metricTypes[i], interval, req.body.intervalMinutes);
 
+            if (metricsData == null) {
+                allMetrics.push({metricType: req.body.metricTypes[i], data: null});
+
+                continue;
+            }
+
             allMetrics.push({ metricType: req.body.metricTypes[i], data: metricsData });
+        }
+
+        if (req.body.autoTrigger) {
+            await publishMetricsData(JSON.stringify(allMetrics));
         }
 
         return res.status(201).send({"metricsData": allMetrics});
