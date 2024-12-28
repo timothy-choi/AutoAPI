@@ -2,6 +2,8 @@ const { Bigtable } = require('@google-cloud/bigtable');
 
 const bigtable = new Bigtable();
 
+var axios = require('axios');
+
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const retryOperation = async (operation, retries = 3, delayMs = 1000) => {
@@ -702,5 +704,27 @@ exports.insertWithCondition = async (instanceId, tableId, rowKey, data, conditio
       await waitForOperationCompletion(deleteResponse);
     } catch (err) {
       throw new Error('Error deleting rows by prefix:', err.message);
+    }
+  };
+
+  exports.getBigTableMetrics = async (bigTableFunctionUri, accessTokenValue, refreshTokenValue, intervalMin, projectIdentifier, allMetricTypes) => {
+    try {
+        var metricsRequest = {
+            accessToken: accessTokenValue,
+            refreshToken: refreshTokenValue,
+            intervalMinutes: intervalMin,
+            projectId: projectIdentifier,
+            metricTypes: allMetricTypes 
+        };
+
+        var metricsResponse = await axios.post(bigTableFunctionUri, metricsRequest);
+
+        if (metricsResponse.status != 201) {
+            throw new Error("error getting metrics");
+        }
+
+        return metricsResponse.json();
+    } catch (error) {
+        throw new Error(error.message);
     }
   };

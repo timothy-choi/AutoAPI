@@ -319,3 +319,13 @@ exports.deleteRowsByPrefix = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.getBigTableMetrics = async (req, res) => {
+    try {
+        var metricsData = await BigTableHelper.getBigTableMetrics(req.body.bigTableFunctionUri, req.body.accessToken, req.body.refreshToken, req.body.intervalMin, req.body.projectIdentifier, req.body.allMetricTypes);
+
+        return res.status(201).send({"metricsData": metricsData});
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
