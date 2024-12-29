@@ -346,6 +346,52 @@ exports.listTables = async (projectId, instanceId) => {
     }
 };
 
+exports.copyTable = async (projectId, instanceId, sourceTableId, destinationTableId) => {
+    try {
+        const bigtable = new Bigtable({ projectId: projectId });
+        const instance = bigtable.instance(instanceId);
+        const sourceTable = instance.table(sourceTableId);
+        const destinationTable = instance.table(destinationTableId);
+
+        var operation = async () => {
+            var copyResponse = await sourceTable.copy(destinationTable);
+            
+            return copyResponse;
+        };
+
+        var copyResponse = await retryOperation(operation);
+
+        await waitForOperationCompletion(copyResponse);
+
+        return copyResponse;
+    } catch (err) {
+        throw new Error('Error copying table:', err.message);
+    }
+};
+
+exports.mergeTable = async (projectId, instanceId, sourceTableId, destinationTableId) => {
+    try {
+        const bigtable = new Bigtable({ projectId: projectId });
+        const instance = bigtable.instance(instanceId);
+        const sourceTable = instance.table(sourceTableId);
+        const destinationTable = instance.table(destinationTableId);
+
+        var operation = async () => {
+            var mergeResponse = await sourceTable.merge(destinationTable);
+
+            return mergeResponse;
+        };
+
+        var mergeResponse = await retryOperation(operation);
+
+        await waitForOperationCompletion(mergeResponse);
+
+        return mergeResponse;
+    } catch (err) {
+        throw new Error('Error merging table:', err.message);
+    }
+};
+
 exports.updateTableColumnFamily = async (instanceId, tableId, columnFamilyId, options) => {
     try {
       const table = bigtable.instance(instanceId).table(tableId);

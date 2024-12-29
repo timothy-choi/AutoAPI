@@ -170,6 +170,27 @@ exports.listTables = async (req, res) => {
     }
 };
 
+exports.copyTable = async (req, res) => {
+    try {
+        var tableResponse = await BigTableHelper.copyTable(req.body.sourceInstanceId, req.body.sourceTableId, req.body.destinationInstanceId, req.body.destinationTableId);
+
+        return res.status(201).send({"tableResponse": tableResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.mergeTable = async (req, res) => {
+    try {
+        var tableResponse = await BigTableHelper.mergeTable(req.body.sourceInstanceId, req.body.sourceTableId, req.body.destinationInstanceId, req.body.destinationTableId);
+
+        return res.status(201).send({"tableResponse": tableResponse});
+
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.updateTableColumnFamily = async (req, res) => {
     try {
         var instanceResponse = await BigTableHelper.updateTableColumnFamily(req.body.instanceId, req.body.tableId, req.body.columnFamilyId, req.body.options);
