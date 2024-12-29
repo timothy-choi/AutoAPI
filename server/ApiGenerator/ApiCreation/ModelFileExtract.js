@@ -39,7 +39,36 @@ const databaseTypes = {
   
     DynamoDB: [
       "String", "Number", "Binary", "Boolean", "Null", "List", "Map"
-    ]
+    ],
+
+    SQLServer: [
+        "bigint", "int", "smallint", "tinyint", "bit",
+        "decimal", "numeric", "smallmoney", "money",
+        "float", "real",
+        "date", "datetime2", "datetime", "datetimeoffset", "smalldatetime", "time",
+        "char", "varchar", "text", "nchar", "nvarchar", "ntext",
+        "binary", "varbinary", "image",
+        "uniqueidentifier",
+        "xml",
+        "cursor",
+        "hierarchyid",
+        "sql_variant",
+        "table",
+        "geometry", "geography",
+        "rowversion", "timestamp",
+        "sql_variant",
+        "table",
+        "geometry", "geography",
+        "rowversion", "timestamp"
+     ],
+
+    CosmosDB: [
+        "String", "Number", "Boolean", "Array", "Object", "Date", "ObjectId", "Binary", "Decimal128", "BSON", "Embedded Document"
+     ],
+
+    BigTable: [
+        "String", "Number", "Boolean", "Array", "Object", "Date", "ObjectId", "Binary", "Decimal128", "BSON", "Embedded Document"
+     ]
   };  
 
 
@@ -49,6 +78,8 @@ const parseAndCheckFile = (jsonFileContent, databaseType) => {
     var allAttributes = [];
 
     var prevAttributeNames = [];
+
+    let ct = 0;
 
     for (var dataAttr in data) {
         if (!('name' in dataAttr) || (dataAttr.name == null) || (typeof(dataAttr.name) != String)) {
@@ -83,9 +114,29 @@ const parseAndCheckFile = (jsonFileContent, databaseType) => {
             throw new Error('ERROR: attribute defaultValue is invalid');
         }
 
+        if (!('isPrimaryKey' in dataAttr) || (dataAttr.isPrimaryKey == null) || (typeof(dataAttr.isPrimaryKey) != Boolean)) {
+            throw new Error('ERROR: attribute isPrimaryKey is invalid');
+        }
+
+        if (!('isForeignKey' in dataAttr) || (dataAttr.isForeignKey == null) || (typeof(dataAttr.isForeignKey) != Boolean)) {
+            throw new Error('ERROR: attribute isForeignKey is invalid');
+        }
+
+        if (dataAttr.isPrimaryKey == true && dataAttr.isForeignKey == true || dataAttr.isPrimaryKey == true && dataAttr.unique == false) {
+            throw new Error('ERROR: attribute isPrimaryKey is true and isForeignKey is true or unique is false');
+        }
+
+        if (dataAttr.isPrimaryKey) {
+            ct++;
+        }
+
         allAttributes.push(dataAttr);
 
         prevAttributeNames.push(dataAttr.name);
+    }
+
+    if (ct > 1) {
+        throw new Error('ERROR: multiple primary keys found in model');
     }
 
     return allAttributes;
