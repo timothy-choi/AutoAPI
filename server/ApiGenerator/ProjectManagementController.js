@@ -90,6 +90,56 @@ exports.deleteUserFromProject = async (req, res) => {
     }
 };
 
+exports.AddToApiMonitoringLog = async (req, res) => {
+    try {
+        await ProjectManagementHelper.AddToApiMonitoringLog(req.projectManagementId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.AddToErrorLog = async (req, res) => {
+    try {
+        await ProjectManagementHelper.AddToErrorLog(req.projectManagementId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.AddToSecurityIncidentLog = async (req, res) => {
+    try {
+        await ProjectManagementHelper.AddToSecurityIncidentLog(req.projectManagementId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.AddToCompleteApiChangelog = async (req, res) => {
+    try {
+        await ProjectManagementHelper.addToCompleteApiChangelog(req.projectManagementId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.setProjectBillingManagementId = async (req, res) => {
+    try {
+        await ProjectManagementHelper.setProjectBillingManagementId(req.projectManagementId, req.projectBillingManagementId);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.deleteProjectManagement = async (req, res) => {
     try {
         await ProjectManagementHelper.deleteProjectManagement(req.projectManagementId);
