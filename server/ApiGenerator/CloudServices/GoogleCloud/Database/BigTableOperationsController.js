@@ -80,6 +80,26 @@ exports.getCluster = async (req, res) => {
     }
 };
 
+exports.createBackup = async (req, res) => {
+    try {
+        var backupInfo = await BigTableHelper.createBackup(req.body.instanceId, req.body.clusterId, req.body.tableId, req.body.backupId, req.body.expireTime);
+
+        return res.status(201).send({"backupInfo": backupInfo}), 201
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.restoreBackup = async (req, res) => {
+    try {
+        var backupInfo = await BigTableHelper.restoreBackup(req.body.instanceId, req.body.clusterId, req.body.backupId, req.body.newTableId);
+
+        return res.status(201).send({"backupInfo": backupInfo}), 201
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.createTable = async (req, res) => {
     try {
         var tableResponse = await BigTableHelper.createTable(req.body.instanceId, req.body.tableId, req.body.columnFamilies);

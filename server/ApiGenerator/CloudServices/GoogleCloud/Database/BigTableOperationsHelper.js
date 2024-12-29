@@ -185,6 +185,52 @@ exports.getClusterInfo = async (instanceId, clusterId) => {
     }
 };
 
+exports.createBackup = async (instanceId, clusterId, tableId, backupId, expireTime) => {
+    try {
+        const instance = bigtable.instance(instanceId);
+        const cluster = instance.cluster(clusterId);
+
+        var operation = async () => {
+            const [operationResponse] = await cluster.backup(backupId).create({
+                table: tableId,
+                expireTime,
+            });
+
+            return operationResponse;
+        };
+
+        var backupResponse = await retryOperation(operation);
+
+        await waitForOperationCompletion(backupResponse);
+
+        return backupResponse;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.restoreBackup = async (instanceId, clusterId, backupId, newTableId) => {
+    try {
+        const instance = bigtable.instance(instanceId);
+        const cluster = instance.cluster(clusterId);
+        const backup = cluster.backup(backupId);
+
+        var operation = async () => {
+            const [operationResponse] = await backup.restore(newTableId);
+
+            return operationResponse;
+        };
+
+        var backupResponse = await retryOperation(operation);
+
+        await waitForOperationCompletion(backupResponse);
+
+        return backupResponse;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
 exports.createTable = async (instanceId, tableId, columnFamilies) => {
     try {
         const instance = bigtable.instance(instanceId);
