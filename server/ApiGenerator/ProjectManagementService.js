@@ -145,6 +145,8 @@ exports.AddToApiMonitoringLog = async (projectManagementId, logEntry) => {
 
         projectManagement.ApiMonitoringLog.push(logEntry);
 
+        projectManagement.UpdatedAt = Date.now();
+
         await projectManagement.save();
     } catch (error) {
         throw new Error('Error adding to api monitoring log:', error);
@@ -160,6 +162,8 @@ exports.AddToErrorLog = async (projectManagementId, logEntry) => {
         }
 
         projectManagement.ErrorLog.push(logEntry);
+
+        projectManagement.UpdatedAt = Date.now();
 
         await projectManagement.save();
     } catch (error) {
@@ -177,9 +181,45 @@ exports.AddToSecurityIncidentLog = async (projectManagementId, logEntry) => {
 
         projectManagement.SecurityIncidentLog.push(logEntry);
 
+        projectManagement.UpdatedAt = Date.now();
+
         await projectManagement.save();
     } catch (error) {
         throw new Error('Error adding to security incident log:', error);
+    }
+}
+
+exports.addToCompleteApiChangelog = async (projectManagementId, logEntry) => {
+    try {
+        var projectManagement = await this.GetProjectManagementById(projectManagementId);
+
+        if (!projectManagement) {
+            throw new Error('Instance does not exist');
+        }
+
+        projectManagement.CompleteApiChangelog.push(logEntry);
+
+        projectManagement.UpdatedAt = Date.now();
+
+        await projectManagement.save();
+    } catch (error) {
+        throw new Error('Error adding to complete api changelog:', error);
+    }
+}
+
+exports.setProjectBillingManagementId = async (projectManagementId, projectBillingManagementId) => {
+    try {
+        var projectManagement = await this.GetProjectManagementById(projectManagementId);
+
+        if (!projectManagement) {
+            throw new Error('Instance does not exist');
+        }
+
+        projectManagement.ProjectBillingManagementId = projectBillingManagementId;
+
+        await projectManagement.save();
+    } catch (error) {
+        throw new Error('Error setting project billing management id:', error);
     }
 }
 
