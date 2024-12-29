@@ -76,7 +76,7 @@ const ProjectManagement = sequelize.define('ProjectManagement', {
     },
     ProjectBillingManagementId: {
         type: DataTypes.UUID,
-        allowNull: false,
+        allowNull: true,
     }
 });
 
