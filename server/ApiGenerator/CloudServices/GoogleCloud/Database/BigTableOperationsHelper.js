@@ -60,6 +60,17 @@ exports.createInstance = async (options, clusters, instanceId) => {
     }
 };
 
+exports.listInstances = async (projectId) => {
+    try {
+      const bigtable = new Bigtable({ projectId: projectId });
+      const [instances] = await bigtable.getInstances();
+
+      return instances;
+    } catch (err) {
+      throw new Error('Error listing instances:', err.message);
+    }
+};
+
 exports.updateInstance = async (instanceId, options) => {
     try {
       const instance = bigtable.instance(instanceId); 
@@ -129,6 +140,18 @@ exports.createCluster = async (instanceId, clusterId, options) => {
       return clusterResponse;
     } catch (err) {
       throw new Error('Error creating cluster:', err.message);
+    }
+};
+
+exports.listClusters = async (instanceId) => {
+    try {
+      const bigtable = new Bigtable({ projectId: projectId });
+      const instance = bigtable.instance(instanceId);
+      const [clusters] = await instance.getClusters();
+
+      return clusters;
+    } catch (err) {
+      throw new Error('Error listing clusters:', err.message);
     }
 };
 
@@ -231,6 +254,28 @@ exports.restoreBackup = async (instanceId, clusterId, backupId, newTableId) => {
     }
 };
 
+exports.resizeCluster = async (projectId, instanceId, clusterId, numNodes) => {
+    try {
+        const bigtable = new Bigtable({ projectId: projectId });
+        const instance = bigtable.instance(instanceId);
+        const cluster = instance.cluster(clusterId);
+
+        var operation = async () => {
+            const [operationResponse] = await cluster.resize(numNodes);
+
+            return operationResponse;
+        };
+
+        var resizeResponse = await retryOperation(operation);
+
+        await waitForOperationCompletion(resizeResponse);
+
+        return resizeResponse;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
 exports.createTable = async (instanceId, tableId, columnFamilies) => {
     try {
         const instance = bigtable.instance(instanceId);
@@ -249,6 +294,18 @@ exports.createTable = async (instanceId, tableId, columnFamilies) => {
         return tableResponse;
     } catch (err) {
         throw new Error('Error creating table:', err.message);
+    }
+};
+
+exports.listTables = async (projectId, instanceId) => {
+    try {
+      var bigtable = new Bigtable({ projectId: projectId });
+      const instance = bigtable.instance(instanceId);
+      const [tables] = await instance.getTables();
+
+      return tables;
+    } catch (err) {
+      throw new Error('Error listing tables:', err.message);
     }
 };
 

@@ -20,6 +20,16 @@ exports.updateInstance = async (req, res) => {
     }
 };
 
+exports.listInstances = async (req, res) => {
+    try {
+        var instances = await BigTableHelper.listInstances(req.projectId);
+
+        return res.status(200).send({"instances": instances});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.deleteInstance = async (req, res) => {
     try {
         await BigTableHelper.deleteInstance(req.instanceId);
@@ -80,6 +90,16 @@ exports.getCluster = async (req, res) => {
     }
 };
 
+exports.listClusters = async (req, res) => {
+    try {
+        var clusters = await BigTableHelper.listClusters(req.instanceId);
+
+        return res.status(200).send({"clusters": clusters});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.createBackup = async (req, res) => {
     try {
         var backupInfo = await BigTableHelper.createBackup(req.body.instanceId, req.body.clusterId, req.body.tableId, req.body.backupId, req.body.expireTime);
@@ -100,11 +120,31 @@ exports.restoreBackup = async (req, res) => {
     }
 };
 
+exports.resizeCluster = async (req, res) => {
+    try {
+        var clusterResponse = await BigTableHelper.resizeCluster(req.body.projectId, req.body.instanceId, req.body.clusterId, req.body.numNodes);
+
+        return res.status(200).send({"clusterResponse": clusterResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.createTable = async (req, res) => {
     try {
         var tableResponse = await BigTableHelper.createTable(req.body.instanceId, req.body.tableId, req.body.columnFamilies);
 
         return res.status(201).send({"tableResponse": tableResponse});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.listTables = async (req, res) => {
+    try {
+        var tables = await BigTableHelper.listTables(req.projectId, req.instanceId);
+
+        return res.status(200).send({"tables": tables});
     } catch (error) {
         return res.status(500).send(error.message);
     }
