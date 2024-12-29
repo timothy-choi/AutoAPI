@@ -254,6 +254,43 @@ exports.restoreBackup = async (instanceId, clusterId, backupId, newTableId) => {
     }
 };
 
+exports.listBackups = async (projectId, instanceId, clusterId) => {
+    try { 
+        const bigtable = new Bigtable({ projectId: projectId });
+        const instance = bigtable.instance(instanceId);
+        const cluster = instance.cluster(clusterId);
+
+        const [backups] = await cluster.getBackups();
+
+        return backups;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.deleteBackup = async (projectId, instanceId, clusterId, backupId) => {
+    try {
+        const bigtable = new Bigtable({ projectId: projectId });
+        const instance = bigtable.instance(instanceId);
+        const cluster = instance.cluster(clusterId);
+        const backup = cluster.backup(backupId);
+
+        var operation = async () => {
+            const [operationResponse] = await backup.delete();
+
+            return operationResponse;
+        };
+
+        var deleteResponse = await retryOperation(operation);
+
+        await waitForOperationCompletion(deleteResponse);
+
+        return deleteResponse;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
 exports.resizeCluster = async (projectId, instanceId, clusterId, numNodes) => {
     try {
         const bigtable = new Bigtable({ projectId: projectId });

@@ -120,6 +120,26 @@ exports.restoreBackup = async (req, res) => {
     }
 };
 
+exports.listBackups = async (req, res) => {
+    try {
+        var backups = await BigTableHelper.listBackups(req.instanceId, req.clusterId);
+
+        return res.status(200).send({"backups": backups});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.deleteBackup = async (req, res) => {
+    try {
+        await BigTableHelper.deleteBackup(req.instanceId, req.clusterId, req.backupId);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.resizeCluster = async (req, res) => {
     try {
         var clusterResponse = await BigTableHelper.resizeCluster(req.body.projectId, req.body.instanceId, req.body.clusterId, req.body.numNodes);
