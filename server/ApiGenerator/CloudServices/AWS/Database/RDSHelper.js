@@ -395,6 +395,48 @@ exports.deleteReadReplica = async (replicaDbId, userCredentials, userRegion) => 
     }
 };
 
+exports.promoteReadReplica = async (replicaDbId, userCredentials, userRegion) => {
+    const rds = new AWS.RDS({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    const params = {
+        DBInstanceIdentifier: replicaDbId
+    };
+
+    try {
+        const promoteData = await rds.promoteReadReplica(params).promise();
+
+        let isPromoting = true;
+        const MAX_WAIT_TIME = 30 * 60 * 1000;
+        let elapsedTime = 0;
+        const POLLING_INTERVAL = 15000;
+
+        while (isPromoting && elapsedTime < MAX_WAIT_TIME) {
+            await new Promise(res => setTimeout(res, 15000));
+            elapsedTime += POLLING_INTERVAL;
+
+            const data = await rds.describeDBInstances({
+                DBInstanceIdentifier: replicaDbId,
+            }).promise();
+            const status = data.DBInstances[0].DBInstanceStatus;
+
+            if (status === 'available') {
+                isPromoting = false;
+            }
+        }
+
+        if (elapsedTime >= MAX_WAIT_TIME) {
+            throw new Error('Read replica promotion timed out');
+        }
+
+        return promoteData;
+    } catch (error) {
+        throw new Error(`Error promoting read replica: ${error.message}`);
+    }
+};
+
 exports.createRDSBackup = async (currDbId, snapshotId, userCredentials, userRegion) => {
     const rds = new AWS.RDS({
         credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
