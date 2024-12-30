@@ -100,6 +100,76 @@ exports.editContributorStats = async (req, res) => {
     }
 }
 
+exports.setAverageResponseTime = async (req, res) => {
+    try {
+        await projectStatsService.SetAverageResponseTime(req.projectStatsId, req.avgResponseTime);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.setUptimePercentage = async (req, res) => {
+    try {
+        await projectStatsService.SetUptimePercentage(req.projectStatsId, req.uptimePercentage);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.setErrorRate = async (req, res) => {
+    try {
+        await projectStatsService.SetErrorRate(req.projectStatsId, req.errorRate);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.addTopErrorCodes = async (req, res) => {
+    try {
+        await projectStatsService.SetTopErrorCodes(req.projectStatsId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.editTopErrorCode = async (req, res) => {
+    try {
+        await projectStatsService.EditTopErrorCode(req.projectStatsId, req.topErrorCodeId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.addGeoDistribution = async (req, res) => {
+    try {
+        await projectStatsService.AddGeoDistribution(req.projectStatsId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.editGeoDistribution = async (req, res) => {
+    try {
+        await projectStatsService.SetGeoDistribution(req.projectStatsId, req.geoDistributionId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.deleteProjectStats = async (req, res) => {
     try {
         await projectStatsService.DeleteProjectStats(req.projectStatsId);
