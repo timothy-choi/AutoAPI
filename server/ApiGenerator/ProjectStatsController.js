@@ -170,6 +170,136 @@ exports.editGeoDistribution = async (req, res) => {
     }
 };
 
+exports.setPeakTrafficTime = async (req, res) => {
+    try {
+        await projectStatsService.SetPeakTrafficTime(req.projectStatsId, req.peakTrafficTime);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.setMaxResponseTime = async (req, res) => {
+    try {
+        await projectStatsService.SetMaxResponseTime(req.projectStatsId, req.maxResponseTime);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.setMinResponseTime = async (req, res) => {
+    try {
+        await projectStatsService.SetMinResponseTime(req.projectStatsId, req.minResponseTime);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.setTotalDataTransferred = async (req, res) => {
+    try {
+        await projectStatsService.SetTotalDataTransferred(req.projectStatsId, req.totalDataTransferred);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.AddRequestTypeDistribution = async (req, res) => {
+    try {
+        await projectStatsService.AddRequestTypeDistribution(req.projectStatsId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.RemoveRequestTypeDistribution = async (req, res) => {
+    try {
+        await projectStatsService.RemoveRequestTypeDistribution(req.projectStatsId, req.requestTypeDistributionId);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.EditRequestTypeDistribution = async (req, res) => {
+    try {
+        await projectStatsService.EditRequestTypeDistribution(req.projectStatsId, req.requestTypeDistributionId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.AddActiveUser = async (req, res) => {
+    try {
+        await projectStatsService.AddActiveUser(req.projectStatsId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.RemoveActiveUser = async (req, res) => {
+    try {
+        await projectStatsService.RemoveActiveUser(req.projectStatsId, req.activeUserId);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.EditActiveUser = async (req, res) => {
+    try {
+        await projectStatsService.EditActiveUser(req.projectStatsId, req.activeUserId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.AddLatencyByRegion = async (req, res) => {
+    try {
+        await projectStatsService.AddLatencyByRegion(req.projectStatsId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.RemoveLatencyByRegion = async (req, res) => {
+    try {
+        await projectStatsService.RemoveLatencyByRegion(req.projectStatsId, req.latencyByRegionId);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.EditLatencyByRegion = async (req, res) => {
+    try {
+        await projectStatsService.EditLatencyByRegion(req.projectStatsId, req.latencyByRegionId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.deleteProjectStats = async (req, res) => {
     try {
         await projectStatsService.DeleteProjectStats(req.projectStatsId);
