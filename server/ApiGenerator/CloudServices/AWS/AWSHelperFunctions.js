@@ -314,4 +314,45 @@ exports.deleteSecret = async (secretName, region) => {
     } catch (error) {
       console.error('Error deleting secret:', error);
     }
-  }
+};
+
+exports.createLogGroup = async (logGroupName, userCredentials, userRegion) => {
+    const cloudWatchLogs = new AWS.CloudWatchLogs({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    const params = {
+        logGroupName
+    };
+
+    try {
+        const result = await cloudWatchLogs.createLogGroup(params).promise();
+
+        return result;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.createSubscriptionFilter = async (logGroupName, filterName, filterPattern, destinationArn, userCredentials, userRegion) => {
+    const cloudWatchLogs = new AWS.CloudWatchLogs({
+        credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+        region: userRegion
+    });
+
+    const params = {
+        destinationArn,
+        filterName,
+        filterPattern,
+        logGroupName
+    };
+
+    try {
+        const result = await cloudWatchLogs.putSubscriptionFilter(params).promise();
+
+        return result;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};

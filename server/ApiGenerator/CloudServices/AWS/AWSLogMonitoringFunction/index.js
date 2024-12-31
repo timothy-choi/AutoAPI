@@ -15,19 +15,29 @@ exports.handler = async (event) => {
         } else {
             return {
                 statusCode: 404,
-                body: JSON.stringify('No logs found')
+                body: JSON.stringify({
+                    "payload": parsedPayload,
+                    "latestLogEntry": "No logs found"
+                })
             };
         }
 
         return {
             statusCode: 200,
-            body: JSON.stringify(mostRecentLog)
+            body: JSON.stringify({
+                "payload": parsedPayload,
+                "latestLogEntry": mostRecentLog
+            })
         };
 
     } catch (error) {
         return {
             statusCode: 500,
-            body: JSON.stringify('Error processing log:', error)
+            body: JSON.stringify({
+                "eventData": event,
+                "payload": parsedPayload,
+                "error": error.message
+            })
         };
     }
 };
