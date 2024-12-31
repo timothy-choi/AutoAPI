@@ -77,4 +77,82 @@ router.put("/Database/:databaseId/StartedAt", DatabaseController.setDatabaseStar
 router.delete("/Database/:databaseId", DatabaseController.deleteDatabase);
 
 
+router.get("/Endpoints/:endpointId", EndpointControllerGgetEndpointsById);
+
+router.get("/Endpoints/name/:projectName", EndpointController.GetEndpointsByName);
+
+router.post("/Endpoints", EndpointController.CreateEndpoints);
+
+router.put("/Endpoints/endpointHeader/add/:endpointId/:username", EndpointController.AddEndpointHeader);
+
+router.put("/Endpoints/endpointHeader/remove/:endpointId/:endpointHeaderId/:username", EndpointController.RemoveEndpointHeader);
+
+router.put("/Endpoints/endpointHeader/edit/:endpointId/:endpointHeaderId/:username", EndpointController.EditEndpointHeader);
+
+router.put("/Endpoints/model/add/:endpointId/:username", EndpointController.AddEndpointModel);
+
+router.put("/Endpoints/model/remove/:endpointId/:endpointModelId/:username", EndpointController.RemoveEndpointModel);
+
+router.put("/Endpoints/model/edit/:endpointId/:endpointModelId/:username", EndpointController.EditEndpointModel);
+
+router.put("/Endpoints/database/add/:endpointId/:username", EndpointController.AddEndpointDatabase);
+
+router.put("/Endpoints/database/remove/:endpointId/:endpointDatabaseId/:username", EndpointController.RemoveEndpointDatabase);
+
+router.put("/Endpoints/database/edit/:endpointId/:endpointDatabaseId/:username", EndpointController.EditEndpointDatabase);
+
+router.put("/Endpoints/serverlessFunction/add/:endpointId/:username", EndpointController.AddEndpointServerlessFunction);
+
+router.put("/Endpoints/serverlessFunction/remove/:endpointId/:endpointServerlessFunctionId/:username", EndpointController.RemoveEndpointServerlessFunction);
+
+router.put("/Endpoints/serverlessFunction/edit/:endpointId/:endpointServerlessFunctionId/:username", EndpointController.EditEndpointServerlessFunction);
+
+router.put("/Endpoints/endpointCreationFile/:endpointId/:username", EndpointController.ModifyEndpointCreationFile);
+
+router.put("/Endpoints/endpointRequestInfo/add/:endpointId/:username", EndpointController.AddEndpointRequestInfo);
+
+router.put("/Endpoints/endpointRequestInfo/remove/:endpointId/:endpointRequestInfoId/:username", EndpointController.RemoveEndpointRequestInfo);
+
+router.put("/Endpoints/endpointRequestInfo/edit/:endpointId/:endpointRequestInfoId/:username", EndpointController.EditEndpointRequestInfo);
+
+router.put("/Endpoints/EndpointImplementationInfo/add/:endpointId/:username", EndpointController.AddEndpointImplementationInfo);
+
+router.put("/Endpoints/EndpointImplementationInfo/remove/:endpointId/:endpointImplementationInfoId/:username", EndpointController.RemoveEndpointImplementationInfo);
+
+router.put("/Endpoints/EndpointImplementationInfo/edit/:endpointId/:endpointImplementationInfoId/:username", EndpointController.EditEndpointImplementationInfo);
+
+router.put("/Endpoints/EndpointsStatus/add/:endpointId/:username", EndpointController.AddApiEndpointsStatus);
+
+router.put("/Endpoints/EndpointsStatus/edit/:endpointId/:endpointStatusId/:username", EndpointController.EditApiEndpointsStatus);
+
+router.put("/Endpoints/endpointsDescription/:endpointId/:username", EndpointController.ModifyEndpointDescription);
+
+router.put("/Endpoints/responseSchema/add/:endpointId/:username", EndpointController.AddEndpointResponseSchema);
+
+router.put("/Endpoints/responseSchema/remove/:endpointId/:endpointResponseSchemaId/:username", EndpointController.RemoveEndpointResponseSchema);
+
+router.put("/Endpoints/responseSchema/edit/:endpointId/:endpointResponseSchemaId/:username", EndpointController.EditEndpointResponseSchema);
+
+router.put("/Endpoints/responseExample/add/:endpointId/:username", EndpointController.AddEndpointResponseExample);
+
+router.put("/Endpoints/responseExample/remove/:endpointId/:endpointResponseExampleId/:username", EndpointController.RemoveEndpointResponseExample);
+
+router.put("/Endpoints/responseExample/edit/:endpointId/:endpointResponseExampleId/:username", EndpointController.EditEndpointResponseExample);
+
+router.put("/Endpoints/lastAccessedAt/:endpointId", EndpointController.SetLastAccessedAt);
+
+router.put("/Endpoints/endpointDependency/add/:endpointId/:endpointResponseSchemaId/:username", EndpointController.AddEndpointDependency);
+
+router.put("/Endpoints/endpointDependency/remove/:endpointId/:endpointDependencyId/:username", EndpointController.RemoveEndpointDependency);
+
+router.put("/Endpoints/endpointDependency/edit/:endpointId/:endpointDependencyId/:username", EndpointController.EditEndpointDependency);
+
+router.put("/Endpoints/endpointMetrics/:endpointId/:username", EndpointController.ModifyEndpointMetrics);
+
+router.put("/Endpoints/versionHistory/:endpointId/:username", EndpointController.AddEndpointVersionHistory);
+
+router.put("/Endpoints/versionHistory/:endpointId/:username", EndpointController.ModifyServerlessFunctionFile);
+
+router.delete("/Endpoints/:endpointId", EndpointController.DeleteEndpoints);
+
 module.exports = router;
