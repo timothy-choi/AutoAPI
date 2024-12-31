@@ -285,6 +285,16 @@ exports.GetDatabaseInstanceHealthStatus = async (req, res) => {
     }
 }
 
+exports.GetDatabaseMetrics = async (req, res) => {
+    try {
+        var metrics = await AzureHealthStatusAndMetricsHelper.getDatabaseMetrics(req.body.metricsFunctionUri, req.body.metricsRequest, req.body.stopVal);
+
+        return res.status(201).send({"metrics": metrics});
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+}
+
 exports.DeleteDatabase = async (req, res) => {
     try {
         if (req.database === 'MySQL') {
