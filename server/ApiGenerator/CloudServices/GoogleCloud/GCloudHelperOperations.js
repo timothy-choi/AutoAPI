@@ -40,13 +40,14 @@ exports.createLoggingSink = async (projectId, topicName, sinkName) => {
     }
 };
 
-exports.deployCloudFunction = async (functionName, functionRuntime, topicName, region) => {
+exports.deployCloudFunction = async (functionName, functionRuntime, topicName, region, functionEntryPoint, sourceDir) => {
     try {
         exec(
             `gcloud functions deploy ${functionName} ` +
               `--runtime ${functionRuntime} ` +
+              `--source ${sourceDir} ` + 
               `--trigger-topic ${topicName} ` +
-              `--entry-point logListener ` +
+              `--entry-point ${functionEntryPoint} ` +
               `--region ${region}`,
             (error) => {
               if (error) {
@@ -54,6 +55,32 @@ exports.deployCloudFunction = async (functionName, functionRuntime, topicName, r
               }
             }
         );
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.createSchedulerJob = async (projectId, location, schedule, timezone, schedulerJobName) => {
+    try {
+        const schedulerClient = new CloudSchedulerClient();
+
+        const parent = schedulerClient.locationPath(projectId, location);
+
+        const pubSubTarget = {
+            topicName: `projects/${projectId}/topics/${topicName}`,
+            data: Buffer.from(JSON.stringify({ trigger: 'scheduled' })),
+        };
+
+        const job = {
+            name: `projects/${projectId}/locations/${location}/jobs/${schedulerJobName}`,
+            pubsubTarget: pubSubTarget,
+            schedule: schedule,
+            timeZone: timezone,
+        };
+
+        const [response] = await schedulerClient.createJob({ parent, job });
+
+        return response;
     } catch (error) {
         throw new Error(error.message);
     }
