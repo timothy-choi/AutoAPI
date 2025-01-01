@@ -34,7 +34,26 @@ exports.createLoggingSink = async (projectId, topicName, sinkName) => {
             filter: `logName="projects/${PROJECT_ID}/logs/${logName}"`, 
         });
 
-        return logResponse;
+        return [sink, logResponse];
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.deployCloudFunction = async (functionName, functionRuntime, topicName, region) => {
+    try {
+        exec(
+            `gcloud functions deploy ${functionName} ` +
+              `--runtime ${functionRuntime} ` +
+              `--trigger-topic ${topicName} ` +
+              `--entry-point logListener ` +
+              `--region ${region}`,
+            (error) => {
+              if (error) {
+                throw new Error(`Error deploying Cloud Function: ${error.message}`);
+              }
+            }
+        );
     } catch (error) {
         throw new Error(error.message);
     }
