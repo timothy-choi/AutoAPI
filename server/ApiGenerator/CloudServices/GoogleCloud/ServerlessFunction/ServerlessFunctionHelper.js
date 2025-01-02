@@ -2,6 +2,22 @@ const { CloudFunctionsServiceClient } = require('@google-cloud/functions');
 const { Storage } = require('@google-cloud/storage');
 const { exec } = require('child_process');
 
+const retryOperation = async (operation, retries = 3, delay = 1000) => {
+    let attempt = 0;
+    while (attempt < retries) {
+        try {
+            return await operation();
+        } catch (error) {
+            if (attempt === retries - 1) {
+                throw new Error(`Operation failed after ${retries} attempts: ${error.message}`);
+            }
+            attempt++;
+            console.log(`Retrying operation... Attempt ${attempt + 1}`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+};
+
 exports.DeployServerlessFunction = async (functionName, entryPoint, runtime, sourcePath, region, projectId) => {
     try {
         const deployCommand = `
@@ -15,13 +31,15 @@ exports.DeployServerlessFunction = async (functionName, entryPoint, runtime, sou
             --project=${projectId}
         `;
 
-        exec(deployCommand, (error, stdout, stderr) => {
-            if (error) {
-                throw new Error(`Error deploying function: ${error.message}`);
-            } if (stderr) {
-                throw new Error(`Deployment error: ${stderr}`);
-            }
-        });
+        await retryOperation(() => new Promise((resolve, reject) => {
+            exec(deployCommand, (error, stdout, stderr) => {
+                if (error) {
+                    throw new Error(`Error deploying function: ${error.message}`);
+                } else if (stderr) {
+                    throw new Error(`Deployment error: ${stderr}`);
+                } 
+            });
+        }));
     } catch (error) {
         throw new Error(error.message);
     }
@@ -31,11 +49,17 @@ exports.DeleteServerlessFunction = async (functionName, projectId, region) => {
     try {
         const client = new CloudFunctionsServiceClient();
 
-        const [response] = await client.deleteFunction({
-            name: `projects/${projectId}/locations/${region}/functions/${functionName}`,
-        });
+        var operation = async () => {
+            const [response] = await client.deleteFunction({
+                name: `projects/${projectId}/locations/${region}/functions/${functionName}`,
+            });
 
-        return response;
+            return response;
+        };
+
+        var res = await retryOperation(operation);
+
+        return res;
     } catch (error) {
         throw new Error(error.message);
     }
