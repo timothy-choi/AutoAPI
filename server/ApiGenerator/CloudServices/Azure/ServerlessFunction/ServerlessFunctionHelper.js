@@ -19,6 +19,16 @@ const retryOperation = async (operation) => {
     }
 };
 
+const pollOperation = async (checkCondition, timeout = POLLING_TIMEOUT_MS) => {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+        const result = await checkCondition();
+        if (result) return result;
+        await wait(POLLING_INTERVAL_MS);
+    }
+    throw new Error('Polling operation timed out.');
+};
+
 const parsePublishProfile = (publishProfileXml) => {
     const parseString = require('xml2js').parseString;
     let credentials = {};
@@ -44,9 +54,13 @@ exports.createStorageAccount = async (storageAccountName, storageConfig, resourc
         const credential = new DefaultAzureCredential();
         const webSiteClient = new StorageManagementClient(credential, subscriptionId);
 
-        const storageAccountResponse = await webSiteClient.storageAccounts.createOrUpdate(resourceGroupName, storageAccountName, storageConfig);
+        var operation = async () => {
+            const storageAccountResponse = await webSiteClient.storageAccounts.createOrUpdate(resourceGroupName, storageAccountName, storageConfig);
 
-        return storageAccountResponse;
+            return storageAccountResponse;
+        };
+
+        return await retryOperation(operation);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -86,7 +100,11 @@ exports.uploadFunctionCode = async (storageAccountName, containerName, zipFilePa
         const blobServiceClient = BlobServiceClient.fromConnectionString(`DefaultEndpointsProtocol=https;AccountName=${storageAccountName}`);
         const containerClient = blobServiceClient.getContainerClient(containerName);
 
-        await containerClient.createIfNotExists();
+        var operation = async () => {
+            await containerClient.createIfNotExists();
+        };
+
+        await retryOperation(operation);
 
         const blockBlobClient = containerClient.getBlockBlobClient(blobName);
         const zipFileData = fs.readFileSync(zipFilePath);
@@ -178,7 +196,12 @@ exports.deleteFunctionApp = async (functionAppName, resourceGroupName, subscript
 
         var operation = async () => await client.webApps.delete(resourceGroupName, functionAppName);
 
-        return await retryOperation(operation);
+        await retryOperation(operation);
+
+        return await pollOperation(async () => {
+            const apps = await client.webApps.listByResourceGroup(resourceGroupName);
+            return !apps.some(app => app.name === functionAppName);
+        });
     } catch (error) {
         throw new Error(error.message);
     }
@@ -195,7 +218,14 @@ exports.scaleFunctionApp = async (servicePlanName, skuConfig) => {
             return response;
         };
 
-        return await retryOperation(operation);
+        var res = await retryOperation(operation);
+
+        await pollOperation(async () => {
+            const plan = await client.appServicePlans.get(resourceGroupName, servicePlanName);
+            return plan.sku && plan.sku.capacity === skuConfig.capacity;
+        });
+
+        return res;
     } catch (error) {
         throw new Error(error.message);
     }
@@ -216,7 +246,14 @@ exports.updateFunctionAppSettings = async (resourceGroupName, functionAppName, a
             return result;
         };
 
-        return await retryOperation(operation);
+        var res = await retryOperation(operation);
+
+        await pollOperation(async () => {
+            const updatedSettings = await webSiteClient.webApps.listApplicationSettings(resourceGroupName, functionAppName);
+            return Object.keys(appSettings.properties).every(key => updatedSettings.properties[key] === appSettings.properties[key]);
+        });
+
+        return res;
     } catch (error) {
         throw new Error(error.message);
     }
@@ -236,7 +273,14 @@ exports.backupFunctionApp = async (resourceGroupName, functionAppName, storageAc
             return backupResponse;
         };
 
-        return await retryOperation(operation);
+        var res = await retryOperation(operation);
+
+        await pollOperation(async () => {
+            const backups = await client.webApps.listBackups(resourceGroupName, functionAppName);
+            return backups.some(backup => backup.name === backupName);
+        });
+
+        return res;
     } catch (error) {
         throw new Error(`Error backing up function app: ${error.message}`);
     }
@@ -256,7 +300,14 @@ exports.restoreFunctionApp = async (resourceGroupName, functionAppName, storageA
             return restoreResponse;
         };
 
-        return await retryOperation(operation);
+        var res = await retryOperation(operation);
+
+        await pollOperation(async () => {
+            const backups = await client.webApps.listBackups(resourceGroupName, functionAppName);
+            return backups.some(backup => backup.name === backupName);
+        });
+
+        return res;
     } catch (error) {
         throw new Error(`Error restoring function app: ${error.message}`);
     }
@@ -272,11 +323,21 @@ exports.deleteCascadeFunctionApp = async (functionAppName, resourceGroupName, su
 
         await retryOperation(operation);
 
+        await pollOperation(async () => {
+            const apps = await appServiceClient.webApps.listByResourceGroup(resourceGroupName);
+            return !apps.some(app => app.name === functionAppName);
+        });
+
         const servicePlanName = `${functionAppName}-plan`;
        
         var operation = async () => { await appServiceClient.appServicePlans.delete(resourceGroupName, servicePlanName); };
 
         await retryOperation(operation);
+
+        await pollOperation(async () => {
+            const plans = await appServiceClient.appServicePlans.listByResourceGroup(resourceGroupName);
+            return !plans.some(plan => plan.name === servicePlanName);
+        });
 
         const storageAccounts = await storageClient.storageAccounts.listByResourceGroup(resourceGroupName);
         const storageAccount = storageAccounts.find(account =>
@@ -287,6 +348,11 @@ exports.deleteCascadeFunctionApp = async (functionAppName, resourceGroupName, su
             var operation = async () => { await storageClient.storageAccounts.deleteMethod(resourceGroupName, storageAccount.name); };
 
             await retryOperation(operation);
+
+            await pollOperation(async () => {
+                const accounts = await storageClient.storageAccounts.listByResourceGroup(resourceGroupName);
+                return !accounts.some(account => account.name === storageAccount.name);
+            });
         }
     } catch (error) {
         throw new Error(`Error during cascade delete: ${error.message}`);
