@@ -75,4 +75,49 @@ exports.getAzureFunctionInfo = async (functionAppName, resourceGroupName, functi
     } catch (error) {
         throw new Error(error.message);
     }
-}
+};
+
+exports.getListOfFunctions = async (functionAppName, resourceGroupName, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const client = new WebSiteManagementClient(credential, subscriptionId);
+
+        const functionsList = await client.webApps.listFunctions(resourceGroupName, functionAppName);
+
+        return functionsList;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.updateFunction = async (subscriptionId, zipFilePath, resourceGroupName, functionAppName) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const webSiteClient = new WebSiteManagementClient(credential, subscriptionId);
+
+        const zipFile = fs.readFileSync(zipFilePath);
+
+        const result = await webSiteClient.webApps.createOrUpdateZipDeploy(
+            resourceGroupName,
+            functionAppName,
+            zipFile
+        );
+
+        return result;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.deleteFunctionApp = async (functionAppName, resourceGroupName, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const client = new WebSiteManagementClient(credential, subscriptionId);
+
+        await client.webApps.delete(resourceGroupName, functionAppName);
+
+        return;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
