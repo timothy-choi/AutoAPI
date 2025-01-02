@@ -1,6 +1,15 @@
 const AWS = require('aws-sdk');
 const fs = require('fs');
 
+const waitUntil = async (conditionFn, interval = 5000, timeout = 60000) => {
+    const start = Date.now();
+    while (true) {
+        if (await conditionFn()) return true;
+        if (Date.now() - start > timeout) throw new Error('Operation timed out');
+        await new Promise(resolve => setTimeout(resolve, interval));
+    }
+};
+
 exports.getLambdaFunction = async (functionName, userCredentials, region) => {
     try {
         const lambda = new AWS.Lambda({
@@ -46,6 +55,11 @@ exports.createLambdaFunction = async (functionInfo, userCredentials) => {
 
         const data = await lambda.createFunction(params).promise();
 
+        await waitUntil(async () => {
+            const status = await lambda.getFunction({ FunctionName: functionInfo.functionName }).promise();
+            return status.Configuration.State === 'Active';
+        });
+
         return data;
     } catch (error) {
         throw new Error(error.message);
@@ -65,6 +79,16 @@ exports.deleteLambdaFunction = async (functionName, userCredentials, region) => 
         };
 
         await lambda.deleteFunction(params).promise();
+
+        await waitUntil(async () => {
+            try {
+                await lambda.getFunction({ FunctionName: functionName }).promise();
+                return false; 
+            } catch (err) {
+                if (err.code === 'ResourceNotFoundException') return true;
+                throw new Error(err.message); 
+            }
+        });
     } catch (error) {
         throw new Error(error.message);
     }
@@ -104,6 +128,11 @@ exports.updateLambdaFunction = async (functionName, zipFilePath, userCredentials
     try {
         const data = await lambda.updateFunctionCode(params).promise();
 
+        await waitUntil(async () => {
+            const status = await lambda.getFunction({ FunctionName: functionName }).promise();
+            return status.Configuration.LastUpdateStatus === 'Successful';
+        });
+
         return data;
     } catch (err) {
         throw new Error('Error updating Lambda function:', err);
@@ -123,6 +152,10 @@ exports.createLambdaVersion = async (functionName, userCredentials, region) => {
 
     try {
         const data = await lambda.publishVersion(params).promise();
+
+        if (!data.Version) {
+            throw new Error('Version creation failed.');
+        }
         
         return data;
     } catch (err) {
