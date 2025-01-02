@@ -4,6 +4,21 @@ const { StorageManagementClient } = require('@azure/arm-storage');
 const fs = require('fs');
 const { BlobServiceClient } = require('@azure/storage-blob');
 
+MAX_RETRIES = 3;
+
+const retryOperation = async (operation) => {
+    let attempts = 0;
+    while (attempts < MAX_RETRIES) {
+        try {
+            return await operation();
+        } catch (error) {
+            attempts++;
+            if (attempts >= MAX_RETRIES) throw error;
+            await wait(RETRY_DELAY_MS);
+        }
+    }
+};
+
 const parsePublishProfile = (publishProfileXml) => {
     const parseString = require('xml2js').parseString;
     let credentials = {};
@@ -75,10 +90,14 @@ exports.uploadFunctionCode = async (storageAccountName, containerName, zipFilePa
 
         const blockBlobClient = containerClient.getBlockBlobClient(blobName);
         const zipFileData = fs.readFileSync(zipFilePath);
+        
+        var operation = async () => {
+            var response = await blockBlobClient.uploadData(zipFileData);
 
-        var response = await blockBlobClient.uploadData(zipFileData);
+            return response;
+        };
 
-        return response;
+        return await retryOperation(operation);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -131,17 +150,22 @@ exports.updateFunction = async (subscriptionId, zipFilePath, resourceGroupName, 
         const zipFile = fs.readFileSync(zipFilePath);
 
         const kuduDeployUrl = `${publishingUrl}/api/zipdeploy`;
-        const response = await axios.post(kuduDeployUrl, zipFile, {
-            headers: {
-                'Content-Type': 'application/zip',
-            },
-            auth: {
-                username: publishingUsername,
-                password: publishingPassword,
-            },
-        });
 
-        return response;
+        var operation = async () => {
+            const response = await axios.post(kuduDeployUrl, zipFile, {
+                headers: {
+                    'Content-Type': 'application/zip',
+                },
+                auth: {
+                    username: publishingUsername,
+                    password: publishingPassword,
+                },
+            });
+
+            return response;
+        };
+
+        return await retryOperation(operation);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -152,9 +176,9 @@ exports.deleteFunctionApp = async (functionAppName, resourceGroupName, subscript
         const credential = new DefaultAzureCredential();
         const client = new WebSiteManagementClient(credential, subscriptionId);
 
-        await client.webApps.delete(resourceGroupName, functionAppName);
+        var operation = async () => await client.webApps.delete(resourceGroupName, functionAppName);
 
-        return;
+        return await retryOperation(operation);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -165,9 +189,13 @@ exports.scaleFunctionApp = async (servicePlanName, skuConfig) => {
         const credential = new DefaultAzureCredential();
         const client = new WebSiteManagementClient(credential, subscriptionId);
 
-        const response = await client.appServicePlans.createOrUpdate(resourceGroupName, servicePlanName, skuConfig);
+        var operation = async () => {
+            const response = await client.appServicePlans.createOrUpdate(resourceGroupName, servicePlanName, skuConfig);
 
-        return response;
+            return response;
+        };
+
+        return await retryOperation(operation);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -178,13 +206,17 @@ exports.updateFunctionAppSettings = async (resourceGroupName, functionAppName, a
         const credential = new DefaultAzureCredential();
         const webSiteClient = new WebSiteManagementClient(credential, subscriptionId);
 
-        const result = await webSiteClient.webApps.updateApplicationSettings(
-            resourceGroupName,
-            functionAppName,
-            appSettings
-        );
+        var operation = async () => {
+            const result = await webSiteClient.webApps.updateApplicationSettings(
+                resourceGroupName,
+                functionAppName,
+                appSettings
+            );
 
-        return result;
+            return result;
+        };
+
+        return await retryOperation(operation);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -195,12 +227,16 @@ exports.backupFunctionApp = async (resourceGroupName, functionAppName, storageAc
         const credential = new DefaultAzureCredential();
         const client = new WebSiteManagementClient(credential, subscriptionId);
 
-        const backupResponse = await client.webApps.beginBackupAndWait(resourceGroupName, functionAppName, {
-            storageAccountUrl,
-            backupName,
-        });
+        var operation = async () => {
+            const backupResponse = await client.webApps.beginBackupAndWait(resourceGroupName, functionAppName, {
+                storageAccountUrl,
+                backupName,
+            });
 
-        return backupResponse;
+            return backupResponse;
+        };
+
+        return await retryOperation(operation);
     } catch (error) {
         throw new Error(`Error backing up function app: ${error.message}`);
     }
@@ -211,12 +247,16 @@ exports.restoreFunctionApp = async (resourceGroupName, functionAppName, storageA
         const credential = new DefaultAzureCredential();
         const client = new WebSiteManagementClient(credential, subscriptionId);
 
-        const restoreResponse = await client.webApps.beginRestoreAndWait(resourceGroupName, functionAppName, {
-            storageAccountUrl,
-            backupName,
-        });
+        var operation = async () => {
+            const restoreResponse = await client.webApps.beginRestoreAndWait(resourceGroupName, functionAppName, {
+                storageAccountUrl,
+                backupName,
+            });
 
-        return restoreResponse;
+            return restoreResponse;
+        };
+
+        return await retryOperation(operation);
     } catch (error) {
         throw new Error(`Error restoring function app: ${error.message}`);
     }
@@ -228,11 +268,15 @@ exports.deleteCascadeFunctionApp = async (functionAppName, resourceGroupName, su
         const appServiceClient = new WebSiteManagementClient(credential, subscriptionId);
         const storageClient = new StorageManagementClient(credential, subscriptionId);
 
-        await appServiceClient.webApps.delete(resourceGroupName, functionAppName);
+        var operation = async () => { await appServiceClient.webApps.delete(resourceGroupName, functionAppName); };
+
+        await retryOperation(operation);
 
         const servicePlanName = `${functionAppName}-plan`;
        
-        await appServiceClient.appServicePlans.delete(resourceGroupName, servicePlanName);
+        var operation = async () => { await appServiceClient.appServicePlans.delete(resourceGroupName, servicePlanName); };
+
+        await retryOperation(operation);
 
         const storageAccounts = await storageClient.storageAccounts.listByResourceGroup(resourceGroupName);
         const storageAccount = storageAccounts.find(account =>
@@ -240,7 +284,9 @@ exports.deleteCascadeFunctionApp = async (functionAppName, resourceGroupName, su
         );
 
         if (storageAccount) {
-            await storageClient.storageAccounts.deleteMethod(resourceGroupName, storageAccount.name);
+            var operation = async () => { await storageClient.storageAccounts.deleteMethod(resourceGroupName, storageAccount.name); };
+
+            await retryOperation(operation);
         }
     } catch (error) {
         throw new Error(`Error during cascade delete: ${error.message}`);
