@@ -92,3 +92,73 @@ exports.listServerlessFunctions = async (projectId, region) => {
         throw new Error(error.message);
     }
 };
+
+exports.UpdateServerlessFunction = async (functionName, projectId, region, updatedConfig) => {
+    try {
+        const client = new CloudFunctionsServiceClient();
+
+        var operation = async () => {
+            const [response] = await client.updateFunction({
+                name: `projects/${projectId}/locations/${region}/functions/${functionName}`,
+                ...updatedConfig,
+            });
+
+            return response;
+        };
+
+        var res = await retryOperation(operation);
+
+        return res;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.CloneServerlessFunction = async (sourceFunctionName, targetFunctionName, projectId, region) => {
+    try {
+        const client = new CloudFunctionsServiceClient();
+
+        const [sourceFunction] = await client.getFunction({
+            name: `projects/${projectId}/locations/${region}/functions/${sourceFunctionName}`,
+        });
+
+        var operation = async () => {
+            const [response] = await client.createFunction({
+                location: `projects/${projectId}/locations/${region}`,
+                function: {
+                    ...sourceFunction,
+                    name: targetFunctionName, 
+                },
+            });
+
+            return response;
+        };
+
+        var res = await retryOperation(operation);
+
+        return res;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.RollbackFunction = async (functionName, projectId, region, versionId) => {
+    try {
+        const client = new CloudFunctionsServiceClient();
+
+        var operations = async () => {
+            const [response] = await client.rollbackFunction({
+                name: `projects/${projectId}/locations/${region}/functions/${functionName}`,
+                versionId,
+            });
+
+            return response;
+        };
+
+        var res = await retryOperation(operations);
+
+        return res;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
