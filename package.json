@@ -13,6 +13,7 @@
     "@azure/cosmos": "^4.2.0",
     "@azure/identity": "^4.5.0",
     "@azure/keyvault-secrets": "^4.9.0",
+    "@azure/storage-blob": "^12.26.0",
     "@elastic/elasticsearch": "^8.16.2",
     "@google-cloud/bigtable": "^5.1.2",
     "@google-cloud/logging": "^11.2.0",

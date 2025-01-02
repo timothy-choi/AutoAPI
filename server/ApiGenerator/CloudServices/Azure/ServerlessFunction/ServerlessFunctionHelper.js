@@ -1,6 +1,8 @@
 const { DefaultAzureCredential } = require('@azure/identity');
 const { WebSiteManagementClient } = require('@azure/arm-appservice');
 const { StorageManagementClient } = require('@azure/arm-storage');
+const fs = require('fs');
+const { BlobServiceClient } = require('@azure/storage-blob');
 
 exports.createStorageAccount = async (storageAccountName, storageConfig, resourceGroupName, subscriptionId) => {
     try {
@@ -43,3 +45,34 @@ exports.createFunctionApp = async (functionAppName, storageAccountName, resource
         throw new Error(error.message);
     }
 };
+
+exports.uploadFunctionCode = async (storageAccountName, containerName, zipFilePath, blobName) => {
+    try {
+        const blobServiceClient = BlobServiceClient.fromConnectionString(`DefaultEndpointsProtocol=https;AccountName=${storageAccountName}`);
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+
+        await containerClient.createIfNotExists();
+
+        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+        const zipFileData = fs.readFileSync(zipFilePath);
+
+        var response = await blockBlobClient.uploadData(zipFileData);
+
+        return response;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.getAzureFunctionInfo = async (functionAppName, resourceGroupName, functionName, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const client = new WebSiteManagementClient(credential, subscriptionId);
+
+        const functionInfo = await client.webApps.getFunction(resourceGroupName, functionAppName, functionName);
+
+        return functionInfo;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
