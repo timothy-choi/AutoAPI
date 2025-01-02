@@ -189,3 +189,60 @@ exports.updateFunctionAppSettings = async (resourceGroupName, functionAppName, a
         throw new Error(error.message);
     }
 };
+
+exports.backupFunctionApp = async (resourceGroupName, functionAppName, storageAccountUrl, backupName, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const client = new WebSiteManagementClient(credential, subscriptionId);
+
+        const backupResponse = await client.webApps.beginBackupAndWait(resourceGroupName, functionAppName, {
+            storageAccountUrl,
+            backupName,
+        });
+
+        return backupResponse;
+    } catch (error) {
+        throw new Error(`Error backing up function app: ${error.message}`);
+    }
+};
+
+exports.restoreFunctionApp = async (resourceGroupName, functionAppName, storageAccountUrl, backupName, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const client = new WebSiteManagementClient(credential, subscriptionId);
+
+        const restoreResponse = await client.webApps.beginRestoreAndWait(resourceGroupName, functionAppName, {
+            storageAccountUrl,
+            backupName,
+        });
+
+        return restoreResponse;
+    } catch (error) {
+        throw new Error(`Error restoring function app: ${error.message}`);
+    }
+};
+
+exports.deleteCascadeFunctionApp = async (functionAppName, resourceGroupName, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const appServiceClient = new WebSiteManagementClient(credential, subscriptionId);
+        const storageClient = new StorageManagementClient(credential, subscriptionId);
+
+        await appServiceClient.webApps.delete(resourceGroupName, functionAppName);
+
+        const servicePlanName = `${functionAppName}-plan`;
+       
+        await appServiceClient.appServicePlans.delete(resourceGroupName, servicePlanName);
+
+        const storageAccounts = await storageClient.storageAccounts.listByResourceGroup(resourceGroupName);
+        const storageAccount = storageAccounts.find(account =>
+            account.name.includes(functionAppName)
+        );
+
+        if (storageAccount) {
+            await storageClient.storageAccounts.deleteMethod(resourceGroupName, storageAccount.name);
+        }
+    } catch (error) {
+        throw new Error(`Error during cascade delete: ${error.message}`);
+    }
+};
