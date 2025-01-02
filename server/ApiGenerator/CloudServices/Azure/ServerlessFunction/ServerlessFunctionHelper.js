@@ -4,6 +4,26 @@ const { StorageManagementClient } = require('@azure/arm-storage');
 const fs = require('fs');
 const { BlobServiceClient } = require('@azure/storage-blob');
 
+const parsePublishProfile = (publishProfileXml) => {
+    const parseString = require('xml2js').parseString;
+    let credentials = {};
+
+    parseString(publishProfileXml, (err, result) => {
+        if (err) throw err;
+
+        const profile = result.publishData.publishProfile.find(p => p.$.publishMethod === 'MSDeploy');
+        if (!profile) throw new Error('Publish profile for MSDeploy not found.');
+
+        credentials = {
+            publishingUsername: profile.$.userName,
+            publishingPassword: profile.$.userPWD,
+            publishingUrl: profile.$.publishUrl,
+        };
+    });
+
+    return credentials;
+};
+
 exports.createStorageAccount = async (storageAccountName, storageConfig, resourceGroupName, subscriptionId) => {
     try {
         const credential = new DefaultAzureCredential();
@@ -95,15 +115,33 @@ exports.updateFunction = async (subscriptionId, zipFilePath, resourceGroupName, 
         const credential = new DefaultAzureCredential();
         const webSiteClient = new WebSiteManagementClient(credential, subscriptionId);
 
-        const zipFile = fs.readFileSync(zipFilePath);
-
-        const result = await webSiteClient.webApps.createOrUpdateZipDeploy(
+        const publishProfiles = await webSiteClient.webApps.listPublishingProfiles(
             resourceGroupName,
             functionAppName,
-            zipFile
+            { format: 'WebDeploy' }
         );
 
-        return result;
+        if (!publishProfiles || publishProfiles.length === 0) {
+            throw new Error('Unable to retrieve publish profiles.');
+        }
+
+        const publishProfile = publishProfiles[0];
+        const { publishingUsername, publishingPassword, publishingUrl } = parsePublishProfile(publishProfile);
+
+        const zipFile = fs.readFileSync(zipFilePath);
+
+        const kuduDeployUrl = `${publishingUrl}/api/zipdeploy`;
+        const response = await axios.post(kuduDeployUrl, zipFile, {
+            headers: {
+                'Content-Type': 'application/zip',
+            },
+            auth: {
+                username: publishingUsername,
+                password: publishingPassword,
+            },
+        });
+
+        return response;
     } catch (error) {
         throw new Error(error.message);
     }
