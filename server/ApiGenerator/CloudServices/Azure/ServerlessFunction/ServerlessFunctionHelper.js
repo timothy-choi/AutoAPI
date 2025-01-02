@@ -159,3 +159,33 @@ exports.deleteFunctionApp = async (functionAppName, resourceGroupName, subscript
         throw new Error(error.message);
     }
 };
+
+exports.scaleFunctionApp = async (servicePlanName, skuConfig) => {
+   try {
+        const credential = new DefaultAzureCredential();
+        const client = new WebSiteManagementClient(credential, subscriptionId);
+
+        const response = await client.appServicePlans.createOrUpdate(resourceGroupName, servicePlanName, skuConfig);
+
+        return response;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.updateFunctionAppSettings = async (resourceGroupName, functionAppName, appSettings) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const webSiteClient = new WebSiteManagementClient(credential, subscriptionId);
+
+        const result = await webSiteClient.webApps.updateApplicationSettings(
+            resourceGroupName,
+            functionAppName,
+            appSettings
+        );
+
+        return result;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
