@@ -1,6 +1,8 @@
 const { DefaultAzureCredential } = require("@azure/identity");
 const { OperationalInsightsManagementClient } = require("@azure/arm-operationalinsights");
 const { enableDiagnostics } = require('./Database/AzureRDSMetrics');
+const { ResourceManagementClient } = require('@azure/arm-resources');
+
 
 exports.createWorkspace = async (resourceGroupName, workspaceName, workspaceParams, subscriptionId) => {
     try {
@@ -26,3 +28,16 @@ exports.enableLoggingAnalyticsDiagnosis = async (resourceId, subscriptionId, dia
         throw new Error(error.message);
     }
 }
+
+exports.createResourceGroup = async (resourceGroupName, location, subscriptionId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const resourceClient = new ResourceManagementClient(credential, subscriptionId);
+
+        const resourceGroupResponse = await resourceClient.resourceGroups.createOrUpdate(resourceGroupName, { location: location });
+
+        return resourceGroupResponse;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
