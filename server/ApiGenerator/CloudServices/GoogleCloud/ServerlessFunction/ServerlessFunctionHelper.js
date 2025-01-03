@@ -162,3 +162,55 @@ exports.RollbackFunction = async (functionName, projectId, region, versionId) =>
         throw new Error(error.message);
     }
 };
+
+exports.BackupFunctionConfiguration = async (functionName, projectId, region, bucketName, fileName) => {
+    try {
+        const client = new CloudFunctionsServiceClient();
+        const storage = new Storage();
+
+        const [functionDetails] = await client.getFunction({
+            name: `projects/${projectId}/locations/${region}/functions/${functionName}`,
+        });
+
+        const file = storage.bucket(bucketName).file(fileName);
+
+        var operation  = async () => { await file.save(JSON.stringify(functionDetails, null, 2)); };
+
+        await retryOperation(operation);
+    } catch (error) {
+        throw new Error(`Error backing up function configuration: ${error.message}`);
+    }
+};
+
+exports.RestoreFunctionConfiguration = async (bucketName, fileName, projectId, region) => {
+    try {
+        const storage = new Storage();
+        const client = new CloudFunctionsServiceClient();
+
+        const file = storage.bucket(bucketName).file(fileName);
+
+        var operation = async () => { 
+            const [configData] = await file.download(); 
+
+            return configData;
+        };
+
+        const configData = await retryOperation(operation);
+
+        const functionConfig = JSON.parse(configData);
+        const { name, ...config } = functionConfig;
+
+        var operation = async () => {
+            const [response] = await client.updateFunction({
+                name: `projects/${projectId}/locations/${region}/functions/${name}`,
+                ...config,
+            });
+
+            return response;
+        };
+
+        return await retryOperation(operation);
+    } catch (error) {
+        throw new Error(`Error restoring function configuration: ${error.message}`);
+    }
+};
