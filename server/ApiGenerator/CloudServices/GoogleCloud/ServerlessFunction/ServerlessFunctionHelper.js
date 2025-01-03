@@ -18,6 +18,32 @@ const retryOperation = async (operation, retries = 3, delay = 1000) => {
     }
 };
 
+const pollFunction = async (operationFn, checkStatusFn, maxAttempts = 10, delay = 5000) => {
+    let attempt = 0;
+    while (attempt < maxAttempts) {
+        try {
+            const status = await checkStatusFn();
+            if (status === 'SUCCESS' || status === 'DONE') {
+                return { success: true, message: 'Operation completed successfully' };
+            } else if (status === 'FAILURE') {
+                throw new Error('Operation failed');
+            }
+
+            console.log(`Polling attempt ${attempt + 1}: Status - ${status}`);
+            attempt++;
+            await new Promise(resolve => setTimeout(resolve, delay));
+        } catch (error) {
+            if (attempt === maxAttempts - 1) {
+                throw new Error(`Polling failed after ${maxAttempts} attempts: ${error.message}`);
+            }
+            console.log(`Polling attempt ${attempt + 1} failed: ${error.message}`);
+            attempt++;
+        }
+    }
+
+    throw new Error(`Polling timed out after ${maxAttempts} attempts`);
+};
+
 exports.DeployServerlessFunction = async (functionName, entryPoint, runtime, sourcePath, region, projectId) => {
     try {
         const deployCommand = `
@@ -40,6 +66,13 @@ exports.DeployServerlessFunction = async (functionName, entryPoint, runtime, sou
                 } 
             });
         }));
+
+        const checkStatusFn = async () => {
+            const functionDetails = await exports.GetServerlessFunction(functionName, projectId, region);
+            return functionDetails.status; 
+        };
+
+        await pollFunction(null, checkStatusFn, 20, 3000);
     } catch (error) {
         throw new Error(error.message);
     }
@@ -58,6 +91,22 @@ exports.DeleteServerlessFunction = async (functionName, projectId, region) => {
         };
 
         var res = await retryOperation(operation);
+
+        const checkStatusFn = async () => {
+            try {
+                await client.getFunction({
+                    name: `projects/${projectId}/locations/${region}/functions/${functionName}`,
+                });
+                return 'PENDING'; 
+            } catch (error) {
+                if (error.code === 5) {
+                    return 'DONE'; 
+                }
+                throw new Error(error.message); 
+            }
+        };
+
+        await pollFunction(null, checkStatusFn, 20, 3000);
 
         return res;
     } catch (error) {
@@ -108,6 +157,16 @@ exports.UpdateServerlessFunction = async (functionName, projectId, region, updat
 
         var res = await retryOperation(operation);
 
+        const checkStatusFn = async () => {
+            const functionDetails = await client.getFunction({
+                name: `projects/${projectId}/locations/${region}/functions/${functionName}`,
+            });
+
+            return functionDetails.status; 
+        };
+
+        await pollFunction(null, checkStatusFn, 20, 3000);
+
         return res;
     } catch (error) {
         throw new Error(error.message);
@@ -136,6 +195,16 @@ exports.CloneServerlessFunction = async (sourceFunctionName, targetFunctionName,
 
         var res = await retryOperation(operation);
 
+        const checkStatusFn = async () => {
+            const functionDetails = await client.getFunction({
+                name: `projects/${projectId}/locations/${region}/functions/${targetFunctionName}`,
+            });
+
+            return functionDetails.status; 
+        };
+
+        await pollFunction(null, checkStatusFn, 20, 3000);
+
         return res;
     } catch (error) {
         throw new Error(error.message);
@@ -157,6 +226,16 @@ exports.RollbackFunction = async (functionName, projectId, region, versionId) =>
 
         var res = await retryOperation(operations);
 
+        const checkStatusFn = async () => {
+            const functionDetails = await client.getFunction({
+                name: `projects/${projectId}/locations/${region}/functions/${functionName}`,
+            });
+
+            return functionDetails.status; 
+        };
+
+        await pollFunction(null, checkStatusFn, 20, 3000);
+
         return res;
     } catch (error) {
         throw new Error(error.message);
@@ -177,6 +256,13 @@ exports.BackupFunctionConfiguration = async (functionName, projectId, region, bu
         var operation  = async () => { await file.save(JSON.stringify(functionDetails, null, 2)); };
 
         await retryOperation(operation);
+
+        const checkStatusFn = async () => {
+            const [metadata] = await file.getMetadata();
+            return metadata;
+        };
+
+        await pollFunction(null, checkStatusFn, 20, 3000);
     } catch (error) {
         throw new Error(`Error backing up function configuration: ${error.message}`);
     }
@@ -209,7 +295,19 @@ exports.RestoreFunctionConfiguration = async (bucketName, fileName, projectId, r
             return response;
         };
 
-        return await retryOperation(operation);
+        var res = await retryOperation(operation);
+
+        const checkStatusFn = async () => {
+            const functionDetails = await client.getFunction({
+                name: `projects/${projectId}/locations/${region}/functions/${name}`,
+            });
+
+            return functionDetails.status; 
+        };
+
+        await pollFunction(null, checkStatusFn, 20, 3000);
+
+        return res;
     } catch (error) {
         throw new Error(`Error restoring function configuration: ${error.message}`);
     }
