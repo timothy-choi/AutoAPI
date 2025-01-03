@@ -162,3 +162,74 @@ exports.createLambdaVersion = async (functionName, userCredentials, region) => {
         throw new Error('Error creating Lambda version:', err);
     }
 };
+
+exports.updateLambdaConfiguration = async (functionName, configUpdates, userCredentials, region) => {
+    const lambda = new AWS.Lambda({
+        accessKeyId: userCredentials.accessKeyId,
+        secretAccessKey: userCredentials.secretAccessKey,
+        region: region,
+    });
+
+    const params = {
+        FunctionName: functionName,
+        ...configUpdates, 
+    };
+
+    try {
+        const data = await lambda.updateFunctionConfiguration(params).promise();
+
+        await waitUntil(async () => {
+            const status = await lambda.getFunction({ FunctionName: functionName }).promise();
+            return status.Configuration.LastUpdateStatus === 'Successful';
+        });
+
+        return data;
+    } catch (err) {
+        throw new Error('Error updating Lambda configuration:', err);
+    }
+};
+
+exports.addLambdaPermission = async (functionName, statementId, action, principal, sourceArn, userCredentials, region) => {
+    const lambda = new AWS.Lambda({
+        accessKeyId: userCredentials.accessKeyId,
+        secretAccessKey: userCredentials.secretAccessKey,
+        region: region,
+    });
+
+    const params = {
+        FunctionName: functionName,
+        StatementId: statementId,
+        Action: action, 
+        Principal: principal, 
+        SourceArn: sourceArn,
+    };
+
+    try {
+        const data = await lambda.addPermission(params).promise();
+
+        return data;
+    } catch (err) {
+        throw new Error('Error adding permission to Lambda function:', err);
+    }
+};
+
+exports.removeLambdaPermission = async (functionName, statementId, userCredentials, region) => {
+    const lambda = new AWS.Lambda({
+        accessKeyId: userCredentials.accessKeyId,
+        secretAccessKey: userCredentials.secretAccessKey,
+        region: region,
+    });
+
+    const params = {
+        FunctionName: functionName,
+        StatementId: statementId,
+    };
+
+    try {
+        const data = await lambda.removePermission(params).promise();
+
+        return data;
+    } catch (err) {
+        throw new Error('Error removing permission from Lambda function:', err);
+    }
+};
