@@ -118,6 +118,8 @@ exports.uploadFunctionCode = async (storageAccountName, containerName, zipFilePa
         return await retryOperation(operation);
     } catch (error) {
         throw new Error(error.message);
+    } finally {
+        fs.unlinkSync(zipFilePath);
     }
 };
 
@@ -186,6 +188,8 @@ exports.updateFunction = async (subscriptionId, zipFilePath, resourceGroupName, 
         return await retryOperation(operation);
     } catch (error) {
         throw new Error(error.message);
+    } finally {
+        fs.unlinkSync(zipFilePath);
     }
 };
 
