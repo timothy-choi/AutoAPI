@@ -102,6 +102,40 @@ exports.updateLambdaFunctionConfiguration = async (req, res) => {
     }
 };
 
+exports.addLambdaFunctionPermission = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var response = await lambdaHelper.addLambdaPermission(req.body.lambdaFunctionName, req.body.action, req.body.principal, req.body.sourceArn, req.body.statementId, userCredentials, req.body.region);
+
+        return res.status(201).send(response);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.removeLambdaFunctionPermission = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        await lambdaHelper.removeLambdaPermission(req.body.lambdaFunctionName, req.body.statementId, userCredentials, req.body.region);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.deleteLambdaFunction = async (req, res) => {
     try {
         let userCredentials = {};
