@@ -60,9 +60,39 @@ exports.UpdateFunctionAppSettings = async (req, res) => {
     }
 };
 
+exports.BackupServerlessFunction = async (req, res) => {
+    try {
+        var backupResponse = await serverlessFunctionHelper.backupFunctionApp(req.body.resourceGroupName, req.body.functionAppName, req.body.storageAccountUrl, req.body.backupName, req.body.subscriptionId);
+
+        return res.status(201).send(backupResponse);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.RestoreServerlessFunction = async (req, res) => {
+    try {
+        var restoreResponse = await serverlessFunctionHelper.restoreFunctionApp(req.body.resourceGroupName, req.body.functionAppName, req.body.storageAccountUrl, req.body.backupName, req.body.subscriptionId);
+
+        return res.status(201).send(restoreResponse);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.DeleteServerlessFunction = async (req, res) => {
     try {
         await serverlessFunctionHelper.deleteFunctionApp(req.body.functionAppName, req.body.resourceGroupName, req.body.subscriptionId);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.DeleteCascadeServerlessFunction = async (req, res) => {
+    try {
+        await serverlessFunctionHelper.deleteCascadeFunctionApp(req.body.functionAppName, req.body.resourceGroupName, req.body.subscriptionId);
 
         return res.status(200).send(null);
     } catch (error) {
