@@ -51,6 +51,57 @@ exports.createLambdaFunction = async (req, res) => {
     }
 };
 
+exports.updateLambdaFunction = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var lambdaFunctionResponse = await lambdaHelper.updateLambdaFunction(req.body.lambdaFunctionName, req.body.bucketName, req.body.key, userCredentials, req.body.region);
+
+        return res.status(200).send(lambdaFunctionResponse);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.createLambdaFunctionVersion = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var lambdaFunctionVersion = await lambdaHelper.createLambdaVersion(req.lambdaFunctionName, userCredentials, req.region);
+
+        return res.status(201).send(lambdaFunctionVersion);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.updateLambdaFunctionConfiguration = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var lambdaFunctionConfiguration = await lambdaHelper.updateLambdaConfiguration(req.body.lambdaFunctionName, req.body.configuration, userCredentials, req.body.region);
+
+        return res.status(200).send(lambdaFunctionConfiguration);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.deleteLambdaFunction = async (req, res) => {
     try {
         let userCredentials = {};
