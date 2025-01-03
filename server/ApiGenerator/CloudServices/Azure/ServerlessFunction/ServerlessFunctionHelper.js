@@ -211,7 +211,7 @@ exports.deleteFunctionApp = async (functionAppName, resourceGroupName, subscript
     }
 };
 
-exports.scaleFunctionApp = async (servicePlanName, skuConfig) => {
+exports.scaleFunctionApp = async (subscriptionId, servicePlanName, skuConfig) => {
    try {
         const credential = new DefaultAzureCredential();
         const client = new WebSiteManagementClient(credential, subscriptionId);
@@ -235,7 +235,7 @@ exports.scaleFunctionApp = async (servicePlanName, skuConfig) => {
     }
 };
 
-exports.updateFunctionAppSettings = async (resourceGroupName, functionAppName, appSettings) => {
+exports.updateFunctionAppSettings = async (subscriptionId, resourceGroupName, functionAppName, appSettings) => {
     try {
         const credential = new DefaultAzureCredential();
         const webSiteClient = new WebSiteManagementClient(credential, subscriptionId);
