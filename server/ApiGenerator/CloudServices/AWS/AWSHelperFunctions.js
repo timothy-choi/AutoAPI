@@ -530,7 +530,7 @@ exports.checkFileExists = async (bucketName, key, userCredentials, userRegion) =
             credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
             region: userRegion
         });
-        
+
       await s3.headObject({ Bucket: bucketName, Key: key }).promise();
       return true; 
     } catch (error) {
@@ -539,4 +539,23 @@ exports.checkFileExists = async (bucketName, key, userCredentials, userRegion) =
       }
       throw new Error('Error checking file existence:', error);
     }
-  };
+};
+
+exports.localDownloadFile = async (bucketName, key, filename, userCredentials, userRegion) => {
+    try {
+        const s3 = new AWS.S3({
+            credentials: new AWS.Credentials(userCredentials.accessKey, userCredentials.userSecretKey, userCredentials.sessionToken),
+            region: userRegion
+        });
+        
+        const fileContent = await s3.getObject({Bucket: bucketName, Key: key}).promise();
+    
+        const localFilePath = path.join(__dirname, filename);
+    
+        fs.writeFileSync(localFilePath, fileContent);
+
+        return localFilePath;
+    } catch (error) {
+        throw new Error('Error downloading or saving the file:', error);
+    }
+}
