@@ -2,6 +2,7 @@ const { DefaultAzureCredential } = require("@azure/identity");
 const { OperationalInsightsManagementClient } = require("@azure/arm-operationalinsights");
 const { enableDiagnostics } = require('./Database/AzureRDSMetrics');
 const { ResourceManagementClient } = require('@azure/arm-resources');
+const { createStorageAccount } = require('./ServerlessFunction/ServerlessFunctionHelper');
 
 
 exports.createWorkspace = async (resourceGroupName, workspaceName, workspaceParams, subscriptionId) => {
@@ -37,6 +38,16 @@ exports.createResourceGroup = async (resourceGroupName, location, subscriptionId
         const resourceGroupResponse = await resourceClient.resourceGroups.createOrUpdate(resourceGroupName, { location: location });
 
         return resourceGroupResponse;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.createStorageAccount = async (resourceGroupName, storageAccountName, storageAccountParams, subscriptionId) => {
+    try {
+        const storageAccountResponse = await createStorageAccount(resourceGroupName, storageAccountName, storageAccountParams, subscriptionId);
+
+        return storageAccountResponse;
     } catch (error) {
         throw new Error(error.message);
     }
