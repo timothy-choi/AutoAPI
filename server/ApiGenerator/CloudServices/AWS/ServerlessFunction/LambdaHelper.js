@@ -1,5 +1,5 @@
 const AWS = require('aws-sdk');
-const fs = require('fs');
+const awsHelper = require('./AWSHelper');
 
 const waitUntil = async (conditionFn, interval = 5000, timeout = 60000) => {
     const start = Date.now();
@@ -32,7 +32,7 @@ exports.getLambdaFunction = async (functionName, userCredentials, region) => {
 
 exports.createLambdaFunction = async (functionInfo, userCredentials) => {
     try {
-        const zipFile = fs.readFileSync(functionInfo.zipFilePath);
+        const zipFile = await awsHelper.downloadFile(functionInfo.bucketName, functionInfo.key, userCredentials, functionInfo.region);
 
         const lambda = new AWS.Lambda({
             accessKeyId: userCredentials.accessKeyId,
@@ -111,8 +111,8 @@ exports.listLambdaFunctions = async (userCredentials, region) => {
     }
 };
 
-exports.updateLambdaFunction = async (functionName, zipFilePath, userCredentials, region) => {
-    const zipFile = fs.readFileSync(zipFilePath);
+exports.updateLambdaFunction = async (functionName, bucketName, key, userCredentials, region) => {
+    const zipFile = await awsHelper.downloadFile(bucketName, key, userCredentials, region);
 
     const lambda = new AWS.Lambda({
         accessKeyId: userCredentials.accessKeyId,
