@@ -152,3 +152,37 @@ exports.deleteLambdaFunction = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.backupLambdaFunction = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        await lambdaHelper.backupLambdaFunction(req.body.functionName, req.body.bucketName, req.body.key, req.body.zipPath, userCredentials, req.body.region);
+
+        return res.status(201).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.restoreLambdaFunction = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        await lambdaHelper.restoreLambdaFunction(req.body.functionName, req.body.bucketName, req.body.key, req.body.zipPath, userCredentials, req.body.region);
+
+        return res.status(201).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};

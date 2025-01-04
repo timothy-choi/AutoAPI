@@ -1,5 +1,5 @@
 const AWS = require('aws-sdk');
-const awsHelper = require('./AWSHelper');
+const awsHelper = require('../AWSHelperFunctions');
 
 const waitUntil = async (conditionFn, interval = 5000, timeout = 60000) => {
     const start = Date.now();
@@ -234,7 +234,7 @@ exports.removeLambdaPermission = async (functionName, statementId, userCredentia
     }
 };
 
-exports.backupLambdaFunction = async (functionName, bucketName, key, zipPath) => {
+exports.backupLambdaFunction = async (functionName, bucketName, key, zipPath, userCredentials, userRegion) => {
     try {
       const functionData = await lambda.getFunction({ FunctionName: functionName }).promise();
       const { Configuration, Code } = functionData;
@@ -252,17 +252,19 @@ exports.backupLambdaFunction = async (functionName, bucketName, key, zipPath) =>
   
       const fileContent = fs.readFileSync(zipPath);
 
-      await awsHelper.uploadFile(bucketName, key, fileContent);
+      await awsHelper.uploadFile(bucketName, key, fileContent, userCredentials, userRegion);
     } catch (error) {
       throw new Error('Error backing up Lambda function:', error);
+    } finally {
+        fs.unlinkSync(zipPath);
     }
 };
 
-exports.restoreLambdaFunction = async (functionName, functionInfo, bucketName, key, zipPath) => {
+exports.restoreLambdaFunction = async (functionName, functionInfo, bucketName, key, zipPath, userCredentials, userRegion) => {
     try {
       const fileStream = fs.createWriteStream(zipPath);
   
-      var resData = awsHelper.downloadFile(bucketName, key, fileStream);
+      var resData = awsHelper.downloadFile(bucketName, key, fileStream, userCredentials, userRegion);
   
       fs.writeFileSync(zipPath, resData.Body);
   
@@ -284,6 +286,11 @@ exports.restoreLambdaFunction = async (functionName, functionInfo, bucketName, k
       try {
         var response = await lambda.createFunction(params).promise();
 
+        await waitUntil(async () => {
+            const status = await lambda.getFunction({ FunctionName: functionName }).promise();
+            return status.Configuration.State === 'Active';
+        });
+
         return response;
       } catch (createError) {
         if (createError.code === 'ResourceConflictException') {
@@ -291,6 +298,11 @@ exports.restoreLambdaFunction = async (functionName, functionInfo, bucketName, k
             FunctionName: functionName,
             ZipFile: zipBuffer,
           }).promise();
+
+          await waitUntil(async () => {
+            const status = await lambda.getFunction({ FunctionName: functionName }).promise();
+            return status.Configuration.LastUpdateStatus === 'Successful';
+          });
   
           return updatedResponse;
         } else {
@@ -299,5 +311,7 @@ exports.restoreLambdaFunction = async (functionName, functionInfo, bucketName, k
       }
     } catch (error) {
       throw new Error('Error restoring Lambda function:', error);
-    }
+    } finally {
+        fs.unlinkSync(zipPath);
+    }   
 };
