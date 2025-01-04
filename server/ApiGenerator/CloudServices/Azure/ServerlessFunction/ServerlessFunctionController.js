@@ -30,6 +30,16 @@ exports.CreateServerlessFunction = async (req, res) => {
     }
 };
 
+exports.UploadFunctionCode = async (req, res) => {
+    try {
+        var serverlessFunctionResponse = await serverlessFunctionHelper.uploadFunctionCode(req.body.storageAccountName, req.body.containerName, req.body.zipFilePath, req.body.blobName);
+
+        return res.status(201).send(serverlessFunctionResponse);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.UpdateServerlessFunction = async (req, res) => {
     try {
         var serverlessFunction = await serverlessFunctionHelper.updateFunction(req.body.subscriptionId, req.body.zipFilePath, req.body.resourceGroupName, req.body.functionAppName);
