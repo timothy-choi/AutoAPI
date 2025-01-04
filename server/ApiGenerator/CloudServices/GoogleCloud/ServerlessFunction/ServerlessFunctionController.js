@@ -49,3 +49,43 @@ exports.DeleteServerlessFunction = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.CloneServerlessFunction = async (req, res) => {
+    try {
+        var response = await serverlessFunctionHelper.cloneFunction(req.body.sourcefunctionName, req.body.targetFunctionName, req.body.projectId, req.body.region);
+
+        return res.status(201).send(response);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.RollbackServerlessFunction = async (req, res) => {
+    try {
+        var response = await serverlessFunctionHelper.rollbackFunction(req.body.functionName, req.body.projectId, req.body.region, req.body.rollbackVersionId);
+
+        return res.status(200).send(response);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.SetBackupFunctionConfiguration = async (req, res) => {
+    try {
+        await serverlessFunctionHelper.BackupFunctionConfiguration(req.body.functionName, req.body.projectId, req.body.region, req.body.bucketName, req.body.fileName);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.RestoreFunctionConfiguration = async (req, res) => {
+    try {
+        var response = await serverlessFunctionHelper.RestoreFunctionConfiguration(req.body.bucketName, req.body.fileName, req.body.projectId, req.body.region);
+
+        return res.status(200).send(response);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
