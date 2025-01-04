@@ -233,3 +233,71 @@ exports.removeLambdaPermission = async (functionName, statementId, userCredentia
         throw new Error('Error removing permission from Lambda function:', err);
     }
 };
+
+exports.backupLambdaFunction = async (functionName, bucketName, key, zipPath) => {
+    try {
+      const functionData = await lambda.getFunction({ FunctionName: functionName }).promise();
+      const { Configuration, Code } = functionData;
+
+      const codeStream = fs.createWriteStream(zipPath);
+  
+      const codeResponse = await fetch(Code.Location);
+
+      codeResponse.body.pipe(codeStream);
+  
+      await new Promise((resolve, reject) => {
+        codeStream.on('close', resolve);
+        codeStream.on('error', reject);
+      });
+  
+      const fileContent = fs.readFileSync(zipPath);
+
+      await awsHelper.uploadFile(bucketName, key, fileContent);
+    } catch (error) {
+      throw new Error('Error backing up Lambda function:', error);
+    }
+};
+
+exports.restoreLambdaFunction = async (functionName, functionInfo, bucketName, key, zipPath) => {
+    try {
+      const fileStream = fs.createWriteStream(zipPath);
+  
+      var resData = awsHelper.downloadFile(bucketName, key, fileStream);
+  
+      fs.writeFileSync(zipPath, resData.Body);
+  
+      const zipBuffer = fs.readFileSync(zipPath);
+
+      const params = {
+        FunctionName: functionName,
+        Role: functionInfo.roleArn,
+        Runtime: functionInfo.runtime,
+        Handler: functionInfo.handler,
+        Code: {
+          ZipFile: zipBuffer,
+        },
+        Timeout: functionInfo.timeout,
+        MemorySize: functionInfo.memorySize,
+        Publish: true,
+      };
+  
+      try {
+        var response = await lambda.createFunction(params).promise();
+
+        return response;
+      } catch (createError) {
+        if (createError.code === 'ResourceConflictException') {
+          var updatedResponse = await lambda.updateFunctionCode({
+            FunctionName: functionName,
+            ZipFile: zipBuffer,
+          }).promise();
+  
+          return updatedResponse;
+        } else {
+          throw new Error(createError.message);
+        }
+      }
+    } catch (error) {
+      throw new Error('Error restoring Lambda function:', error);
+    }
+};
