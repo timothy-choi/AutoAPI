@@ -344,3 +344,22 @@ exports.getLambdaMetricsAndHealthStatus = async (functionName, payloadInfo, user
         throw new Error(error.message);
     }
 };
+
+exports.startOrStopLambdaMetricsPolling = async (functionName, payloadInfo, userCredentials, userRegion) => {
+    try {
+        const lambda = new AWS.Lambda({
+            accessKeyId: userCredentials.accessKeyId,
+            secretAccessKey: userCredentials.secretAccessKey,
+            region: region,
+        });
+
+        const params = {
+            FunctionName: functionName,
+            Payload: JSON.stringify(payloadInfo),
+        };
+
+        await lambda.invoke(params).promise();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};

@@ -1,3 +1,4 @@
+const { protos } = require('@google-cloud/bigtable');
 const lambdaHelper = require('./LambdaHelper');
 
 exports.getLambdaFunction = async (req, res) => {
@@ -199,6 +200,23 @@ exports.getLambdaMetricsAndHealthStatus = async (req, res) => {
         var response = await lambdaHelper.getLambdaMetricsAndHealthStatus(req.body.lambdaFunctionName, req.body.payload, userCredentials, req.body.region);
 
         return res.status(201).send(response);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.startOrStopLambdaMetricsPolling = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.userCredentialsInfo) {
+            userCredentials = req.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        await lambdaHelper.startOrStopLambdaMetricsPolling(req.body.functionName, req.body.payloadInfo, userCredentials, req.body.userRegion);
+
+        return res.status(201).send(null);
     } catch (error) {
         return res.status(500).send(error.message);
     }
