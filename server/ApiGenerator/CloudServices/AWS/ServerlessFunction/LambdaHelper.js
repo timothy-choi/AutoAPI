@@ -315,3 +315,32 @@ exports.restoreLambdaFunction = async (functionName, functionInfo, bucketName, k
         fs.unlinkSync(zipPath);
     }   
 };
+
+exports.getLambdaMetricsAndHealthStatus = async (functionName, payloadInfo, userCredentials, region) => {
+    try {
+        const lambda = new AWS.Lambda({
+            accessKeyId: userCredentials.accessKeyId,
+            secretAccessKey: userCredentials.secretAccessKey,
+            region: region,
+        });
+
+        const params = {
+            FunctionName: functionName,
+            Payload: JSON.stringify(payloadInfo),
+        };
+
+        const data = await lambda.invoke(params).promise();
+
+        if (data.Payload) {
+            try {
+                data.ParsedPayload = JSON.parse(response.Payload);
+            } catch (err) {
+                throw new Error('Failed to parse Lambda response payload as JSON:', err.message);
+            }
+        }
+
+        return data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};

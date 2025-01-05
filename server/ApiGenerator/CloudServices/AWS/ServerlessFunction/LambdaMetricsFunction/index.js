@@ -189,9 +189,13 @@ const stopMetricsPolling = async (ruleName, secretName, targetIds) => {
 exports.handler = async (event) => {
     if (event.source === "aws.lambda") {
         if (event.lambdaInfo["status"] === "available") {
-            await startMetricsPolling(event.dbInfo["ruleParams"], event.dbInfo["targetParams"], event.userInfo["secretName"], event.userInfo["userRegion"]);
+            await startMetricsPolling(event.lambdaInfo["ruleParams"], event.lambdaInfo["targetParams"], event.userInfo["secretName"], event.userInfo["userRegion"]);
+
+            return { statusCode: 200, body: "Metrics polling started" };
         } else if (event.lambdaInfo["status"] === "stopped") {
             await stopMetricsPolling(event.metricsInfo["ruleName"], event.userInfo["secretName"], event.metricsInfo["targetIds"]);
+
+            return { statusCode: 200, body: "Metrics polling stopped" };
         }
     } else if (event.action === "collectMetrics") {
         var metricsData = await getLambdaMetrics(event.metricsInfo, event.userInfo["secretName"]);
