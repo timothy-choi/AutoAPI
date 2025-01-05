@@ -88,6 +88,34 @@ const getLambdaMetrics = async (metricsInfo, secretName) => {
     }
 };
 
+const assessInstanceHealth = async (metrics) => {
+    const healthStatus = {
+        status: 'healthy',
+        issues: []
+    };
+
+    if (metrics.cpuUtilization > 75) {
+        healthStatus.status = 'warning';
+        healthStatus.issues.push('Warning: High CPU utilization');
+    }
+    if (metrics.cpuUtilization > 90) {
+        healthStatus.status = 'critical';
+        healthStatus.issues.push('Warning: Critical CPU utilization');
+    }
+    if (metrics.freeStorageSpace < 10 * 1024 * 1024 * 1024) { 
+        healthStatus.status = 'warning';
+        healthStatus.issues.push('Warning: Low free storage space');
+    }
+    if (metrics.freeStorageSpace < 1 * 1024 * 1024 * 1024) {
+        healthStatus.status = 'critical';
+        healthStatus.issues.push('Warning: Critically low free storage space');
+    }
+
+    //add more warning checks to other metrics
+
+    return healthStatus;
+};
+
 const publishMetricsData = async (metricsData) => {
     try {
         const connection = await amqp.connect('');  
@@ -159,4 +187,31 @@ const stopMetricsPolling = async (ruleName, secretName, targetIds) => {
 };
 
 exports.handler = async (event) => {
+    if (event.source === "aws.lambda") {
+        if (event.lambdaInfo["status"] === "available") {
+            await startMetricsPolling(event.dbInfo["ruleParams"], event.dbInfo["targetParams"], event.userInfo["secretName"], event.userInfo["userRegion"]);
+        } else if (event.lambdaInfo["status"] === "stopped") {
+            await stopMetricsPolling(event.metricsInfo["ruleName"], event.userInfo["secretName"], event.metricsInfo["targetIds"]);
+        }
+    } else if (event.action === "collectMetrics") {
+        var metricsData = await getLambdaMetrics(event.metricsInfo, event.userInfo["secretName"]);
+
+        var instanceHealthStatusReport = await assessInstanceHealth(metricsData.DataMetrics);
+
+        var allMetricsInfoResponse = {
+            MetricsDataInfo: metricsData.DataMetrics,
+            MetricsStatsInfo: metricsData.DataMetricsStatsList,
+            HealthStatusReport: instanceHealthStatusReport
+        };
+
+        if (event.autoTrigger) {
+            await publishMetricsData(JSON.stringify(allMetricsInfoResponse));
+        }
+
+        return { statusCode: 200, body: JSON.stringify(allMetricsInfoResponse)};
+    } else {
+        return { statusCode: 400, body: "Unhandled event type" };
+    }
+
+    return { statusCode: 500, body: "Error" };
 };
