@@ -1,6 +1,21 @@
 const { DefaultAzureCredential } = require("@azure/identity");
 const { MonitorClient } = require("@azure/arm-monitor");
-const axios = require("axios");
+const amqp = require("amqplib");
+
+const publishMetricsData = async (metricsData) => {
+    try {
+        const connection = await amqp.connect('');  
+        const channel = await connection.createChannel();
+
+        channel.assertQueue("", { durable: true });
+        channel.sendToQueue("", Buffer.from(metricsData), { persistent: true });
+
+        await channel.close();
+        await connection.close();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
 
 modules.exports = async (context, req) => {
     try {
@@ -37,6 +52,10 @@ modules.exports = async (context, req) => {
             };
             response.metrics.push(metricData);
         });
+
+        if (req.body.autoTrigger) {
+            await publishMetricsData(JSON.stringify(response));
+        }
 
         context.res = {
             status: 200,
