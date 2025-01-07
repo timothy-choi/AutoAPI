@@ -3,6 +3,7 @@ const { WebSiteManagementClient } = require('@azure/arm-appservice');
 const { StorageManagementClient } = require('@azure/arm-storage');
 const fs = require('fs');
 const { BlobServiceClient } = require('@azure/storage-blob');
+const axios = require('axios');
 
 MAX_RETRIES = 3;
 
@@ -360,5 +361,22 @@ exports.deleteCascadeFunctionApp = async (functionAppName, resourceGroupName, su
         }
     } catch (error) {
         throw new Error(`Error during cascade delete: ${error.message}`);
+    }
+};
+
+exports.getFunctionAppMetrics = async (httpFunctionUri, subscriptionId, resourceId, metrics, interval, intervalInMinutes, autoTrigger = true) => {
+    try {
+        var response  = await axios.post(httpFunctionUri, {
+            subscriptionId,
+            resourceId,
+            metrics,
+            interval,
+            intervalInMinutes,
+            autoTrigger
+        });
+
+        return response.data;
+    } catch (error) {
+        throw new Error(error.message);
     }
 };

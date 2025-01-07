@@ -109,3 +109,13 @@ exports.DeleteCascadeServerlessFunction = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.GetServerlessFunctionMetrics = async (req, res) => {
+    try {
+        var metrics = await serverlessFunctionHelper.getFunctionAppMetrics(req.body.httpFunctionUri, req.body.subscriptionId, req.body.resourceId, req.body.metrics, req.body.interval, req.body.intervalInMinutes, req.body.autoTrigger);
+
+        return res.status(201).send(metrics);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};

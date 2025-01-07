@@ -29,8 +29,7 @@ modules.exports = async (context, req) => {
         const result = await monitorClient.metrics.list(req.body.resourceId, {
             timespan: `${startTime}/${endTime}`,
             interval: req.body.interval,  
-            metricnames: metricName,
-            aggregation: statistics,
+            metricnames: req.body.metrics,
         });
 
         const response = {
