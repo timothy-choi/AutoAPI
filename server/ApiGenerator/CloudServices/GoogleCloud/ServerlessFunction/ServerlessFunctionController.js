@@ -89,3 +89,13 @@ exports.RestoreFunctionConfiguration = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.GetFunctionMetrics = async (req, res) => {
+    try {
+        var response = await serverlessFunctionHelper.getServerlessFunctionMetrics(req.body.httpFunctionUri, req.body.accessToken, req.body.refreshToken, req.body.projectName, req.body.minutes, req.body.metricTypes);
+
+        return res.status(201).send(response);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};

@@ -1,6 +1,7 @@
 const { CloudFunctionsServiceClient } = require('@google-cloud/functions');
 const { Storage } = require('@google-cloud/storage');
 const { exec } = require('child_process');
+const axios = require('axios');
 
 const retryOperation = async (operation, retries = 3, delay = 1000) => {
     let attempt = 0;
@@ -310,5 +311,26 @@ exports.RestoreFunctionConfiguration = async (bucketName, fileName, projectId, r
         return res;
     } catch (error) {
         throw new Error(`Error restoring function configuration: ${error.message}`);
+    }
+};
+
+exports.getServerlessFunctionMetrics = async (httpFunctionUri, accessToken, refreshToken, projectName, minutes, metricTypes) => {
+    try {
+        var metrics = await axios.post(httpFunctionUri, {
+            accessToken,
+            refreshToken,
+            projectName,
+            minutes,
+            metricTypes
+        }, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        return metrics.metricResults;
+    } catch (error) {
+        throw new Error(error.message);
     }
 };
