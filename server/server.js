@@ -18,6 +18,10 @@ const messageRouter = require('./Messaging/MessageRouter');
 const messagingRouter = require('./Messaging/MessagingController');
 const messagingSessionRouter = require('./Messaging/MessagingSessionRouter');
 const messagingAccountRouter = require('./Messaging/MessagingAccountRouter');
+const githubOAuthRouter = require('./Github/GithubOAuthRouter');
+
+const passport = require('passport');
+const GitHubStrategy = require('passport-github2').Strategy;
 
 dotenv.config();
 require('./config/mongodb');
@@ -39,6 +43,17 @@ app.use(session({
         secure: true,
         maxAge: 24 * 60 * 60 * 1000
     }
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.use(new GitHubStrategy({
+    clientID: process.env.GITHUB_CLIENT_ID,
+    clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    callbackURL: process.env.GITHUB_CALLBACK_URL,
+}, (accessToken, refreshToken, profile, done) => {
+    return done(null, { provider: 'github', profile, accessToken });
 }));
 
 app.use('/userAuth', userAuthRoutes);
@@ -68,6 +83,11 @@ app.use('/messaging', messagingRouter);
 app.use('/messagingSession', messagingSessionRouter);
 
 app.use('/messagingAccount', messagingAccountRouter);
+
+app.use('/github/OAuth', githubOAuthRouter);
+
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((user, done) => done(null, user));
 
 sequelize.sync()
     .then(() => {
