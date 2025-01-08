@@ -11,3 +11,27 @@ exports.getGithubUser = async (accessToken) => {
         throw new Error("Error:", error.message);
     }
 };
+
+exports.getSpecificGithubUser = async (username) => {
+    const octokit = new OctoKit();
+
+    try {
+        const response = await octokit.rest.users.getByUsername({ username });
+
+        return response.data;
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
+
+exports.getGithubRepo = async (accessToken, owner, repo) => {
+    const octokit = new OctoKit({ auth: accessToken });
+
+    try {
+        const response = await octokit.rest.repos.get({ owner, repo });
+
+        return response.data;
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
