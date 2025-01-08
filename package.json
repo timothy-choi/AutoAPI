@@ -20,6 +20,7 @@
     "@google-cloud/logging": "^11.2.0",
     "@google-cloud/pubsub": "^4.9.0",
     "@google-cloud/storage": "^7.14.0",
+    "@octokit/rest": "^21.0.2",
     "amqplib": "^0.10.5",
     "aws-sdk": "^2.1692.0",
     "axios": "^1.7.9",
