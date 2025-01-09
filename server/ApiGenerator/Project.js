@@ -62,6 +62,11 @@ const Project = sequelize.define('Project', {
         allowNull: true,
         defaultValue: "",
     },
+    GithubProjectRepoInfo: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {},
+    },
     IsAvailable: {
         type: DataTypes.BOOLEAN,
         allowNull: true,

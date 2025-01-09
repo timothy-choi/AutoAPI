@@ -370,3 +370,13 @@ exports.RemoveProjectViewRequestsRecieved = async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 }
+
+exports.EditGithubProjectRepoInfo = async (req, res) => {
+    try {
+        await ProjectService.EditGithubProjectRepoInfo(req.projectId, req.body);
+
+        return res.status(200).body(null);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}

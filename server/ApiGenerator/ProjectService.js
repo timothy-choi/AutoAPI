@@ -671,3 +671,21 @@ exports.RemoveProjectViewRequestsRecieved = async (projectId, viewRequestId) => 
         throw new Error(error.message);
     }
 }
+
+exports.EditGithubProjectRepoInfo = async (projectId, githubRepoInfo) => {
+    try {
+        var project = await GetProjectById(projectId);
+
+        if (!project) {
+            throw new Error('Model does not exist');
+        } 
+
+        project.GithubProjectRepoInfo = githubRepoInfo;
+
+        project.ModifiedAt = Date.now();
+
+        await project.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+};
