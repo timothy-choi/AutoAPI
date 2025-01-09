@@ -47,3 +47,15 @@ exports.createGithubRepo = async (accessToken, repoInfo) => {
         throw new Error("Error:", error.message);
     }
 };
+
+exports.addCollaboratorToRepo = async (accessToken, owner, repo, username, permission) => {
+    const octokit = new OctoKit({ auth: accessToken });
+
+    try {
+        const response = await octokit.rest.repos.addCollaborator({ owner, repo, username, permission });
+
+        return response.data;
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
