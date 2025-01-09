@@ -59,3 +59,31 @@ exports.addCollaboratorToRepo = async (accessToken, owner, repo, username, permi
         throw new Error("Error:", error.message);
     }
 };
+
+exports.deleteGithubRepo = async (accessToken, owner, repo) => {
+    const octokit = new OctoKit({ auth: accessToken });
+
+    try {
+        const response = await octokit.rest.repos.delete({ owner, repo });
+
+        return response.data;
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
+
+exports.updateRepoVisibility = async (accessToken, owner, repo, isPrivate) => {
+    const octokit = new OctoKit({ auth: accessToken });
+
+    try {
+        const response = await octokit.rest.repos.update({
+            owner,
+            repo,
+            private: isPrivate,
+        });
+
+        return response.data;
+    } catch (error) {
+        throw new Error(`Error updating repository visibility: ${error.message}`);
+    }
+};
