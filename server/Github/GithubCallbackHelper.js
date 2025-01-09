@@ -10,6 +10,12 @@ exports.githubCallback = (req, res) => {
             maxAge: 3600000, 
         });
 
+        req.cookie('refreshToken', req.user.refreshToken, {
+            httpOnly: true,
+            secure: true, 
+            maxAge: 3600000, 
+        });
+
         res.redirect('/');
     }
 };

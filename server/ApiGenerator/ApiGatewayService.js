@@ -45,6 +45,78 @@ exports.createApiGateway = async (ProjectId, EndpointsId, CreatedBy) => {
     }
 };
 
+exports.addRoute = async (gatewayId, route, updatedBy) => {
+    try {
+        var apiGateway = await this.getApiGatewayById(gatewayId);
+
+        if (!apiGateway) {
+            throw new Error("Instance does not exist");
+        }
+
+        apiGateway.Routes.push(route);
+
+        apiGateway.UpdatedAt = Date.now();
+
+        apiGateway.UpdatedBy = updatedBy;
+
+        await apiGateway.save();
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
+
+exports.deleteRoute = async (gatewayId, routeId, updatedBy) => {
+    try {
+        var apiGateway = await this.getApiGatewayById(gatewayId);
+
+        if (!apiGateway) {
+            throw new Error("Instance does not exist");
+        }
+
+        var routeIndex = apiGateway.Routes.findIndex(route => route.id === routeId);
+
+        if (routeIndex === -1) {
+            throw new Error("Route does not exist");
+        }
+
+        apiGateway.Routes.splice(routeIndex, 1);
+
+        apiGateway.UpdatedAt = Date.now();
+
+        apiGateway.UpdatedBy = updatedBy;
+
+        await apiGateway.save();
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
+
+exports.updateRouter = async (gatewayId, routeId, route, updatedBy) => {
+    try {
+        var apiGateway = await this.getApiGatewayById(gatewayId);
+
+        if (!apiGateway) {
+            throw new Error("Instance does not exist");
+        }
+
+        var routeIndex = apiGateway.Routes.findIndex(route => route.id === routeId);
+
+        if (routeIndex === -1) {
+            throw new Error("Route does not exist");
+        }
+
+        apiGateway.Routes[routeIndex] = route;
+
+        apiGateway.UpdatedAt = Date.now();
+
+        apiGateway.UpdatedBy = updatedBy;
+
+        await apiGateway.save();
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
+
 exports.deleteApiGateway = async (gatewayId) => {
     try {
         var apiGateway = await this.getApiGatewayById(gatewayId);
