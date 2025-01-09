@@ -3,5 +3,13 @@ exports.githubAuth = (req, res, next) => {
 };
   
 exports.githubCallback = (req, res) => {
-    res.redirect('/');
+    if (req.isAuthenticated() && req.user) {
+        req.cookie('accessToken', req.user.accessToken, {
+            httpOnly: true,
+            secure: true, 
+            maxAge: 3600000, 
+        });
+
+        res.redirect('/');
+    }
 };

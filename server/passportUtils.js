@@ -33,8 +33,6 @@ exports.authenticateWith = (strategy, options = {}) => {
             if (isTokenExpired(accessToken)) {
               const newTokens = await refreshAccessToken(refreshToken, clientId, clientSecret);
               req.user.accessToken = newTokens.access_token;
-    
-              // Update the user's tokens in the database
             }
           }
           passport.authenticate(strategy, options)(req, res, next);
