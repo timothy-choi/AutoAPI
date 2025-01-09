@@ -60,6 +60,30 @@ exports.addCollaboratorToRepo = async (accessToken, owner, repo, username, permi
     }
 };
 
+exports.deleteCollaboratorFromRepo = async (accessToken, owner, repo, username) => {
+    const octokit = new OctoKit({ auth: accessToken });
+
+    try {
+        const response = await octokit.rest.repos.removeCollaborator({ owner, repo, username });
+
+        return { success: true, message: `${username} removed from the repository` };
+    } catch (error) {
+        throw new Error(`Error removing collaborator: ${error.message}`);
+    }
+};
+
+exports.listRepoCollaborators = async (accessToken, owner, repo) => {
+    const octokit = new OctoKit({ auth: accessToken });
+
+    try {
+        const response = await octokit.rest.repos.listCollaborators({ owner, repo });
+
+        return response.data;
+    } catch (error) {
+        throw new Error(`Error listing collaborators: ${error.message}`);
+    }
+};
+
 exports.deleteGithubRepo = async (accessToken, owner, repo) => {
     const octokit = new OctoKit({ auth: accessToken });
 
