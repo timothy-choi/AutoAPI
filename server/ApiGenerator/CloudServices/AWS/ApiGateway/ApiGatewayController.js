@@ -20,6 +20,16 @@ exports.createApiGateway = async (req, res) => {
     }
 };
 
+exports.createResource = async (req, res) => {
+    try {
+        const resource = await ApiGatewayHelper.createResource(req.body.parentPathId, req.body.gatewayId, req.body.resourcePath, req.body.userCredentials, req.body.userRegion);
+
+        return res.status(201).send(resource);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.deleteApiGateway = async (req, res) => {
     try {
         await ApiGatewayHelper.deleteApiGateway(req.body.apiGatewayId, req.body.userCredentials, req.body.userRegion);

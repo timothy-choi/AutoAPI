@@ -34,6 +34,24 @@ exports.createApiGateway = async (apiName, description, endpointConfig, userCred
     }
 };
 
+exports.createResource = async (parentPathId, gatewayId, resourcePath, userCredentials, userRegion) => {
+    try {
+        const apiGateway = new AWS.APIGateway({ credentials: userCredentials, region: userRegion });
+
+        const params = {
+            parentId: parentPathId,
+            pathPart: resourcePath,
+            restApiId: gatewayId
+        };
+
+        const response = await apiGateway.createResource(params).promise();
+
+        return response;
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
+
 exports.deleteApiGateway = async (gatewayId, userCredentials, userRegion) => {
     try {
         const apiGateway = new AWS.APIGateway({ credentials: userCredentials, region: userRegion });
