@@ -1,8 +1,16 @@
 const ApiGatewayHelper = require('./ApiGatewayHelper');
+const AWSHelper = require('../AWSHelper');
 
 exports.getApiGateway = async (req, res) => {
     try {
-        const apiGateway = await ApiGatewayHelper.getApiGateway(req.body.apiGatewayId, req.body.userCredentials, req.body.userRegion);
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        const apiGateway = await ApiGatewayHelper.getApiGateway(req.body.apiGatewayId, userCredentials, req.body.userRegion);
 
         return res.status(201).send(apiGateway);
     } catch (error) {
@@ -12,7 +20,14 @@ exports.getApiGateway = async (req, res) => {
 
 exports.createApiGateway = async (req, res) => {
     try {
-        const apiGateway = await ApiGatewayHelper.createApiGateway(req.body.apiName, req.body.description, req.body.endpointConfig, req.body.userCredentials, req.body.userRegion);
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        const apiGateway = await ApiGatewayHelper.createApiGateway(req.body.apiName, req.body.description, req.body.endpointConfig, userCredentials, req.body.userRegion);
 
         return res.status(201).send(apiGateway);
     } catch (error) {
@@ -22,7 +37,14 @@ exports.createApiGateway = async (req, res) => {
 
 exports.createResource = async (req, res) => {
     try {
-        const resource = await ApiGatewayHelper.createResource(req.body.parentPathId, req.body.gatewayId, req.body.resourcePath, req.body.userCredentials, req.body.userRegion);
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        const resource = await ApiGatewayHelper.createResource(req.body.parentPathId, req.body.gatewayId, req.body.resourcePath, userCredentials, req.body.userRegion);
 
         return res.status(201).send(resource);
     } catch (error) {
@@ -32,7 +54,14 @@ exports.createResource = async (req, res) => {
 
 exports.deleteApiGateway = async (req, res) => {
     try {
-        await ApiGatewayHelper.deleteApiGateway(req.body.apiGatewayId, req.body.userCredentials, req.body.userRegion);
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        await ApiGatewayHelper.deleteApiGateway(req.body.apiGatewayId, userCredentials, req.body.userRegion);
 
         return res.status(200).send(null);
     } catch (error) {

@@ -1,5 +1,5 @@
-const { protos } = require('@google-cloud/bigtable');
 const lambdaHelper = require('./LambdaHelper');
+const AWSHelper = require('../AWSHelper');
 
 exports.getLambdaFunction = async (req, res) => {
     try {
