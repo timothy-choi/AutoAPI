@@ -52,6 +52,28 @@ exports.createResource = async (parentPathId, gatewayId, resourcePath, userCrede
     }
 };
 
+exports.createMethod = async (gatewayId, authId, authType, resourceId, httpMethod, integrationParams, userCredentials, userRegion) => {
+    try {
+        const apiGateway = new AWS.APIGateway({ credentials: userCredentials, region: userRegion });
+
+        const params = {
+            authorizationType: authType,
+            httpMethod: httpMethod,
+            resourceId: resourceId,
+            restApiId: gatewayId,
+            authorizerId: authId
+        };
+
+        const response = await apiGateway.putMethod(params).promise();
+
+        await apiGateway.putIntegration(integrationParams).promise();
+
+        return response;
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
+
 exports.deleteApiGateway = async (gatewayId, userCredentials, userRegion) => {
     try {
         const apiGateway = new AWS.APIGateway({ credentials: userCredentials, region: userRegion });

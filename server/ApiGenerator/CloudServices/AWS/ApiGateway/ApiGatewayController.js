@@ -52,6 +52,23 @@ exports.createResource = async (req, res) => {
     }
 };
 
+exports.createMethod = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        const method = await ApiGatewayHelper.createMethod(req.body.gatewayId, req.body.authId, req.body.authType, req.body.resourceId, req.body.httpMethod, req.body.integrationParams, userCredentials, req.body.userRegion);
+
+        return res.status(201).send(method);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.deleteApiGateway = async (req, res) => {
     try {
         let userCredentials = {};
