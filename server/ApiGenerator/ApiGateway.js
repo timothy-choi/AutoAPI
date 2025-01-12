@@ -48,6 +48,10 @@ const ApiGatewaySchema = mongoose.Schema({
         type: String,
         required: false
     },
+    Subscription: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
     Throttling: {
         type: mongoose.Schema.Types.Mixed,
         required: false

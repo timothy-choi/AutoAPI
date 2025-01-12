@@ -177,6 +177,26 @@ exports.setThrottling = async (gatewayId, throttling, updatedBy) => {
     }
 };
 
+exports.setSubscription = async (gatewayId, subscription, updatedBy) => {
+    try {
+        var apiGateway = await this.getApiGatewayById(gatewayId);
+
+        if (!apiGateway) {
+            throw new Error("Instance does not exist");
+        }
+
+        apiGateway.Subscription = subscription;
+
+        apiGateway.UpdatedAt = Date.now();
+
+        apiGateway.UpdatedBy = updatedBy;
+
+        await apiGateway.save();
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
+
 exports.deleteApiGateway = async (gatewayId) => {
     try {
         var apiGateway = await this.getApiGatewayById(gatewayId);
