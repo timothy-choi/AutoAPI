@@ -117,6 +117,66 @@ exports.updateRouter = async (gatewayId, routeId, route, updatedBy) => {
     }
 };
 
+exports.editUsageInfo = async (gatewayId, usageInfo, updatedBy) => {
+    try {
+        var apiGateway = await this.getApiGatewayById(gatewayId);
+
+        if (!apiGateway) {
+            throw new Error("Instance does not exist");
+        }
+
+        apiGateway.UsageInfo = usageInfo;
+
+        apiGateway.UpdatedAt = Date.now();
+
+        apiGateway.UpdatedBy = updatedBy;
+
+        await apiGateway.save();
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
+
+exports.setDeploymentStatus = async (gatewayId, deploymentStatus, updatedBy) => {
+    try {
+        var apiGateway = await this.getApiGatewayById(gatewayId);
+
+        if (!apiGateway) {
+            throw new Error("Instance does not exist");
+        }
+
+        apiGateway.DeploymentStatus = deploymentStatus;
+
+        apiGateway.UpdatedAt = Date.now();
+
+        apiGateway.UpdatedBy = updatedBy;
+
+        await apiGateway.save();
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
+
+exports.setThrottling = async (gatewayId, throttling, updatedBy) => {
+    try {
+        var apiGateway = await this.getApiGatewayById(gatewayId);
+
+        if (!apiGateway) {
+            throw new Error("Instance does not exist");
+        }
+
+        apiGateway.Throttling = throttling;
+
+        apiGateway.UpdatedAt = Date.now();
+
+        apiGateway.UpdatedBy = updatedBy;
+
+        await apiGateway.save();
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
+
 exports.deleteApiGateway = async (gatewayId) => {
     try {
         var apiGateway = await this.getApiGatewayById(gatewayId);

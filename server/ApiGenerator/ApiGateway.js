@@ -39,6 +39,18 @@ const ApiGatewaySchema = mongoose.Schema({
     SecurityInfo: {
         type: mongoose.Schema.Types.Mixed,
         required: false
+    },
+    UsageInfo: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
+    DeploymentStatus: {
+        type: String,
+        required: false
+    },
+    Throttling: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
     }
 });
 

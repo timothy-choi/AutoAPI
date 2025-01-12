@@ -60,6 +60,36 @@ exports.UpdateRoute = async (req, res) => {
     }
 };
 
+exports.EditUsageInfo = async (req, res) => {
+    try {
+        var apiGateway = await ApiGatewayService.editUsageInfo(req.body.apiGatewayId, req.body.usageInfo, req.body.updatedBy);
+
+        return res.status(200).send(apiGateway);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.SetDeploymentStatus = async (req, res) => {
+    try {
+        var apiGateway = await ApiGatewayService.setDeploymentStatus(req.body.apiGatewayId, req.body.deploymentStatus, req.body.updatedBy);
+
+        return res.status(200).send(apiGateway);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.SetThrottling = async (req, res) => {
+    try {
+        var apiGateway = await ApiGatewayService.setThrottling(req.body.apiGatewayId, req.body.throttling, req.body.updatedBy);
+
+        return res.status(200).send(apiGateway);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.DeleteApiGateway = async (req, res) => {
     try {
         await ApiGatewayService.DeleteApiGateway(req.apiGatewayId);
