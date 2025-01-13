@@ -81,4 +81,43 @@ exports.createApi = async (subscriptionId, resourceGroupName, serviceName, apiId
         throw new Error('Error creating API:', error.message);
     }
 };
+
+exports.createOperation = async (apimClient, resourceGroupName, serviceName, apiId, operationId, operationParams) => {
+    try {
+        var operation = async () => {
+            const result = await apimClient.apiOperation.createOrUpdate(
+                resourceGroupName,
+                serviceName,
+                apiId,
+                operationId,
+                operationParams
+            );
+        };
+
+        await retryOperation(operation);
+
+        const checkOperationStatus = async () => {
+            try {
+                const operation = await apimClient.apiOperation.get(
+                    resourceGroupName,
+                    serviceName,
+                    apiId,
+                    operationId
+                );
+                return operation ? operation : null;
+            } catch (error) {
+                if (error.code === 'ResourceNotFound') {
+                    return null; 
+                }
+                throw error; 
+            }
+        };
+
+        const provisionedOperation = await pollOperation(checkOperationStatus, POLLING_TIMEOUT_MS);
+
+        return provisionedOperation;
+    } catch (error) {
+      console.error('Error creating operation:', error);
+    }
+};
   
