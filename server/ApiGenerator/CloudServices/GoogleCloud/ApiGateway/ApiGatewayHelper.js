@@ -83,3 +83,16 @@ exports.createApi = async (token, apiName, url, realApiName) => {
         throw new Error(error.message);
     }
 };
+
+exports.getApiInfo = async (token, projectId, apiId) => {
+    try {
+        const url = `https://apigateway.googleapis.com/v1/projects/${projectId}/locations/global/apis/${apiId}`;
+        const response = await axios.get(url, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+
+        return response.data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
