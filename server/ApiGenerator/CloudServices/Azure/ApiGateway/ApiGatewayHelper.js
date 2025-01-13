@@ -82,8 +82,11 @@ exports.createApi = async (subscriptionId, resourceGroupName, serviceName, apiId
     }
 };
 
-exports.createOperation = async (apimClient, resourceGroupName, serviceName, apiId, operationId, operationParams) => {
+exports.createOperation = async (subscriptionId, resourceGroupName, serviceName, apiId, operationId, operationParams) => {
     try {
+        const credential = new DefaultAzureCredential();
+        const apimClient = new ApiManagementClient(credential, subscriptionId);
+
         var operation = async () => {
             const result = await apimClient.apiOperation.createOrUpdate(
                 resourceGroupName,
@@ -120,4 +123,53 @@ exports.createOperation = async (apimClient, resourceGroupName, serviceName, api
       console.error('Error creating operation:', error);
     }
 };
-  
+
+exports.deleteApi = async (subscriptionId, resourceGroupName, serviceName, apiId) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const apimClient = new ApiManagementClient(credential, subscriptionId);
+
+        await retryOperation(() =>
+            apimClient.api.deleteMethod(resourceGroupName, serviceName, apiId)
+        );
+
+        await pollOperation(async () => {
+            try {
+                await apimClient.api.get(resourceGroupName, serviceName, apiId);
+                return false; 
+            } catch (error) {
+                if (error.statusCode === 404) {
+                    return true; 
+                }
+                throw error; 
+            }
+        });
+    } catch (error) {
+        throw new Error('Error deleting API:', error.message);
+    }
+};
+
+exports.deleteApiManagementService = async (subscriptionId, resourceGroupName, serviceName) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const apimClient = new ApiManagementClient(credential, subscriptionId);
+
+        await retryOperation(() =>
+            apimClient.apiManagementService.deleteMethod(resourceGroupName, serviceName)
+        );
+
+        await pollOperation(async () => {
+            try {
+                await apimClient.apiManagementService.get(resourceGroupName, serviceName);
+                return false;
+            } catch (error) {
+                if (error.statusCode === 404) {
+                    return true; 
+                }
+                throw error; 
+            }
+        });
+    } catch (error) {
+        throw new Error('Error deleting API Management Service:', error.message);
+    }
+};
