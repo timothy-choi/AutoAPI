@@ -1,5 +1,20 @@
 const axios = require('axios');
 
+async function getApiConfigStatus(token, projectId, location, apiName, configId) {
+    const url = `https://apigateway.googleapis.com/v1/projects/${projectId}/locations/${location}/apis/${apiName}/configs/${configId}`;
+
+    try {
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch API config status: ${error.message}`);
+    }
+};
+
 const retryOperation = async (operation, retries = 3, delay = 1000) => {
     let attempt = 0;
     while (attempt < retries) {
@@ -60,7 +75,7 @@ exports.createApi = async (token, apiName, url, realApiName) => {
             return response.data;
         };
 
-        const operationResponse = await retryOperation(operation, maxRetries, 2000);
+        const operationResponse = await retryOperation(operation, 3, 2000);
 
         const checkStatusFn = async (operationName) => {
             const url = `https://apigateway.googleapis.com/v1/${operationName}`;
@@ -74,8 +89,8 @@ exports.createApi = async (token, apiName, url, realApiName) => {
         const pollResult = await pollFunction(
             () => Promise.resolve(), 
             () => checkStatusFn(operationResponse.name), 
-            pollAttempts,
-            pollDelay
+            3,
+            5000
         );
 
         return pollResult;
@@ -92,6 +107,45 @@ exports.getApiInfo = async (token, projectId, apiId) => {
         });
 
         return response.data;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.createApiConfig = async (token, apiName, configId, projectId, location, openApiSpecUrl, serviceAcct) => {
+    try {
+        const url = `https://apigateway.googleapis.com/v1/projects/${projectId}/locations/${location}/apis/${apiName}/configs`;
+
+        const data = {
+            apiConfigId: configId,
+            displayName: `${apiName} Configuration`,
+            openApiDocuments: [
+            {
+                path: openApiSpecUrl,
+            },
+            ],
+            gatewayServiceAccount: serviceAcct,
+        };
+
+        var operation = async () => {
+            const response = await axios.post(url, data, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            return response.data;
+        }
+
+        await retryOperation(operation, 3, 2000);
+
+        return await pollFunction(
+            () => getApiConfigStatus(token, projectId, location, apiName, configId),
+            getApiConfigStatus,
+            10,
+            5000
+        );
     } catch (error) {
         throw new Error(error.message);
     }
