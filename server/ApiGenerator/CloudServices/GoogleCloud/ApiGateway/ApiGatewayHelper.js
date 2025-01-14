@@ -150,3 +150,18 @@ exports.createApiConfig = async (token, apiName, configId, projectId, location, 
         throw new Error(error.message);
     }
 };
+
+exports.deleteApi = async (token, projectId, location, apiName) => {
+    const url = `https://apigateway.googleapis.com/v1/projects/${projectId}/locations/${location}/apis/${apiName}`;
+  
+    try {
+      const response = await axios.delete(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return response.status === 204; 
+    } catch (error) {
+      throw new Error(`Failed to delete API: ${error.message}`);
+    }
+};

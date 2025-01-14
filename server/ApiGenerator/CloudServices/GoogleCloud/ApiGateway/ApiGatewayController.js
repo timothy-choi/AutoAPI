@@ -65,3 +65,25 @@ exports.createApiConfig = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.deleteApi = async (req, res) => {
+    try {
+        const authHeader = req.headers['authorization']; 
+
+        if (!authHeader) {
+            return res.status(401).send('Authorization header is missing');
+        }
+
+        const token = authHeader.split(' ')[1]; 
+
+        if (!token) {
+            return res.status(401).send('Token is missing');
+        }
+
+        await apiGatewayHelper.deleteApi(token, req.body.projectId, req.body.location, req.body.apiName);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
