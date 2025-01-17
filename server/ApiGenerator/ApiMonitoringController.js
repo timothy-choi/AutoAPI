@@ -30,6 +30,36 @@ exports.createMonitoringLog = async (req, res) => {
     }
 };
 
+exports.setEndpointsId = async (req, res) => {
+    try {
+        await ApiMonitoringService.setEndpointsId(req.monitoringLogId, req.endpointsId);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.setMonitoringServiceInfo = async (req, res) => {
+    try {
+        await ApiMonitoringService.setMonitoringServiceInfo(req.body.monitoringLogId, req.body.monitoringServiceInfo);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.addMonitoringLog = async (req, res) => {
+    try {
+        var monitoringLog = await ApiMonitoringService.addToMonitoringLog(req.body.monitoringLogId, req.body.monitoringLogEntry);
+
+        return res.status(201).send(monitoringLog);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.deleteMonitoringLog = async (req, res) => {
     try {
         await ApiMonitoringService.deleteMonitoringLog(req.monitoringLogId);
@@ -38,4 +68,4 @@ exports.deleteMonitoringLog = async (req, res) => {
     } catch (error) {
         return res.status(500).send(error.message);
     }
-}
+};

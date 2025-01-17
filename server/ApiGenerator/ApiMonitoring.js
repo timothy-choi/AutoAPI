@@ -76,4 +76,6 @@ const ApiMonitoringSchema = mongoose.Schema({
 
 const ApiMonitoring = mongoose.model('ApiMonitoring', ApiMonitoringSchema);
 
-module.exports = ApiMonitoring;
+const ApiSchema = mongoose.model('ApiLogSchema', ApiLogSchema);
+
+module.exports = ApiMonitoring, ApiSchema;
