@@ -35,3 +35,27 @@ exports.stopLogging = async (userCredentials, trailName, userRegion) => {
         throw new Error("Error:", error.message);
     }
 };
+
+exports.getTrail = async (userCredentials, trailName, userRegion) => {
+    try {
+        const cloudTrail = new AWS.CloudTrail({userCredentials, region: userRegion});
+
+        const trail = await cloudTrail.getTrail({Name: trailName}).promise();
+
+        return trail;
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
+
+exports.deleteTrail = async (userCredentials, trailName, userRegion) => {
+    try {
+        const cloudTrail = new AWS.CloudTrail({userCredentials, region: userRegion});
+
+        const trail = await cloudTrail.deleteTrail({Name: trailName}).promise();
+
+        return trail;
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
