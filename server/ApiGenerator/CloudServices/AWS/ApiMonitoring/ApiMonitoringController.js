@@ -51,6 +51,23 @@ exports.StopLogging = async (req, res) => {
     }
 };
 
+exports.LinkTrailToCloudWatch = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var response = await ApiMonitoringHelper.linkTrailToCloudWatch(userCredentials, req.body.trailName, req.body.userRegion, req.body.cloudWatchLogsLogGroupArn, req.body.roleArn);
+
+        return res.status(200).send(response);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
 exports.GetTrail = async (req, res) => {
     try {
         let userCredentials = {};

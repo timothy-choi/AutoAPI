@@ -36,6 +36,24 @@ exports.stopLogging = async (userCredentials, trailName, userRegion) => {
     }
 };
 
+exports.linkTrailToCloudWatch = async (userCredentials, trailName, userRegion, cloudWatchLogsLogGroupArn, roleArn) => {
+    try {
+        const cloudtrail = new AWS.CloudTrail({userCredentials, region: userRegion});
+
+        const params = {
+            Name: trailName,
+            CloudWatchLogsLogGroupArn: cloudWatchLogsLogGroupArn,
+            CloudWatchLogsRoleArn: roleArn,
+        };
+
+        const response = await cloudtrail.updateTrail(params).promise();
+
+        return response;
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
+
 exports.getTrail = async (userCredentials, trailName, userRegion) => {
     try {
         const cloudTrail = new AWS.CloudTrail({userCredentials, region: userRegion});
