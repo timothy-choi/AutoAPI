@@ -9,3 +9,13 @@ exports.enableLogging = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.createLoggingSink = async (req, res) => {
+    try {
+        var sink = await GCloudMonitoringService.createLoggingSink(req.body.destination, req.body.logName, req.body.sinkName);
+
+        return res.status(201).send(sink);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};

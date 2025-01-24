@@ -19,3 +19,18 @@ exports.enableLogging = async (typeName, requestInfo, responseInfo) => {
         throw new Error("Error:", error.message);
     }
 };
+
+exports.createLoggingSink = async (destination, logName, sinkName) => {
+    try {
+        const logging = new Logging();
+
+        const [sink] = await logging.createSink(sinkName, {
+            destination: destination,
+            filter: `logName=${logName}`,
+        });
+        
+        return sink;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
