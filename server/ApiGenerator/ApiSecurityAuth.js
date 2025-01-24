@@ -6,6 +6,10 @@ const ApiSecurityAuthSchema = mongoose.Schema({
         required: true,
         unique: true
     },
+    SecurityAuthName: {
+        type: String,
+        required: true
+    },
     AuthenticationType: {
         type: String,
         required: true
@@ -23,8 +27,12 @@ const ApiSecurityAuthSchema = mongoose.Schema({
         required: false
     },
     RateLimit: {
-        type: Number,
-        required: true
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
+    AdditionalSecurityConfig: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
     }
 });
 
