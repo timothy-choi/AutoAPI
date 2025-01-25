@@ -38,6 +38,86 @@ exports.createApiSecurityAuth = async (securityAuthInfo) => {
     }
 };
 
+exports.setApiKeyInfo = async (securityId, apiKeyInfo) => {
+    try {
+        var securityAuth = await getApiSecurityAuthById(securityId);
+
+        if (!securityAuth) {
+            throw new Error("Security does not exist");
+        }
+
+        securityAuth.ApiKeyInfo = apiKeyInfo;
+
+        await securityAuth.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.setOAuthInfo = async (securityId, oAuthInfo) => {
+    try {
+        var securityAuth = await getApiSecurityAuthById(securityId);
+
+        if (!securityAuth) {
+            throw new Error("Security does not exist");
+        }
+
+        securityAuth.OAuthInfo = oAuthInfo;
+
+        await securityAuth.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.setJwtInfo = async (securityId, jwtInfo) => {
+    try {
+        var securityAuth = await getApiSecurityAuthById(securityId);
+
+        if (!securityAuth) {
+            throw new Error("Security does not exist");
+        }
+
+        securityAuth.JwtInfo = jwtInfo;
+
+        await securityAuth.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.setRateLimit = async (securityId, rateLimit) => {
+    try {
+        var securityAuth = await getApiSecurityAuthById(securityId);
+
+        if (!securityAuth) {
+            throw new Error("Security does not exist");
+        }
+
+        securityAuth.RateLimit = rateLimit;
+
+        await securityAuth.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.setAdditionalSecurityConfig = async (securityId, additionalSecurityConfig) => {
+    try {
+        var securityAuth = await getApiSecurityAuthById(securityId);
+
+        if (!securityAuth) {
+            throw new Error("Security does not exist");
+        }
+
+        securityAuth.AdditionalSecurityConfig = additionalSecurityConfig;
+
+        await securityAuth.save();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
 exports.deleteApiSecurityAuth = async (securityId) => {
     try {
         var securityAuth =  await getApiSecurityAuthById(securityId);
