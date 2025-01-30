@@ -84,3 +84,45 @@ exports.DeleteApiKey = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.CreateJwtToken = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
+        var jwtToken = await SecurityAuthService.createJwtToken(req.body.clientId, req.body.userAuthInfo, userCredentials, req.body.userRegion);
+
+        return res.status(201).send(jwtToken);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.RevokeRefreshToken = async (req, res) => {
+    try {
+        var userCredentials = {};
+        if (req.body.userCredentials) {
+            userCredentials = req.body.userCredentials;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        if (!userCredentials.region) {
+            userCredentials.region = req.body.userRegion;
+        } 
+
+        await SecurityAuthService.revokeRefreshToken(req.body.clientId, req.body.userPoolId, req.body.username, userCredentials, req.body.userRegion);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};

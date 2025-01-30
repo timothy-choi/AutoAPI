@@ -84,3 +84,37 @@ exports.deleteApiKey = async (apiKeyId, userCredentials, userRegion) => {
         throw new Error("Error:", error.message);
     }
 };
+
+exports.createJwtToken = async (clientId, userAuthInfo, userCredentials, userRegion) => {
+    try {
+        const params = {
+            AuthFlow: "USER_PASSWORD_AUTH",
+            ClientId: clientId,
+            AuthParameters: userAuthInfo
+        };
+
+        const cognito = new AWS.CognitoIdentityServiceProvider({ credentials: userCredentials, region: userRegion });
+
+        const authResult = await cognito.initiateAuth(params).promise();
+
+        return authResult;
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
+
+exports.revokeRefreshToken = async (clientId, userPoolId, username, userCredentials, userRegion) => {
+    try {
+        const params = {
+            ClientId: clientId,
+            UserPoolId: userPoolId,
+            Username: username
+        };
+
+        const cognito = new AWS.CognitoIdentityServiceProvider({ credentials: userCredentials, region: userRegion });
+
+        await cognito.adminUserGlobalSignOut(params).promise();
+    } catch (error) {
+        throw new Error("Error:", error.message);
+    }
+};
