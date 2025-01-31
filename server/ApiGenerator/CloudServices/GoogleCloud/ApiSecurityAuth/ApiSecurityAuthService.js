@@ -1,4 +1,5 @@
 const { ApiKeysClient } = require("@google-cloud/apikeys");
+const admin = require("firebase-admin");
 
 exports.createApiKey = async (projectId, displayName, restrictions) => {
     const apiKeysClient = new ApiKeysClient();
@@ -19,3 +20,13 @@ exports.deleteApiKey = async (apiKeyId) => {
         name: apiKeyId
     });
 };
+
+exports.createJwtToken = async (uid) => {
+    var token = admin.auth().createCustomToken(uid);
+
+    return token;
+};
+
+exports.deleteJwtToken = async (uid) => {
+    admin.auth().deleteUser(uid);
+}
