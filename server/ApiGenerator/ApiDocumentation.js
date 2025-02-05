@@ -11,7 +11,7 @@ const ApiDocumentationSchema = mongoose.Schema({
     },
     Version: {
         type: String,
-        required: true
+        required: false
     },
     Endpoints: {
         type: [mongoose.Schema.Types.Mixed],
@@ -23,7 +23,7 @@ const ApiDocumentationSchema = mongoose.Schema({
     },
     RateLimit: {
         type: Number,
-        required: true
+        required: false
     },
     DocumentationInfo: {
         type: mongoose.Schema.Types.Mixed,
