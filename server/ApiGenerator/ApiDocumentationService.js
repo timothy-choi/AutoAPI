@@ -43,6 +43,86 @@ exports.createApiDocumentation = async (docInfo) => {
     }
 };
 
+exports.editApiDocumentationVersion = async (documentationId, version) => {
+    try {
+        var documentation = await getApiDocumentationById(documentationId);
+
+        if (!documentation) {
+            throw new Error("Instance does not exist");
+        }
+
+        documentation.Version = version;
+
+        await documentation.save();
+    } catch (error) {
+        throw new Error("Error:", error.message)
+    }
+};
+
+exports.setEndpoints = async (documentationId, endpoints) => {
+    try {
+        var documentation = await getApiDocumentationById(documentationId);
+
+        if (!documentation) {
+            throw new Error("Instance does not exist");
+        }
+
+        documentation.Endpoints = endpoints;
+
+        await documentation.save();
+    } catch (error) {
+        throw new Error("Error:", error.message)
+    }
+};
+
+exports.setAuthentication = async (documentationId, authenticationInfo) => {
+    try {
+        var documentation = await getApiDocumentationById(documentationId);
+
+        if (!documentation) {
+            throw new Error("Instance does not exist");
+        }
+
+        documentation.Authentication = authenticationInfo;
+
+        await documentation.save();
+    } catch (error) {
+        throw new Error("Error:", error.message)
+    }
+};
+
+exports.setRateLimit = async (documentationId, rateLimit) => {
+    try {
+        var documentation = await getApiDocumentationById(documentationId);
+
+        if (!documentation) {
+            throw new Error("Instance does not exist");
+        }
+
+        documentation.RateLimit = rateLimit;
+
+        await documentation.save();
+    } catch (error) {
+        throw new Error("Error:", error.message)
+    }
+};
+
+exports.setDocumentationInfo = async (documentationId, docInfo) => {
+    try {
+        var documentation = await getApiDocumentationById(documentationId);
+
+        if (!documentation) {
+            throw new Error("Instance does not exist");
+        }
+
+        documentation.DocumentationInfo = docInfo;
+
+        await documentation.save();
+    } catch (error) {
+        throw new Error("Error:", error.message)
+    }
+};
+
 exports.deleteApiDocumentation = async (documentationId) => {
     try {
         var documentation = await getApiDocumentationById(documentationId);
