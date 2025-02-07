@@ -202,6 +202,180 @@ exports.setDeployedRollbackInfo = async (deploymentId, rollbackInfo) => {
     }
 };
 
+exports.addApiModel = async (deploymentId, apiModel) => {
+    try {
+        var documentation = await this.getApiDeploymentById(deploymentId);
+
+        if (!documentation) {
+            throw new Error("Instance does not exist");
+        }
+
+        documentation.AllApiModels.push(apiModel);
+
+        documentation.UpdatedAt = Date.now;
+
+        await documentation.save();
+    } catch (error) {
+        throw new Error("Error:", error.message)
+    }
+};
+
+exports.removeApiModel = async (deploymentId, apiModelId) => {
+    try {
+        var documentation = await this.getApiDeploymentById(deploymentId);
+
+        if (!documentation) {
+            throw new Error("Instance does not exist");
+        }
+
+        documentation.AllApiModels.filter(model => model.id != apiModelId);
+
+        documentation.UpdatedAt = Date.now;
+
+        await documentation.save();
+    } catch (error) {
+        throw new Error("Error:", error.message)
+    }
+};
+
+exports.EditApiModel = async (deploymentId, apiModelId, updatedModel) => {
+    try {
+        var deployment = await this.getApiDeploymentById(deploymentId);
+
+        if (!deployment) {
+            throw new Error('Model does not exist');
+        } 
+
+        var index = deployment.AllApiModels.findIndex(model = model.id != apiModelId);
+
+        deployment.AllApiModels.splice(index, 1);
+
+        deployment.AllApiModels.splice(index, 0, updatedModel);
+
+        deployment.UpdatedAt = Date.now();
+
+        await deployment.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+};
+
+exports.addApiEndpoint = async (deploymentId, apiEndpoint) => {
+    try {
+        var documentation = await this.getApiDeploymentById(deploymentId);
+
+        if (!documentation) {
+            throw new Error("Instance does not exist");
+        }
+
+        documentation.AllApiEndpoints.push(apiEndpoint);
+
+        documentation.UpdatedAt = Date.now;
+
+        await documentation.save();
+    } catch (error) {
+        throw new Error("Error:", error.message)
+    }
+};
+
+exports.removeApiEndpoint = async (deploymentId, apiEndpointId) => {
+    try {
+        var documentation = await this.getApiDeploymentById(deploymentId);
+
+        if (!documentation) {
+            throw new Error("Instance does not exist");
+        }
+
+        documentation.AllApiEndpoints.filter(endpoint => endpoint.id != apiEndpointId);
+
+        documentation.UpdatedAt = Date.now;
+
+        await documentation.save();
+    } catch (error) {
+        throw new Error("Error:", error.message)
+    }
+};
+
+exports.EditApiEndpoint = async (deploymentId, apiEndpointId, updatedEndpoint) => {
+    try {
+        var deployment = await this.getApiDeploymentById(deploymentId);
+
+        if (!deployment) {
+            throw new Error('Model does not exist');
+        } 
+
+        var index = deployment.AllApiEndpoints.findIndex(endpoint = endpoint.id != apiEndpointId);
+
+        deployment.AllApiEndpoints.splice(index, 1);
+
+        deployment.AllApiEndpoints.splice(index, 0, updatedEndpoint);
+
+        deployment.UpdatedAt = Date.now();
+
+        await deployment.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+};
+
+exports.addApiDatabase = async (deploymentId, apiDB) => {
+    try {
+        var documentation = await this.getApiDeploymentById(deploymentId);
+
+        if (!documentation) {
+            throw new Error("Instance does not exist");
+        }
+
+        documentation.AllApiDatabases.push(apiDB);
+
+        documentation.UpdatedAt = Date.now;
+
+        await documentation.save();
+    } catch (error) {
+        throw new Error("Error:", error.message)
+    }
+};
+
+exports.removeApiDatabase = async (deploymentId, apiDbId) => {
+    try {
+        var documentation = await this.getApiDeploymentById(deploymentId);
+
+        if (!documentation) {
+            throw new Error("Instance does not exist");
+        }
+
+        documentation.AllApiDatabases.filter(db => db.id != apiDbId);
+
+        documentation.UpdatedAt = Date.now;
+
+        await documentation.save();
+    } catch (error) {
+        throw new Error("Error:", error.message)
+    }
+};
+
+exports.EditApiDatabase = async (deploymentId, apiDbId, updatedDb) => {
+    try {
+        var deployment = await this.getApiDeploymentById(deploymentId);
+
+        if (!deployment) {
+            throw new Error('Model does not exist');
+        } 
+
+        var index = deployment.AllApiDatabases.findIndex(db = db.id != apiDbId);
+
+        deployment.AllApiDatabases.splice(index, 1);
+
+        deployment.AllApiDatabases.splice(index, 0, updatedDb);
+
+        deployment.UpdatedAt = Date.now();
+
+        await deployment.save();
+    } catch (error) {
+        throw new Error('could not delete model');
+    }
+};
+
 exports.deleteApiDeployment = async (deploymentId) => {
     try {
         var deployment = await this.getApiDeploymentById(deploymentId);
