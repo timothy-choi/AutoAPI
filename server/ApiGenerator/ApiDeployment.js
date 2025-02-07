@@ -1,4 +1,4 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Sequelize } = require('sequelize');
 const sequelize = require('../config/database');
 
 const ApiDeployment = sequelize.define('ApiDeployment', {
@@ -13,33 +13,33 @@ const ApiDeployment = sequelize.define('ApiDeployment', {
     },
     Version: {
         type: DataTypes.STRING, 
-        allowNull: false
+        allowNull: true
     },
     BaseUrl: {
         type: DataTypes.STRING, 
-        allowNull: false
+        allowNull: true
     },
     CreatedAt: {
         type: DataTypes.DATE,
-        defaultValue: Date.now
+        defaultValue: Sequelize.NOW
     },
     UpdatedAt: {
         type: DataTypes.DATE,
-        defaultValue: Date.now
+        defaultValue: Sequelize.NOW
     },
     Status: {
         type: DataTypes.JSONB,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: () => ({})
     },
     Environment: {
         type: DataTypes.JSONB,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: () => ({})
     },
     DeployedAt: {
         type:  DataTypes.DATE,
-        defaultValue: Date.now
+        defaultValue: Sequelize.NOW
     },
     DeployedDuration: {
         type: DataTypes.INTEGER,
@@ -48,52 +48,61 @@ const ApiDeployment = sequelize.define('ApiDeployment', {
     DeploymentTarget: {
         type: DataTypes.JSONB,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: () => ({})
     },
     DeploymentMetadata: {
         type: DataTypes.JSONB,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: () => ({})
     },
     RollbackInfo: {
         type: DataTypes.JSONB,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: () => ({})
     },
     AllApiModels: {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
-        defaultValue: {}
+        defaultValue: []
     },
     AllApiEndpoints: {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
-        defaultValue: {}
+        defaultValue: []
     },
     AllApiDatabases: {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
-        defaultValue: {}
+        defaultValue: []
     },
     ApiAuthentication: {
         type: DataTypes.JSONB,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: () => ({})
     },
     ApiDocumentation: {
         type: DataTypes.JSONB,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: () => ({})
     },
     ApiMonitoring: {
         type: DataTypes.JSONB,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: () => ({})
     },
     ApiGateway: {
         type: DataTypes.JSONB,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: () => ({})
+    },
+    DeploymentLogs: {
+        type: DataTypes.ARRAY(DataTypes.JSONB),
+        allowNull: true,
+        defaultValue: [],
+    },
+    RollbackVersion: {
+        type: DataTypes.STRING,
+        allowNull: true,
     }
 });
 
