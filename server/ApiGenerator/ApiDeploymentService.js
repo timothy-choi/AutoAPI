@@ -376,6 +376,96 @@ exports.EditApiDatabase = async (deploymentId, apiDbId, updatedDb) => {
     }
 };
 
+exports.setAuthentication = async (deploymentId, authInfo) => {
+    try {
+        var documentation = await this.getApiDeploymentById(deploymentId);
+
+        if (!documentation) {
+            throw new Error("Instance does not exist");
+        }
+
+        documentation.ApiAuthentication = authInfo;
+
+        documentation.UpdatedAt = Date.now;
+
+        await documentation.save();
+    } catch (error) {
+        throw new Error("Error:", error.message)
+    }
+};
+
+exports.setDocumentation = async (deploymentId, docInfo) => {
+    try {
+        var documentation = await this.getApiDeploymentById(deploymentId);
+
+        if (!documentation) {
+            throw new Error("Instance does not exist");
+        }
+
+        documentation.ApiDocumentation = docInfo;
+
+        documentation.UpdatedAt = Date.now;
+
+        await documentation.save();
+    } catch (error) {
+        throw new Error("Error:", error.message)
+    }
+};
+
+exports.setMonitoring = async (deploymentId, monitoringInfo) => {
+    try {
+        var documentation = await this.getApiDeploymentById(deploymentId);
+
+        if (!documentation) {
+            throw new Error("Instance does not exist");
+        }
+
+        documentation.ApiMonitoring = monitoringInfo;
+
+        documentation.UpdatedAt = Date.now;
+
+        await documentation.save();
+    } catch (error) {
+        throw new Error("Error:", error.message)
+    }
+};
+
+exports.setGateway = async (deploymentId, gatewayInfo) => {
+    try {
+        var documentation = await this.getApiDeploymentById(deploymentId);
+
+        if (!documentation) {
+            throw new Error("Instance does not exist");
+        }
+
+        documentation.ApiGateway = gatewayInfo;
+
+        documentation.UpdatedAt = Date.now;
+
+        await documentation.save();
+    } catch (error) {
+        throw new Error("Error:", error.message)
+    }
+};
+
+exports.addDeploymentLog = async (deploymentId, deploymentLog) => {
+    try {
+        var documentation = await this.getApiDeploymentById(deploymentId);
+
+        if (!documentation) {
+            throw new Error("Instance does not exist");
+        }
+
+        documentation.DeploymentLogs.push(deploymentLog);
+
+        documentation.UpdatedAt = Date.now;
+
+        await documentation.save();
+    } catch (error) {
+        throw new Error("Error:", error.message)
+    }
+};
+
 exports.deleteApiDeployment = async (deploymentId) => {
     try {
         var deployment = await this.getApiDeploymentById(deploymentId);
