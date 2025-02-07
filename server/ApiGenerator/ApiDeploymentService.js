@@ -2,7 +2,7 @@ const ApiDeployment = require('./ApiDeployment');
 
 exports.getApiDeploymentById = async (deploymentId) => {
     try {
-        var uuidVal = mongoose.types.ObjectId(documentationId);
+        var uuidVal = mongoose.types.ObjectId(deploymentId);
 
         var deployment = await ApiDeployment.findById(uuidVal);
 
