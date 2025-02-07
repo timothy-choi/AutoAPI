@@ -80,6 +80,136 @@ exports.SetDeployedAt = async (req, res) => {
     }
 };
 
+exports.SetDeployedDuration = async (req, res) => {
+    try {
+        await ApiDeploymentService.setDeployedDuration(req.deploymentId, req.deployedDuration);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).json(error.message);
+    }
+};
+
+exports.SetDeployedTarget = async (req, res) => {
+    try {
+        await ApiDeploymentService.setDeployedTarget(req.deploymentId, req.body.deployedTarget);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).json(error.message);
+    }
+};
+
+exports.SetDeployedMetadata = async (req, res) => {
+    try {
+        await ApiDeploymentService.setDeployedMetadata(req.deploymentId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).json(error.message);
+    }
+};
+
+exports.SetDeployedRollbackInfo = async (req, res) => {
+    try {
+        await ApiDeploymentService.setDeployedRollbackInfo(req.deploymentId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).json(error.message);
+    }
+};
+
+exports.AddApiModel = async (req, res) => {
+    try {
+        await ApiDeploymentService.addApiModel(req.deploymentId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).json(error.message);
+    }
+};
+
+exports.RemoveApiModel = async (req, res) => {
+    try {
+        await ApiDeploymentService.removeApiModel(req.deploymentId, req.apiModelId);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).json(error.message);
+    }
+};
+
+exports.EditApiModel = async (req, res) => {
+    try {
+        await ApiDeploymentService.EditApiModel(req.deploymentId, req.apiModelId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).json(error.message);
+    }
+};
+
+exports.AddApiEndpoint = async (req, res) => {
+    try {
+        await ApiDeploymentService.addApiEndpoint(req.deploymentId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).json(error.message);
+    }
+};
+
+exports.RemoveApiEndpoint = async (req, res) => {
+    try {
+        await ApiDeploymentService.removeApiEndpoint(req.deploymentId, req.apiEndpointId);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).json(error.message);
+    }
+};
+
+exports.EditApiEndpoint = async (req, res) => {
+    try {
+        await ApiDeploymentService.EditApiEndpoint(req.deploymentId, req.apiEndpointId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).json(error.message);
+    }
+};
+
+exports.AddApiDatabase = async (req, res) => {
+    try {
+        await ApiDeploymentService.addApiDatabase(req.deploymentId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).json(error.message);
+    }
+};
+
+exports.RemoveApiDatabase = async (req, res) => {
+    try {
+        await ApiDeploymentService.removeApiDatabase(req.deploymentId, req.apiDbId);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).json(error.message);
+    }
+};
+
+exports.EditApiDatabase = async (req, res) => {
+    try {
+        await ApiDeploymentService.EditApiDatabase(req.deploymentId, req.apiDbId, req.body);
+
+        return res.status(200).send(null);
+    } catch (error) {
+        return res.status(500).json(error.message);
+    }
+};
+
 exports.DeleteApiDeployment = async (req, res) => {
     try {
         await ApiDeploymentService.deleteApiDeployment(req.deploymentId);
