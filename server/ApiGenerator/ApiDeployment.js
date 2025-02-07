@@ -99,10 +99,6 @@ const ApiDeployment = sequelize.define('ApiDeployment', {
         type: DataTypes.ARRAY(DataTypes.JSONB),
         allowNull: true,
         defaultValue: [],
-    },
-    RollbackVersion: {
-        type: DataTypes.STRING,
-        allowNull: true,
     }
 });
 
