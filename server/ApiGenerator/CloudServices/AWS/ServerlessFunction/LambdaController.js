@@ -221,3 +221,20 @@ exports.startOrStopLambdaMetricsPolling = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.invokeLambdaFunction = async (req, res) => {
+    try {
+        let userCredentials = {};
+        if (req.body.userCredentialsInfo) {
+            userCredentials = req.body.userCredentialsInfo;
+        } else {
+            userCredentials = await AWSHelper.getAWSCredentials(req.body.secretName);
+        }
+
+        var response = await lambdaHelper.invokeFunction(req.body.invokeParams, userCredentials, req.body.userRegion);
+
+        return res.status(201).send(response);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};

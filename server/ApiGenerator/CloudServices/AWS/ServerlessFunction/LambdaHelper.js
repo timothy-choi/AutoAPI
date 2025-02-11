@@ -350,7 +350,7 @@ exports.startOrStopLambdaMetricsPolling = async (functionName, payloadInfo, user
         const lambda = new AWS.Lambda({
             accessKeyId: userCredentials.accessKeyId,
             secretAccessKey: userCredentials.secretAccessKey,
-            region: region,
+            region: userRegion,
         });
 
         const params = {
@@ -359,6 +359,32 @@ exports.startOrStopLambdaMetricsPolling = async (functionName, payloadInfo, user
         };
 
         await lambda.invoke(params).promise();
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
+exports.invokeFunction = async (invokeParams, userCredentials, userRegion) => {
+    try {
+        const lambda = new AWS.Lambda({
+            accessKeyId: userCredentials.accessKeyId,
+            secretAccessKey: userCredentials.secretAccessKey,
+            region: userRegion,
+        });
+
+        var response = await lambda.invoke(invokeParams).promise();
+
+        if (response.StatusCode === 200) {
+            const payload = JSON.parse(response.Payload);
+
+            if (response.FunctionError) {
+                throw new Error(response.FunctionError);
+            } 
+        } else {
+            throw new Error(response.message);
+        }
+
+        return response;
     } catch (error) {
         throw new Error(error.message);
     }
