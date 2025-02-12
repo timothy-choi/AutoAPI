@@ -380,3 +380,33 @@ exports.getFunctionAppMetrics = async (httpFunctionUri, subscriptionId, resource
         throw new Error(error.message);
     }
 };
+
+exports.invokeFunction = async (subscriptionId, resourceGroupName, functionAppName, functionName, functionKey, payload) => {
+    try {
+        const credential = new DefaultAzureCredential();
+        const webSiteClient = new WebSiteManagementClient(credential, subscriptionId);
+
+        const functionApp = await webSiteClient.webApps.get(resourceGroupName, functionAppName);
+        if (!functionApp) {
+            throw new Error(`Function App ${functionAppName} not found.`);
+        }
+
+        const functionBaseUrl = `https://${functionApp.defaultHostName}/api/${functionName}`;
+
+        const requestUrl = functionKey ? `${functionBaseUrl}?code=${functionKey}` : functionBaseUrl;
+
+        var operation = async () => {
+            const response = await axios.post(requestUrl, payload, {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            return response.data;
+        };
+
+        return await retryOperation(operation);
+    } catch (error) {
+        throw new Error(`Error invoking function ${functionName}: ${error.message}`);
+    }
+};

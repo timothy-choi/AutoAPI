@@ -119,3 +119,13 @@ exports.GetServerlessFunctionMetrics = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.InvokeServerlessFunction = async (req, res) => {
+    try {
+        var response = await serverlessFunctionHelper.invokeFunction(req.body.subscriptionId, req.body.resourceGroupName, req.body.functionAppName, req.body.functionName, req.body.functionKey, req.body.payload);
+
+        return res.status(201).send(response);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
