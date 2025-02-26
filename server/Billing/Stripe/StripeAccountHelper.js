@@ -35,3 +35,29 @@ exports.generateOnboardingLink = async (userInfo) => {
 
     return accountLink.url;
 };
+
+exports.generateStripeOAuthLink = async () => {
+    const url = stripe.oauth.authorizeUrl({
+        response_type: 'code',
+        client_id: process.env.STRIPE_CLIENT_ID, 
+        scope: 'read_write',
+        redirect_uri: '',
+    });
+
+    return url;
+};
+
+exports.handleStripeOAuthCallback = async (code) => {
+    try {
+        const response = await stripe.oauth.token({
+            grant_type: 'authorization_code',
+            code,
+        });
+
+        const stripeAccountId = response.stripe_user_id;
+        
+        return stripeAccountId;
+    } catch (error) {
+        throw error;
+    }
+};
