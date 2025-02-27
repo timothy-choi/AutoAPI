@@ -19,3 +19,27 @@ exports.generateOnboardingLink = async (req, res) => {
         return res.status(500).send(error.message);
     }
 };
+
+exports.generateOauthLink = async (req, res) => {
+    try {
+        var oauthLink = stripeAccountService.generateStripeOAuthLink();
+
+        return res.status(201).send(oauthLink);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};
+
+exports.oauthCallback = async (req, res) => {
+    try {
+        if (!req.query.code) {
+            return res.status(500).send("No code included.");
+        }
+
+        var tokenInfo = stripeAccountService.handleStripeOAuthCallback(req.query.code);
+
+        return res.status(201).send(tokenInfo);
+    } catch (error) {
+        return res.status(500).send(error.message);
+    }
+};

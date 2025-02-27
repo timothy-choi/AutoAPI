@@ -54,9 +54,11 @@ exports.handleStripeOAuthCallback = async (code) => {
             code,
         });
 
-        const stripeAccountId = response.stripe_user_id;
-        
-        return stripeAccountId;
+        const accessToken = response.access_token; 
+        const refreshToken = response.refresh_token; 
+        const stripeAccountId = response.stripe_user_id; 
+
+        return { accessToken, refreshToken, stripeAccountId };
     } catch (error) {
         throw error;
     }
