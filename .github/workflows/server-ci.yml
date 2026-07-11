@@ -1,0 +1,122 @@
+name: Server CI
+
+on:
+  pull_request:
+    paths:
+      - "Server/**"
+      - "tests/mock-upstream/**"
+      - "deploy/config/**"
+      - "docker-compose.yml"
+      - "scripts/smoke-server.sh"
+      - ".github/workflows/server-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "Server/**"
+      - "tests/mock-upstream/**"
+      - "deploy/config/**"
+      - "docker-compose.yml"
+      - "scripts/smoke-server.sh"
+      - ".github/workflows/server-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: server-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    name: test-and-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: Server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Run tests and checks
+        run: |
+          ./gradlew --no-daemon spotlessCheck
+          ./gradlew --no-daemon test
+          ./gradlew --no-daemon check
+          ./gradlew --no-daemon bootJar
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-test-reports
+          path: |
+            Server/build/reports/tests/
+            Server/build/test-results/
+          retention-days: 14
+
+      - name: Upload boot JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: autoapi-server-jar
+          path: Server/build/libs/*-SNAPSHOT.jar
+          retention-days: 14
+
+  compose-validation:
+    name: compose-validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate docker compose
+        run: docker compose config
+
+  integration:
+    name: integration
+    runs-on: ubuntu-latest
+    needs: test-and-build
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download boot JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: autoapi-server-jar
+          path: Server/build/libs
+
+      - name: Start compose stack
+        run: docker compose up --build -d
+
+      - name: Wait for readiness
+        run: |
+          set -euo pipefail
+          ready=false
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://localhost:8080/readyz; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+          if [ "${ready}" != "true" ]; then
+            docker compose logs
+            exit 1
+          fi
+
+      - name: Run smoke assertions
+        env:
+          SMOKE_SKIP_UP: "true"
+        run: ./scripts/smoke-server.sh
+
+      - name: Compose cleanup
+        if: always()
+        run: docker compose down -v

@@ -1,0 +1,34 @@
+services:
+  upstream-v1:
+    build:
+      context: ./tests/mock-upstream
+    ports:
+      - "9080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/v1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  gateway:
+    build:
+      context: ./Server
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./deploy/config/runtime.json:/config/runtime.json:ro
+    command:
+      - "--autoapi.config.path=/config/runtime.json"
+    depends_on:
+      upstream-v1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+
+networks:
+  default:
+    name: autoapi-phase1
