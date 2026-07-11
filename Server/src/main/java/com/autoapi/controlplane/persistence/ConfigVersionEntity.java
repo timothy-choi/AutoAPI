@@ -14,4 +14,5 @@ public record ConfigVersionEntity(
     @Column("content_hash") String contentHash,
     @Column("config_snapshot") String configSnapshot,
     String message,
-    @Column("created_at") OffsetDateTime createdAt) {}
+    @Column("created_at") OffsetDateTime createdAt)
+    implements NewEntity {}

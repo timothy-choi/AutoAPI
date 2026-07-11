@@ -7,6 +7,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -32,7 +33,10 @@ public class ProjectService {
         .save(entity)
         .onErrorMap(
             DataIntegrityViolationException.class,
-            ex -> ControlPlaneException.conflict("Project name already exists"));
+            ex -> ControlPlaneException.conflict("Project name already exists"))
+        .onErrorMap(
+            DataAccessException.class,
+            ex -> ControlPlaneException.internal("Failed to create project"));
   }
 
   public Flux<ProjectEntity> list() {

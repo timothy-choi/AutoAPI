@@ -109,7 +109,8 @@ public class ControlPlaneRouter {
                   projectService
                       .create(body.name(), body.description())
                       .flatMap(entity -> created(ProjectResponse.from(entity))))
-          .onErrorResume(ControlPlaneException.class, this::error);
+          .onErrorResume(ControlPlaneException.class, this::error)
+          .onErrorResume(this::unexpectedError);
     }
 
     Mono<ServerResponse> listProjects(ServerRequest request) {
@@ -118,7 +119,8 @@ public class ControlPlaneRouter {
           .map(ProjectResponse::from)
           .collectList()
           .flatMap(list -> ServerResponse.ok().bodyValue(list))
-          .onErrorResume(ControlPlaneException.class, this::error);
+          .onErrorResume(ControlPlaneException.class, this::error)
+          .onErrorResume(this::unexpectedError);
     }
 
     Mono<ServerResponse> getProject(ServerRequest request) {
@@ -302,6 +304,10 @@ public class ControlPlaneRouter {
       return ServerResponse.status(ex.status())
           .contentType(MediaType.APPLICATION_JSON)
           .bodyValue(Map.of("error", errorBody));
+    }
+
+    private Mono<ServerResponse> unexpectedError(Throwable ex) {
+      return error(ControlPlaneException.internal(ex.getMessage()));
     }
 
     private static UUID uuid(ServerRequest request, String name) {

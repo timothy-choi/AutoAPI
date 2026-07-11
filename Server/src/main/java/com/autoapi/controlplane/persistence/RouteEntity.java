@@ -17,4 +17,5 @@ public record RouteEntity(
     @Column("upstream_pool_id") UUID upstreamPoolId,
     boolean enabled,
     @Column("created_at") OffsetDateTime createdAt,
-    @Column("updated_at") OffsetDateTime updatedAt) {}
+    @Column("updated_at") OffsetDateTime updatedAt)
+    implements NewEntity {}

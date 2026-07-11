@@ -13,4 +13,5 @@ public record UpstreamPoolEntity(
     String name,
     @Column("load_balancing") String loadBalancing,
     @Column("created_at") OffsetDateTime createdAt,
-    @Column("updated_at") OffsetDateTime updatedAt) {}
+    @Column("updated_at") OffsetDateTime updatedAt)
+    implements NewEntity {}

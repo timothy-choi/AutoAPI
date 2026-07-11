@@ -24,12 +24,25 @@ public class ControlPlaneStartupVerifier implements ApplicationRunner {
   @Override
   public void run(ApplicationArguments args) {
     for (int attempt = 0; attempt < 60; attempt++) {
-      if (Boolean.TRUE.equals(pingDatabase())) {
+      if (Boolean.TRUE.equals(pingDatabase()) && Boolean.TRUE.equals(schemaReady())) {
         return;
       }
       sleepQuietly(500L);
     }
-    throw new IllegalStateException("PostgreSQL is not reachable via R2DBC after startup retries");
+    throw new IllegalStateException(
+        "PostgreSQL is not reachable or control-plane schema is missing after startup retries");
+  }
+
+  private Boolean schemaReady() {
+    return databaseClient
+        .sql("SELECT to_regclass('public.projects') AS projects_table")
+        .fetch()
+        .one()
+        .map(row -> row.get("projects_table") != null)
+        .defaultIfEmpty(false)
+        .onErrorReturn(false)
+        .blockOptional(Duration.ofSeconds(5))
+        .orElse(false);
   }
 
   private Boolean pingDatabase() {

@@ -16,4 +16,5 @@ public record ApiEntity(
     boolean enabled,
     @Column("desired_config_version") Long desiredConfigVersion,
     @Column("created_at") OffsetDateTime createdAt,
-    @Column("updated_at") OffsetDateTime updatedAt) {}
+    @Column("updated_at") OffsetDateTime updatedAt)
+    implements NewEntity {}

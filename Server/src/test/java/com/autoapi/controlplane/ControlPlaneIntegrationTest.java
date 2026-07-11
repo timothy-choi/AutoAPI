@@ -28,7 +28,9 @@ public abstract class ControlPlaneIntegrationTest {
           .withDatabaseName("autoapi")
           .withUsername("autoapi")
           .withPassword("autoapi")
-          .waitingFor(Wait.forListeningPort())
+          .waitingFor(
+              Wait.forLogMessage(".*database system is ready to accept connections.*", 1)
+                  .withStartupTimeout(Duration.ofMinutes(2)))
           .withStartupTimeout(Duration.ofMinutes(2));
 
   protected static final java.nio.file.Path tempDir;
