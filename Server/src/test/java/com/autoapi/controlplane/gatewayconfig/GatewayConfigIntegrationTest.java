@@ -1,5 +1,6 @@
 package com.autoapi.controlplane.gatewayconfig;
 
+import com.autoapi.controlplane.ControlPlaneDatabaseCleaner;
 import com.autoapi.controlplane.ControlPlaneIntegrationTest;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -8,21 +9,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.r2dbc.core.DatabaseClient;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers(disabledWithoutDocker = true)
 class GatewayConfigIntegrationTest extends ControlPlaneIntegrationTest {
 
   @Autowired DatabaseClient databaseClient;
 
   @BeforeEach
   void cleanDatabase() {
-    databaseClient.sql("DELETE FROM config_versions").fetch().rowsUpdated().block();
-    databaseClient.sql("DELETE FROM routes").fetch().rowsUpdated().block();
-    databaseClient.sql("DELETE FROM upstream_targets").fetch().rowsUpdated().block();
-    databaseClient.sql("DELETE FROM upstream_pools").fetch().rowsUpdated().block();
-    databaseClient.sql("DELETE FROM apis").fetch().rowsUpdated().block();
-    databaseClient.sql("DELETE FROM projects").fetch().rowsUpdated().block();
+    ControlPlaneDatabaseCleaner.cleanAll(databaseClient);
   }
 
   @Test

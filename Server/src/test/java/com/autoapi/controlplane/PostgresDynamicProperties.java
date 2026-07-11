@@ -5,8 +5,8 @@ import org.springframework.test.context.DynamicPropertySource;
 
 /**
  * Spring discovers {@link DynamicPropertySource} on the concrete test class and its interfaces, but
- * not on superclass methods. This interface wires Testcontainers PostgreSQL for all control plane
- * integration tests.
+ * not on superclass methods. This interface wires the shared singleton Testcontainers PostgreSQL
+ * instance for all control plane integration tests.
  */
 public interface PostgresDynamicProperties {
 

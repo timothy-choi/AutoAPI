@@ -37,6 +37,7 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    maxParallelForks = 1
 }
 
 tasks.named("check") {
