@@ -161,7 +161,9 @@ If JSON serialization fails unexpectedly, the gateway returns a constant safe fa
 
 **Trigger scope:** every relevant push to any branch (e.g. `phase1-dev`, `feature/routing`, `fix/proxy-host`) runs validation workflows. Changes under `server-old/**` alone do not trigger Server CI or Container workflows.
 
-**Container integrity:** the container workflow builds one local image (`autoapi-server:ci`), smoke-tests that exact image, then tags and pushes it to GHCR when publication is eligible. Feature branches and pull requests never publish images.
+**Container integrity:** the container workflow builds one local image (`autoapi-server:ci`), scans it with Trivy, smoke-tests that exact image, then tags and pushes it to GHCR when publication is eligible. Feature branches and pull requests never publish images.
+
+**Container vulnerability scan (Phase 1):** Trivy scans `autoapi-server:ci` for **HIGH** and **CRITICAL** findings, ignores unfixed issues, and reports results in the workflow log. `exit-code: "0"` is intentional — discovered vulnerabilities are reported but do not fail the workflow or block Phase 1 publication. Scanner execution failures (missing image, invalid configuration, startup failure) still fail the job.
 
 ### Recommended branch protection checks (enable in GitHub settings)
 
