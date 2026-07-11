@@ -1,0 +1,219 @@
+name: Server Container
+
+on:
+  pull_request:
+    paths:
+      - "Server/**"
+      - "tests/mock-upstream/**"
+      - "deploy/config/**"
+      - "docker-compose.yml"
+      - "scripts/**"
+      - ".github/workflows/server-container.yml"
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*"
+    paths:
+      - "Server/**"
+      - "tests/mock-upstream/**"
+      - "deploy/config/**"
+      - "docker-compose.yml"
+      - "scripts/**"
+      - ".github/workflows/server-container.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: server-container-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: Server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Verify Java build
+        run: |
+          ./gradlew --no-daemon spotlessCheck
+          ./gradlew --no-daemon test
+          ./gradlew --no-daemon check
+          ./gradlew --no-daemon bootJar
+
+  container:
+    name: container
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Publication tags are computed here but applied only after smoke validation.
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/autoapi-server
+          tags: |
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=sha-,format=short,enable=${{ github.ref == 'refs/heads/main' }}
+            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{major}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Login to GHCR
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build once, load locally, scan and smoke-test this exact image, then tag/push if eligible.
+      - name: Build candidate image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./Server
+          file: ./Server/Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: autoapi-server:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: autoapi-server:ci
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Remove stale smoke resources
+        run: |
+          docker rm -f autoapi-gateway upstream-v1 autoapi-postgres || true
+          docker volume rm autoapi-postgres-smoke || true
+          docker network rm autoapi-smoke || true
+
+      - name: Smoke test built image
+        run: |
+          set -euo pipefail
+          docker build -t mock-upstream:ci tests/mock-upstream
+          docker network create autoapi-smoke
+          docker run -d --name autoapi-postgres --network autoapi-smoke \
+            -e POSTGRES_DB=autoapi \
+            -e POSTGRES_USER=autoapi \
+            -e POSTGRES_PASSWORD=autoapi \
+            -v autoapi-postgres-smoke:/var/lib/postgresql/data \
+            --health-cmd="pg_isready -U autoapi -d autoapi" \
+            --health-interval=5s \
+            --health-timeout=3s \
+            --health-retries=20 \
+            postgres:16-alpine
+          postgres_ready=false
+          for _ in $(seq 1 30); do
+            if [ "$(docker inspect -f '{{.State.Health.Status}}' autoapi-postgres 2>/dev/null || echo none)" = "healthy" ]; then
+              postgres_ready=true
+              break
+            fi
+            sleep 2
+          done
+          if [ "${postgres_ready}" != "true" ]; then
+            echo "PostgreSQL did not become healthy" >&2
+            docker logs autoapi-postgres
+            exit 1
+          fi
+          docker run -d --name upstream-v1 --network autoapi-smoke mock-upstream:ci
+          cat > /tmp/runtime-smoke.json <<'EOF'
+          {
+            "gateway": { "listenAddress": "0.0.0.0", "port": 8080 },
+            "routes": [{
+              "id": "orders-route",
+              "host": "api.autoapi.local",
+              "pathPrefix": "/v1/orders",
+              "methods": ["GET", "POST"],
+              "upstream": { "url": "http://upstream-v1:8080" }
+            }]
+          }
+          EOF
+          docker run -d --name autoapi-gateway --network autoapi-smoke -p 18081:8080 \
+            -e SPRING_DATASOURCE_URL=jdbc:postgresql://autoapi-postgres:5432/autoapi \
+            -e SPRING_DATASOURCE_USERNAME=autoapi \
+            -e SPRING_DATASOURCE_PASSWORD=autoapi \
+            -e SPRING_R2DBC_URL=r2dbc:postgresql://autoapi-postgres:5432/autoapi?sslMode=disable \
+            -e SPRING_R2DBC_USERNAME=autoapi \
+            -e SPRING_R2DBC_PASSWORD=autoapi \
+            -e AUTOAPI_CONTROLPLANE_ENABLED=true \
+            -v /tmp/runtime-smoke.json:/config/runtime.json:ro \
+            autoapi-server:ci --autoapi.config.path=/config/runtime.json
+          ready=false
+          for _ in $(seq 1 30); do
+            if ! docker ps -q -f name=autoapi-gateway | grep -q .; then
+              echo "Gateway container exited during readiness polling" >&2
+              docker logs autoapi-postgres
+              docker logs autoapi-gateway
+              exit 1
+            fi
+            if curl --fail --silent http://localhost:18081/readyz; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+          if [ "${ready}" != "true" ]; then
+            echo "Gateway did not become ready" >&2
+            docker logs autoapi-postgres
+            docker logs autoapi-gateway
+            exit 1
+          fi
+          curl --fail --silent http://localhost:18081/healthz
+          curl --fail --silent http://localhost:18081/readyz
+          curl --fail --silent -H 'Host: api.autoapi.local' http://localhost:18081/v1/orders/1 | grep path
+          curl --fail --silent -H 'Host: api.autoapi.local' http://localhost:18081/v1/orders/1 | grep receivedHost
+          curl --fail --silent http://localhost:18081/api/v1/projects | grep -E '^\[|^\[\]$'
+
+      - name: Smoke environment cleanup
+        if: always()
+        run: |
+          docker rm -f autoapi-gateway upstream-v1 autoapi-postgres || true
+          docker volume rm autoapi-postgres-smoke || true
+          docker network rm autoapi-smoke || true
+
+      - name: Push validated image
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        run: |
+          set -euo pipefail
+          if [ -z "${{ steps.meta.outputs.tags }}" ]; then
+            echo "No publication tags configured for ref ${{ github.ref }}"
+            exit 1
+          fi
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            docker tag autoapi-server:ci "$tag"
+            docker push "$tag"
+          done <<< "${{ steps.meta.outputs.tags }}"

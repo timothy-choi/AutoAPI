@@ -1,0 +1,17 @@
+{
+  "gateway": {
+    "listenAddress": "0.0.0.0",
+    "port": 8080
+  },
+  "routes": [
+    {
+      "id": "orders-route",
+      "host": "api.autoapi.local",
+      "pathPrefix": "/v1/orders",
+      "methods": ["GET", "POST"],
+      "upstream": {
+        "url": "http://upstream-v1:8080"
+      }
+    }
+  ]
+}
