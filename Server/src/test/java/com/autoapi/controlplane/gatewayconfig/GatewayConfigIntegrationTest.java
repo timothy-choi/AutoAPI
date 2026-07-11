@@ -8,7 +8,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.r2dbc.core.DatabaseClient;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
+@Testcontainers(disabledWithoutDocker = true)
 class GatewayConfigIntegrationTest extends ControlPlaneIntegrationTest {
 
   @Autowired DatabaseClient databaseClient;

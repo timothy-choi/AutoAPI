@@ -47,6 +47,9 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Verify Docker for Testcontainers
+        run: docker info
+
       - name: Run tests and checks
         run: |
           ./gradlew --no-daemon spotlessCheck

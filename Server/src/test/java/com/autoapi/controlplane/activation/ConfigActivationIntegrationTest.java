@@ -7,7 +7,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.r2dbc.core.DatabaseClient;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
+@Testcontainers(disabledWithoutDocker = true)
 class ConfigActivationIntegrationTest extends ControlPlaneIntegrationTest {
 
   @Autowired DatabaseClient databaseClient;
