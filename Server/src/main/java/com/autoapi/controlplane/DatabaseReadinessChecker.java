@@ -21,9 +21,10 @@ public class DatabaseReadinessChecker {
   public Mono<Boolean> isDatabaseReady() {
     return databaseClient
         .sql("SELECT 1")
-        .map(row -> row.get(0, Integer.class))
+        .fetch()
         .one()
-        .map(result -> result != null && result == 1)
+        .map(row -> true)
+        .defaultIfEmpty(false)
         .onErrorReturn(false);
   }
 }

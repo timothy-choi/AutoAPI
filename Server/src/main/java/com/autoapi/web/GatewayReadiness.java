@@ -12,7 +12,6 @@ public class GatewayReadiness {
 
   private final Optional<DatabaseReadinessChecker> databaseReadinessChecker;
   private volatile boolean applicationReady;
-  private volatile boolean databaseReady = true;
 
   public GatewayReadiness(Optional<DatabaseReadinessChecker> databaseReadinessChecker) {
     this.databaseReadinessChecker = databaseReadinessChecker;
@@ -20,19 +19,21 @@ public class GatewayReadiness {
 
   @EventListener(ApplicationReadyEvent.class)
   public void onReady() {
-    databaseReadinessChecker.ifPresentOrElse(
-        checker ->
-            databaseReady =
-                checker
-                    .isDatabaseReady()
-                    .onErrorReturn(false)
-                    .blockOptional(Duration.ofSeconds(30))
-                    .orElse(false),
-        () -> databaseReady = true);
     applicationReady = true;
   }
 
   public boolean isReady() {
-    return applicationReady && databaseReady;
+    if (!applicationReady) {
+      return false;
+    }
+    return databaseReadinessChecker
+        .map(
+            checker ->
+                checker
+                    .isDatabaseReady()
+                    .onErrorReturn(false)
+                    .blockOptional(Duration.ofSeconds(2))
+                    .orElse(false))
+        .orElse(true);
   }
 }

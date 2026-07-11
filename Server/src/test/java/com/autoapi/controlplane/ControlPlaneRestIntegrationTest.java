@@ -2,33 +2,10 @@ package com.autoapi.controlplane;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
 class ControlPlaneRestIntegrationTest extends ControlPlaneIntegrationTest {
-
-  @BeforeEach
-  void awaitControlPlaneReady() {
-    AssertionError lastFailure = null;
-    for (int attempt = 0; attempt < 60; attempt++) {
-      try {
-        webTestClient.get().uri("/readyz").exchange().expectStatus().isOk();
-        webTestClient.get().uri("/api/v1/projects").exchange().expectStatus().isOk();
-        return;
-      } catch (AssertionError error) {
-        lastFailure = error;
-        try {
-          Thread.sleep(500L);
-        } catch (InterruptedException interrupted) {
-          Thread.currentThread().interrupt();
-          throw new IllegalStateException(
-              "Interrupted while waiting for control plane", interrupted);
-        }
-      }
-    }
-    fail(lastFailure);
-  }
 
   @Test
   void fullControlPlaneFlow() {
