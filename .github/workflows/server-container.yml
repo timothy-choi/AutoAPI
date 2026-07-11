@@ -93,7 +93,7 @@ jobs:
 
       # Build once, load locally, scan and smoke-test this exact image, then tag/push if eligible.
       - name: Build candidate image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./Server
           file: ./Server/Dockerfile
