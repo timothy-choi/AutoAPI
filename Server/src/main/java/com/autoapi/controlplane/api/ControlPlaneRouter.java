@@ -1,5 +1,6 @@
 package com.autoapi.controlplane.api;
 
+import com.autoapi.controlplane.activation.ConfigActivationService;
 import com.autoapi.controlplane.apidefinition.ApiDefinitionService;
 import com.autoapi.controlplane.configversion.ConfigVersionService;
 import com.autoapi.controlplane.configversion.RuntimeContentHasher;
@@ -46,6 +47,7 @@ public class ControlPlaneRouter {
       UpstreamService upstreamService,
       RouteService routeService,
       ConfigVersionService configVersionService,
+      ConfigActivationService configActivationService,
       ObjectMapper objectMapper) {
     ControlPlaneHandler handler =
         new ControlPlaneHandler(
@@ -54,6 +56,7 @@ public class ControlPlaneRouter {
             upstreamService,
             routeService,
             configVersionService,
+            configActivationService,
             objectMapper);
     return RouterFunctions.route()
         .path(
@@ -75,7 +78,10 @@ public class ControlPlaneRouter {
                     .POST("/apis/{apiId}/config/validate", handler::validateConfig)
                     .POST("/apis/{apiId}/config/versions", handler::publishConfig)
                     .GET("/apis/{apiId}/config/versions", handler::listConfigVersions)
-                    .GET("/apis/{apiId}/config/versions/{version}", handler::getConfigVersion))
+                    .GET("/apis/{apiId}/config/versions/{version}", handler::getConfigVersion)
+                    .POST(
+                        "/apis/{apiId}/config/versions/{version}/activate",
+                        handler::activateConfig))
         .build();
   }
 
@@ -88,6 +94,7 @@ public class ControlPlaneRouter {
     private final UpstreamService upstreamService;
     private final RouteService routeService;
     private final ConfigVersionService configVersionService;
+    private final ConfigActivationService configActivationService;
     private final ObjectMapper objectMapper;
 
     ControlPlaneHandler(
@@ -96,12 +103,14 @@ public class ControlPlaneRouter {
         UpstreamService upstreamService,
         RouteService routeService,
         ConfigVersionService configVersionService,
+        ConfigActivationService configActivationService,
         ObjectMapper objectMapper) {
       this.projectService = projectService;
       this.apiDefinitionService = apiDefinitionService;
       this.upstreamService = upstreamService;
       this.routeService = routeService;
       this.configVersionService = configVersionService;
+      this.configActivationService = configActivationService;
       this.objectMapper = objectMapper;
     }
 
@@ -260,6 +269,32 @@ public class ControlPlaneRouter {
           .onErrorResume(ControlPlaneException.class, this::error);
     }
 
+    Mono<ServerResponse> activateConfig(ServerRequest request) {
+      long version = Long.parseLong(request.pathVariable("version"));
+      return request
+          .bodyToMono(ActivateConfigRequest.class)
+          .defaultIfEmpty(new ActivateConfigRequest(null))
+          .flatMap(
+              body ->
+                  configActivationService
+                      .activate(uuid(request, "apiId"), version, body.expectedDesiredVersion())
+                      .flatMap(
+                          result ->
+                              ServerResponse.ok()
+                                  .bodyValue(
+                                      Map.of(
+                                          "apiId",
+                                          result.apiId(),
+                                          "desiredVersion",
+                                          result.desiredVersion(),
+                                          "contentHash",
+                                          result.contentHash(),
+                                          "activatedAt",
+                                          result.activatedAt().toString()))))
+          .onErrorResume(ControlPlaneException.class, this::error)
+          .onErrorResume(ex -> unexpectedError(request, ex));
+    }
+
     Mono<ServerResponse> getConfigVersion(ServerRequest request) {
       long version = Long.parseLong(request.pathVariable("version"));
       return configVersionService
@@ -345,6 +380,8 @@ public class ControlPlaneRouter {
       Boolean enabled) {}
 
   record PublishConfigRequest(String message) {}
+
+  record ActivateConfigRequest(Long expectedDesiredVersion) {}
 
   record ProjectResponse(
       UUID id, String name, String description, String createdAt, String updatedAt) {

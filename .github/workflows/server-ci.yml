@@ -47,6 +47,9 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Verify Docker for Testcontainers
+        run: docker info
+
       - name: Run tests and checks
         run: |
           ./gradlew --no-daemon spotlessCheck
@@ -88,28 +91,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Start compose stack
-        run: docker compose up --build -d
-
-      - name: Wait for readiness
-        run: |
-          set -euo pipefail
-          ready=false
-          for _ in $(seq 1 30); do
-            if curl --fail --silent http://localhost:8080/readyz; then
-              ready=true
-              break
-            fi
-            sleep 2
-          done
-          if [ "${ready}" != "true" ]; then
-            docker compose logs
-            exit 1
-          fi
+      - name: Bootstrap Phase 2B stack
+        run: ./scripts/bootstrap-phase2b.sh
 
       - name: Run smoke assertions
         env:
           SMOKE_SKIP_UP: "true"
+          SMOKE_CONTROL_PLANE_URL: http://localhost:8081
         run: |
           ./scripts/smoke-server.sh
           ./scripts/smoke-control-plane.sh

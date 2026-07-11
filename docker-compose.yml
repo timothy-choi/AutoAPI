@@ -18,6 +18,8 @@ services:
   upstream-v1:
     build:
       context: ./tests/mock-upstream
+    environment:
+      UPSTREAM_ID: upstream-v1
     ports:
       - "9080:8080"
     healthcheck:
@@ -26,27 +28,35 @@ services:
       timeout: 3s
       retries: 5
 
-  gateway:
+  upstream-v2:
+    build:
+      context: ./tests/mock-upstream
+    environment:
+      UPSTREAM_ID: upstream-v2
+    ports:
+      - "9081:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/v1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  control-plane:
     build:
       context: ./Server
     ports:
-      - "8080:8080"
+      - "8081:8080"
     environment:
+      AUTOAPI_ROLE: control-plane
+      AUTOAPI_CONTROLPLANE_ENABLED: "true"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/autoapi
       SPRING_DATASOURCE_USERNAME: autoapi
       SPRING_DATASOURCE_PASSWORD: autoapi
       SPRING_R2DBC_URL: r2dbc:postgresql://postgres:5432/autoapi?sslMode=disable
       SPRING_R2DBC_USERNAME: autoapi
       SPRING_R2DBC_PASSWORD: autoapi
-      AUTOAPI_CONTROLPLANE_ENABLED: "true"
-    volumes:
-      - ./deploy/config/runtime.json:/config/runtime.json:ro
-    command:
-      - "--autoapi.config.path=/config/runtime.json"
     depends_on:
       postgres:
-        condition: service_healthy
-      upstream-v1:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/readyz"]
@@ -55,9 +65,35 @@ services:
       retries: 15
       start_period: 40s
 
+  gateway:
+    build:
+      context: ./Server
+    ports:
+      - "8080:8080"
+    environment:
+      AUTOAPI_ROLE: gateway
+      AUTOAPI_CONTROLPLANE_ENABLED: "false"
+      AUTOAPI_GATEWAY_CONFIG_SOURCE: control-plane
+      AUTOAPI_CONTROL_PLANE_BASE_URL: http://control-plane:8080
+      AUTOAPI_GATEWAY_API_ID: ${AUTOAPI_GATEWAY_API_ID:-}
+      AUTOAPI_GATEWAY_POLL_INTERVAL: 3s
+    depends_on:
+      control-plane:
+        condition: service_healthy
+      upstream-v1:
+        condition: service_healthy
+      upstream-v2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+      start_period: 60s
+
 volumes:
   autoapi-postgres-data:
 
 networks:
   default:
-    name: autoapi-phase1
+    name: autoapi-phase2b

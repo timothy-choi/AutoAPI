@@ -8,9 +8,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.r2dbc.core.DatabaseClient;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerResponse;
 
+@TestPropertySource(properties = {"autoapi.role=combined"})
 class ControlPlaneRestIntegrationTest extends ControlPlaneIntegrationTest {
 
   @Autowired DatabaseClient databaseClient;
@@ -34,12 +36,7 @@ class ControlPlaneRestIntegrationTest extends ControlPlaneIntegrationTest {
 
   @BeforeEach
   void cleanDatabase() {
-    databaseClient.sql("DELETE FROM config_versions").fetch().rowsUpdated().block();
-    databaseClient.sql("DELETE FROM routes").fetch().rowsUpdated().block();
-    databaseClient.sql("DELETE FROM upstream_targets").fetch().rowsUpdated().block();
-    databaseClient.sql("DELETE FROM upstream_pools").fetch().rowsUpdated().block();
-    databaseClient.sql("DELETE FROM apis").fetch().rowsUpdated().block();
-    databaseClient.sql("DELETE FROM projects").fetch().rowsUpdated().block();
+    ControlPlaneDatabaseCleaner.cleanAll(databaseClient);
   }
 
   @Test

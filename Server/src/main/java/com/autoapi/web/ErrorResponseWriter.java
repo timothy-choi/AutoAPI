@@ -30,6 +30,14 @@ public class ErrorResponseWriter {
     this.objectMapper = objectMapper;
   }
 
+  public Mono<Void> gatewayNotReady(ServerWebExchange exchange) {
+    return write(
+        exchange,
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "GATEWAY_NOT_READY",
+        "No runtime configuration has been activated");
+  }
+
   public Mono<Void> routeNotFound(ServerWebExchange exchange) {
     return write(exchange, HttpStatus.NOT_FOUND, "ROUTE_NOT_FOUND", "No matching route was found");
   }

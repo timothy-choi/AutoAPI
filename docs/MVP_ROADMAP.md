@@ -125,35 +125,43 @@ Phase 2A lives under `Server/src/main/java/com/autoapi/controlplane/` in the sam
 
 ### Phase 2B — Gateway Polling and Atomic Activation
 
+**Status: implemented (Java/WebFlux, `Server/`).**
+
 #### Goal
 
 Single gateway polls control plane, validates snapshot, atomically activates with request-scoped config capture.
 
 #### Implementation Tasks
 
-- [ ] `GET /gateway-config/{api_id}/desired` and `GET /gateway-config/{api_id}/versions/{version}`
-- [ ] Gateway poller with ETag / `If-None-Match`
-- [ ] Gateway `atomic.Pointer[RuntimeConfig]` — build and validate before `Store()`
-- [ ] Request handler: `cfg := Load()` once; pass through context to all stages
-- [ ] `POST /config/versions/{version}/activate` (operator activates; gateway picks up on poll)
-- [ ] Remove file-based config from Phase 1
+- [x] `GET /api/v1/gateway-config/{apiId}/desired` and `GET /api/v1/gateway-config/{apiId}/versions/{version}`
+- [x] Gateway poller with ETag / `If-None-Match`
+- [x] Gateway `ActiveRuntimeConfigHolder` (`AtomicReference`) — validate before activate
+- [x] Request handler captures active bundle once per request
+- [x] `POST /api/v1/apis/{apiId}/config/versions/{version}/activate` with optimistic concurrency
+- [x] Static file config preserved (`autoapi.gateway.config-source=static`); control-plane polling mode added
 
 #### Components/Files Affected
 
-- `gateway/internal/config/poller.go`
-- `gateway/internal/config/activate.go`
-- `gateway/internal/controlplane/client.go`
-- `control-plane/app/routers/gateway_config.py`
+- `Server/src/main/java/com/autoapi/gateway/config/ControlPlaneConfigPoller.java`
+- `Server/src/main/java/com/autoapi/gateway/config/ActiveRuntimeConfigHolder.java`
+- `Server/src/main/java/com/autoapi/controlplane/activation/ConfigActivationService.java`
+- `Server/src/main/java/com/autoapi/controlplane/gatewayconfig/GatewayConfigRouter.java`
+- `docker-compose.yml`, `scripts/bootstrap-phase2b.sh`
 
 #### Tests
 
-- [ ] Unit: concurrent Load during Store (no torn reads within request)
-- [ ] Integration: activate v1 → gateway serves routes from v1
+- [x] Unit/integration: activation, ETag/304, poller failure retention, hash verification
+- [x] Integration: bootstrap + CI activate v1 → gateway serves control-plane config
 
 #### Definition of Done
 
 - Gateway activates config from control plane without restart
 - Each request uses one consistent snapshot for all policy stages
+- Rollback by activating a prior immutable version number
+
+#### Not in Phase 2B
+
+Gateway registration, heartbeats, ACK/NACK, convergence, Redis, auth, rate limiting (Phase 2C+)
 
 ---
 

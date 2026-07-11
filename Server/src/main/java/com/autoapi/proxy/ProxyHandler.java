@@ -3,6 +3,7 @@ package com.autoapi.proxy;
 import com.autoapi.config.HostNormalizer;
 import com.autoapi.config.RouteConfig;
 import com.autoapi.config.RuntimeConfig;
+import com.autoapi.gateway.config.ActiveRuntimeBundle;
 import com.autoapi.middleware.RequestIdSupport;
 import com.autoapi.routing.RouteMatchResult;
 import com.autoapi.routing.RouteMatcher;
@@ -29,12 +30,10 @@ public class ProxyHandler {
 
   private static final Logger log = LoggerFactory.getLogger(ProxyHandler.class);
 
-  private final RouteMatcher routeMatcher;
   private final WebClient webClient;
   private final ErrorResponseWriter errorWriter;
 
-  public ProxyHandler(RuntimeConfig runtimeConfig, ErrorResponseWriter errorWriter) {
-    this.routeMatcher = new RouteMatcher(runtimeConfig);
+  public ProxyHandler(ErrorResponseWriter errorWriter) {
     this.errorWriter = errorWriter;
     this.webClient =
         WebClient.builder()
@@ -45,10 +44,10 @@ public class ProxyHandler {
   }
 
   public Mono<Void> handle(ServerWebExchange exchange) {
+    ActiveRuntimeBundle bundle = exchange.getAttribute(GatewayAttributes.ACTIVE_RUNTIME_BUNDLE);
     RuntimeConfig config = exchange.getAttribute(GatewayAttributes.RUNTIME_CONFIG);
-    if (config == null) {
-      return errorWriter.internalError(
-          exchange, new IllegalStateException("Runtime configuration unavailable"));
+    if (bundle == null || config == null) {
+      return errorWriter.gatewayNotReady(exchange);
     }
 
     ServerHttpRequest request = exchange.getRequest();
@@ -58,6 +57,7 @@ public class ProxyHandler {
       return errorWriter.internalError(exchange, new IllegalStateException("Missing HTTP method"));
     }
 
+    RouteMatcher routeMatcher = new RouteMatcher(config);
     RouteMatchResult match =
         routeMatcher.match(
             Optional.ofNullable(request.getHeaders().getFirst(HttpHeaders.HOST)).orElse(""),
@@ -73,16 +73,14 @@ public class ProxyHandler {
 
     RouteConfig route = match.matchedRoute().orElseThrow();
     exchange.getAttributes().put(GatewayAttributes.MATCHED_ROUTE_ID, route.id());
-    exchange
-        .getAttributes()
-        .put(GatewayAttributes.UPSTREAM_AUTHORITY, route.upstream().url().getAuthority());
+    URI upstreamUri = bundle.selectUpstream(route);
+    exchange.getAttributes().put(GatewayAttributes.UPSTREAM_AUTHORITY, upstreamUri.getAuthority());
 
-    URI targetUri = buildUpstreamUri(route, request);
-    return forward(exchange, route, targetUri, requestId);
+    URI targetUri = buildUpstreamUri(upstreamUri, request);
+    return forward(exchange, upstreamUri.getAuthority(), targetUri, requestId);
   }
 
-  private URI buildUpstreamUri(RouteConfig route, ServerHttpRequest request) {
-    URI base = route.upstream().url();
+  private URI buildUpstreamUri(URI base, ServerHttpRequest request) {
     String path = request.getURI().getRawPath();
     String query = request.getURI().getRawQuery();
     StringBuilder builder = new StringBuilder();
@@ -94,9 +92,8 @@ public class ProxyHandler {
   }
 
   private Mono<Void> forward(
-      ServerWebExchange exchange, RouteConfig route, URI targetUri, String requestId) {
+      ServerWebExchange exchange, String upstreamHost, URI targetUri, String requestId) {
     ServerHttpRequest incoming = exchange.getRequest();
-    String upstreamHost = route.upstream().url().getAuthority();
     String normalizedClientHost = normalizedClientHost(incoming);
 
     return webClient

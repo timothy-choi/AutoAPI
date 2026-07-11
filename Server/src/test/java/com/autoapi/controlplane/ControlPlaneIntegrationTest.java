@@ -6,26 +6,28 @@ import org.junit.jupiter.api.AfterAll;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    properties = {"autoapi.controlplane.enabled=true", "spring.flyway.enabled=true"})
+    properties = {
+      "autoapi.role=control-plane",
+      "autoapi.controlplane.enabled=true",
+      "spring.flyway.enabled=true"
+    })
 @AutoConfigureWebTestClient
-@Testcontainers(disabledWithoutDocker = true)
 @ContextConfiguration(initializers = ControlPlaneIntegrationTest.Initializer.class)
-public abstract class ControlPlaneIntegrationTest {
+public abstract class ControlPlaneIntegrationTest implements PostgresDynamicProperties {
 
-  @Container
-  static final PostgreSQLContainer<?> POSTGRES =
+  /**
+   * Singleton PostgreSQL container for all control-plane integration tests in one Gradle JVM.
+   * Started once in the static initializer and not stopped until process exit.
+   */
+  protected static final PostgreSQLContainer<?> POSTGRES =
       new PostgreSQLContainer<>("postgres:16-alpine")
-          .withDatabaseName("autoapi")
+          .withDatabaseName("autoapi_test")
           .withUsername("autoapi")
           .withPassword("autoapi")
           .waitingFor(
@@ -39,6 +41,14 @@ public abstract class ControlPlaneIntegrationTest {
 
   static {
     try {
+      POSTGRES.start();
+    } catch (RuntimeException ex) {
+      throw new IllegalStateException(
+          "Control plane integration tests require a running Docker daemon for PostgreSQL"
+              + " Testcontainers",
+          ex);
+    }
+    try {
       tempDir = java.nio.file.Files.createTempDirectory("autoapi-cp-it");
       upstream = TestUpstream.start();
       configPath = TestUpstream.writeConfig(upstream, tempDir);
@@ -50,22 +60,19 @@ public abstract class ControlPlaneIntegrationTest {
   @org.springframework.beans.factory.annotation.Autowired protected WebTestClient webTestClient;
 
   @AfterAll
-  static void shutdown() {
+  static void shutdownUpstream() {
     upstream.stop();
   }
 
-  @DynamicPropertySource
-  static void postgresProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.r2dbc.url", ControlPlaneIntegrationTest::r2dbcUrl);
-    registry.add("spring.r2dbc.username", POSTGRES::getUsername);
-    registry.add("spring.r2dbc.password", POSTGRES::getPassword);
-    registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-    registry.add("spring.datasource.username", POSTGRES::getUsername);
-    registry.add("spring.datasource.password", POSTGRES::getPassword);
-    registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+  static boolean isPostgresRunning() {
+    return POSTGRES.isRunning();
   }
 
-  private static String r2dbcUrl() {
+  static int postgresMappedPort() {
+    return POSTGRES.getMappedPort(5432);
+  }
+
+  static String r2dbcUrl() {
     return "r2dbc:postgresql://"
         + POSTGRES.getHost()
         + ":"
@@ -73,6 +80,18 @@ public abstract class ControlPlaneIntegrationTest {
         + "/"
         + POSTGRES.getDatabaseName()
         + "?sslMode=disable";
+  }
+
+  static String jdbcUrl() {
+    return POSTGRES.getJdbcUrl();
+  }
+
+  static String postgresUsername() {
+    return POSTGRES.getUsername();
+  }
+
+  static String postgresPassword() {
+    return POSTGRES.getPassword();
   }
 
   static class Initializer
