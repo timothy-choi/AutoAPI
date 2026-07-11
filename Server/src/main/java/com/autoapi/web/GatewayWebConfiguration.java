@@ -7,6 +7,8 @@ import com.autoapi.proxy.ProxyHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -28,9 +30,22 @@ public class GatewayWebConfiguration {
         .GET(
             "/readyz",
             request ->
-                readiness.isReady()
-                    ? ServerResponse.ok().bodyValue(java.util.Map.of("status", "UP"))
-                    : ServerResponse.status(503).bodyValue(java.util.Map.of("status", "DOWN")))
+                readiness
+                    .isReady()
+                    .flatMap(
+                        ready ->
+                            ready
+                                ? ServerResponse.ok()
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .bodyValue(java.util.Map.of("status", "UP"))
+                                : ServerResponse.status(HttpStatus.SERVICE_UNAVAILABLE)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .bodyValue(java.util.Map.of("status", "DOWN")))
+                    .onErrorResume(
+                        ex ->
+                            ServerResponse.status(HttpStatus.SERVICE_UNAVAILABLE)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(java.util.Map.of("status", "DOWN"))))
         .build();
   }
 
