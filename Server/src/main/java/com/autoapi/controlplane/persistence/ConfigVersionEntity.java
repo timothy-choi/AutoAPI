@@ -1,5 +1,6 @@
 package com.autoapi.controlplane.persistence;
 
+import io.r2dbc.postgresql.codec.Json;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.springframework.data.annotation.Id;
@@ -12,7 +13,7 @@ public record ConfigVersionEntity(
     @Column("api_id") UUID apiId,
     long version,
     @Column("content_hash") String contentHash,
-    @Column("config_snapshot") String configSnapshot,
+    @Column("config_snapshot") Json configSnapshot,
     String message,
     @Column("created_at") OffsetDateTime createdAt)
     implements NewEntity {}

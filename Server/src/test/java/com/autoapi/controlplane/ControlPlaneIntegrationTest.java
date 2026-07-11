@@ -57,9 +57,12 @@ public abstract class ControlPlaneIntegrationTest {
   @DynamicPropertySource
   static void postgresProperties(DynamicPropertyRegistry registry) {
     registry.add("spring.r2dbc.url", ControlPlaneIntegrationTest::r2dbcUrl);
+    registry.add("spring.r2dbc.username", POSTGRES::getUsername);
+    registry.add("spring.r2dbc.password", POSTGRES::getPassword);
     registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
     registry.add("spring.datasource.username", POSTGRES::getUsername);
     registry.add("spring.datasource.password", POSTGRES::getPassword);
+    registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
   }
 
   private static String r2dbcUrl() {

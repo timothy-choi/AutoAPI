@@ -18,6 +18,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -79,6 +81,8 @@ public class ControlPlaneRouter {
 
   static final class ControlPlaneHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(ControlPlaneHandler.class);
+
     private final ProjectService projectService;
     private final ApiDefinitionService apiDefinitionService;
     private final UpstreamService upstreamService;
@@ -110,7 +114,7 @@ public class ControlPlaneRouter {
                       .create(body.name(), body.description())
                       .flatMap(entity -> created(ProjectResponse.from(entity))))
           .onErrorResume(ControlPlaneException.class, this::error)
-          .onErrorResume(this::unexpectedError);
+          .onErrorResume(ex -> unexpectedError(request, ex));
     }
 
     Mono<ServerResponse> listProjects(ServerRequest request) {
@@ -120,7 +124,7 @@ public class ControlPlaneRouter {
           .collectList()
           .flatMap(list -> ServerResponse.ok().bodyValue(list))
           .onErrorResume(ControlPlaneException.class, this::error)
-          .onErrorResume(this::unexpectedError);
+          .onErrorResume(ex -> unexpectedError(request, ex));
     }
 
     Mono<ServerResponse> getProject(ServerRequest request) {
@@ -243,7 +247,8 @@ public class ControlPlaneRouter {
                   configVersionService
                       .publish(uuid(request, "apiId"), body.message())
                       .flatMap(entity -> created(ConfigVersionResponse.from(entity))))
-          .onErrorResume(ControlPlaneException.class, this::error);
+          .onErrorResume(ControlPlaneException.class, this::error)
+          .onErrorResume(ex -> unexpectedError(request, ex));
     }
 
     Mono<ServerResponse> listConfigVersions(ServerRequest request) {
@@ -264,7 +269,8 @@ public class ControlPlaneRouter {
                 try {
                   StoredRuntimeSnapshot snapshot =
                       RuntimeContentHasher.canonicalMapper()
-                          .readValue(entity.configSnapshot(), StoredRuntimeSnapshot.class);
+                          .readValue(
+                              entity.configSnapshot().asString(), StoredRuntimeSnapshot.class);
                   return ServerResponse.ok()
                       .bodyValue(ConfigVersionDetailResponse.from(entity, snapshot));
                 } catch (Exception e) {
@@ -306,8 +312,15 @@ public class ControlPlaneRouter {
           .bodyValue(Map.of("error", errorBody));
     }
 
-    private Mono<ServerResponse> unexpectedError(Throwable ex) {
-      return error(ControlPlaneException.internal(ex.getMessage()));
+    private Mono<ServerResponse> unexpectedError(ServerRequest request, Throwable ex) {
+      log.error(
+          "Control plane request failed method={} path={} errorClass={} message={}",
+          request.method(),
+          request.path(),
+          ex.getClass().getName(),
+          ex.getMessage(),
+          ex);
+      return error(ControlPlaneException.internal("An internal control plane error occurred"));
     }
 
     private static UUID uuid(ServerRequest request, String name) {

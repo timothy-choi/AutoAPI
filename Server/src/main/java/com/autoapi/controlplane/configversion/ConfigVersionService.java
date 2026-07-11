@@ -8,6 +8,7 @@ import com.autoapi.controlplane.validation.DraftGraphValidator;
 import com.autoapi.controlplane.validation.ValidationResult;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.r2dbc.postgresql.codec.Json;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
@@ -61,7 +62,7 @@ public class ConfigVersionService {
                             "API_NOT_FOUND", apiId, "API was not found")))));
   }
 
-  @Transactional
+  @Transactional(transactionManager = "connectionFactoryTransactionManager")
   public Mono<ConfigVersionEntity> publish(UUID apiId, String message) {
     return draftGraphService
         .loadByApiId(apiId)
@@ -131,10 +132,12 @@ public class ConfigVersionService {
                           StoredRuntimeSnapshot snapshot =
                               RuntimeConfigCompiler.toStoredSnapshot(
                                   payload, nextVersion, validation.contentHash());
-                          String snapshotJson;
+                          Json snapshotJson;
                           try {
                             snapshotJson =
-                                RuntimeContentHasher.canonicalMapper().writeValueAsString(snapshot);
+                                Json.of(
+                                    RuntimeContentHasher.canonicalMapper()
+                                        .writeValueAsString(snapshot));
                           } catch (JsonProcessingException e) {
                             return Mono.error(
                                 ControlPlaneException.internal("Failed to serialize snapshot"));

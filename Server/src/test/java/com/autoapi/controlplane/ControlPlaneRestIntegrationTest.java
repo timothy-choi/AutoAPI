@@ -2,18 +2,54 @@ package com.autoapi.controlplane;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.r2dbc.core.DatabaseClient;
+import org.springframework.web.reactive.function.server.RouterFunction;
+import org.springframework.web.reactive.function.server.ServerResponse;
 
 class ControlPlaneRestIntegrationTest extends ControlPlaneIntegrationTest {
 
+  @Autowired DatabaseClient databaseClient;
+
+  @Test
+  void controlPlaneRoutesAndSchemaAreAvailable(
+      @Autowired RouterFunction<ServerResponse> controlPlaneRoutes) {
+    assertNotNull(controlPlaneRoutes);
+
+    Long tableCount =
+        databaseClient
+            .sql(
+                "SELECT COUNT(*) AS count FROM information_schema.tables WHERE table_schema ="
+                    + " 'public' AND table_name IN ('projects', 'apis', 'upstream_pools',"
+                    + " 'upstream_targets', 'routes', 'config_versions')")
+            .map(row -> row.get("count", Long.class))
+            .one()
+            .block();
+    assertEquals(6L, tableCount);
+  }
+
+  @BeforeEach
+  void cleanDatabase() {
+    databaseClient.sql("DELETE FROM config_versions").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM routes").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM upstream_targets").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM upstream_pools").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM apis").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM projects").fetch().rowsUpdated().block();
+  }
+
   @Test
   void fullControlPlaneFlow() {
+    String suffix = UUID.randomUUID().toString();
     String projectId =
         extractJsonField(
             postJson(
                 "/api/v1/projects",
-                "{\"name\":\"payments-platform-flow\",\"description\":\"demo\"}"),
+                "{\"name\":\"payments-platform-" + suffix + "\",\"description\":\"demo\"}"),
             "id");
 
     String apiId =
@@ -184,24 +220,91 @@ class ControlPlaneRestIntegrationTest extends ControlPlaneIntegrationTest {
   @Test
   void postManagementProjectsReachesControlPlane() {
     String upstreamPathBefore = upstream.lastPath();
+    String projectName = "management-post-check-" + UUID.randomUUID();
 
     webTestClient
         .post()
         .uri("/api/v1/projects")
         .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue("{\"name\":\"management-post-check\",\"description\":\"demo\"}")
+        .bodyValue("{\"name\":\"" + projectName + "\",\"description\":\"demo\"}")
         .header("Host", "api.autoapi.local")
         .exchange()
         .expectStatus()
         .isCreated()
         .expectBody()
         .jsonPath("$.name")
-        .isEqualTo("management-post-check");
+        .isEqualTo(projectName);
 
     org.junit.jupiter.api.Assertions.assertEquals(
         upstreamPathBefore,
         upstream.lastPath(),
         "Management POST must not reach the configured upstream");
+  }
+
+  @Test
+  void publishConfigWorksWhenJdbcFlywayAndR2dbcAreBothConfigured() {
+    String suffix = UUID.randomUUID().toString();
+    String projectId =
+        extractJsonField(
+            postJson(
+                "/api/v1/projects",
+                "{\"name\":\"publish-tx-check-" + suffix + "\",\"description\":\"demo\"}"),
+            "id");
+
+    String apiId =
+        extractJsonField(
+            postJson(
+                "/api/v1/projects/" + projectId + "/apis",
+                "{\"name\":\"publish-api\",\"host\":\"api.autoapi.local\",\"basePath\":\"/\"}"),
+            "id");
+
+    String poolId =
+        extractJsonField(
+            postJson(
+                "/api/v1/apis/" + apiId + "/upstream-pools",
+                "{\"name\":\"publish-pool\",\"loadBalancing\":\"ROUND_ROBIN\"}"),
+            "id");
+
+    webTestClient
+        .post()
+        .uri("/api/v1/upstream-pools/" + poolId + "/targets")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            "{\"url\":\"http://127.0.0.1:" + upstream.port() + "\",\"enabled\":true,\"weight\":1}")
+        .exchange()
+        .expectStatus()
+        .isCreated();
+
+    webTestClient
+        .post()
+        .uri("/api/v1/apis/" + apiId + "/routes")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            "{"
+                + "\"name\":\"publish-route\","
+                + "\"host\":\"api.autoapi.local\","
+                + "\"pathPrefix\":\"/v1/publish-check\","
+                + "\"methods\":[\"GET\"],"
+                + "\"upstreamPoolId\":\""
+                + poolId
+                + "\","
+                + "\"enabled\":true"
+                + "}")
+        .exchange()
+        .expectStatus()
+        .isCreated();
+
+    webTestClient
+        .post()
+        .uri("/api/v1/apis/" + apiId + "/config/versions")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue("{\"message\":\"Publish with dual transaction managers\"}")
+        .exchange()
+        .expectStatus()
+        .isCreated()
+        .expectBody()
+        .jsonPath("$.version")
+        .isEqualTo(1);
   }
 
   @Test
