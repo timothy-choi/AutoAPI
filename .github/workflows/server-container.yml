@@ -4,10 +4,23 @@ on:
   pull_request:
     paths:
       - "Server/**"
+      - "tests/mock-upstream/**"
+      - "deploy/config/**"
+      - "docker-compose.yml"
+      - "scripts/**"
       - ".github/workflows/server-container.yml"
   push:
-    branches: [main]
-    tags: ["v*"]
+    branches:
+      - "**"
+    tags:
+      - "v*"
+    paths:
+      - "Server/**"
+      - "tests/mock-upstream/**"
+      - "deploy/config/**"
+      - "docker-compose.yml"
+      - "scripts/**"
+      - ".github/workflows/server-container.yml"
   workflow_dispatch:
 
 concurrency:
@@ -18,8 +31,8 @@ permissions:
   contents: read
 
 jobs:
-  build-and-test:
-    name: build-and-test
+  build:
+    name: build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -46,7 +59,7 @@ jobs:
   container:
     name: container
     runs-on: ubuntu-latest
-    needs: build-and-test
+    needs: build
     timeout-minutes: 30
     permissions:
       contents: read
@@ -56,29 +69,30 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
+      # Publication tags are computed here but applied only after smoke validation.
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/autoapi-server
           tags: |
-            type=ref,event=branch
-            type=sha,prefix=sha-,format=short
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=sha-,format=short,enable=${{ github.ref == 'refs/heads/main' }}
+            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{major}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
       - name: Login to GHCR
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build image
-        id: build
+      # Build once, load locally, smoke-test this exact image, then tag/push it if eligible.
+      - name: Build candidate image
         uses: docker/build-push-action@v6
         with:
           context: ./Server
@@ -91,11 +105,16 @@ jobs:
           cache-to: type=gha,mode=max
           labels: ${{ steps.meta.outputs.labels }}
 
+      - name: Remove stale smoke resources
+        run: |
+          docker rm -f autoapi-gateway upstream-v1 || true
+          docker network rm autoapi-smoke || true
+
       - name: Smoke test built image
         run: |
           set -euo pipefail
           docker build -t mock-upstream:ci tests/mock-upstream
-          docker network create autoapi-smoke || true
+          docker network create autoapi-smoke
           docker run -d --name upstream-v1 --network autoapi-smoke mock-upstream:ci
           cat > /tmp/runtime-smoke.json <<'EOF'
           {
@@ -120,6 +139,11 @@ jobs:
           if [ "$ready" != "true" ]; then docker logs autoapi-gateway; exit 1; fi
           curl --fail --silent http://localhost:18081/healthz
           curl --fail --silent -H 'Host: api.autoapi.local' http://localhost:18081/v1/orders/1 | grep path
+          curl --fail --silent -H 'Host: api.autoapi.local' http://localhost:18081/v1/orders/1 | grep receivedHost
+
+      - name: Smoke environment cleanup
+        if: always()
+        run: |
           docker rm -f autoapi-gateway upstream-v1 || true
           docker network rm autoapi-smoke || true
 
@@ -132,15 +156,16 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
 
-      - name: Build and push image
-        if: github.event_name != 'pull_request'
-        uses: docker/build-push-action@v6
-        with:
-          context: ./Server
-          file: ./Server/Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Push validated image
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        run: |
+          set -euo pipefail
+          if [ -z "${{ steps.meta.outputs.tags }}" ]; then
+            echo "No publication tags configured for ref ${{ github.ref }}"
+            exit 1
+          fi
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            docker tag autoapi-server:ci "$tag"
+            docker push "$tag"
+          done <<< "${{ steps.meta.outputs.tags }}"

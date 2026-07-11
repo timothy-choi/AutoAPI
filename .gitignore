@@ -4,6 +4,7 @@ node_modules
 # Gradle / Java
 Server/.gradle/
 Server/build/
+Server/bin/
 Server/out/
 *.class
 *.jar

@@ -82,6 +82,21 @@ class RouteMatcherTest {
     assertEquals(RouteNotFoundReason.NOT_FOUND, result.reason());
   }
 
+  @Test
+  void methodAwareLongestPrefixAmongMethodMatches() {
+    RouteMatcher methodAwareMatcher =
+        new RouteMatcher(
+            new RuntimeConfig(
+                new GatewayConfig("0.0.0.0", 8080),
+                List.of(
+                    route("route-a", "api.autoapi.local", "/v1", Set.of(HttpMethod.POST)),
+                    route("route-b", "api.autoapi.local", "/v1/orders", Set.of(HttpMethod.GET)))));
+    RouteMatchResult result =
+        methodAwareMatcher.match("api.autoapi.local", "/v1/orders/123", HttpMethod.POST);
+    assertTrue(result.isMatched());
+    assertEquals("route-a", result.matchedRoute().orElseThrow().id());
+  }
+
   private static RouteConfig route(String id, String host, String prefix, Set<HttpMethod> methods) {
     return new RouteConfig(
         id, host, prefix, methods, new UpstreamConfig(URI.create("http://127.0.0.1:8080")));

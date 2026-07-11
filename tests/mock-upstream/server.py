@@ -28,6 +28,10 @@ class Handler(BaseHTTPRequestHandler):
             "method": self.command,
             "path": self.path,
             "requestId": request_id,
+            "receivedHost": self.headers.get("Host", ""),
+            "receivedForwardedHost": self.headers.get("X-Forwarded-Host", ""),
+            "receivedForwardedFor": self.headers.get("X-Forwarded-For", ""),
+            "receivedForwardedProto": self.headers.get("X-Forwarded-Proto", ""),
         }
         payload = json.dumps(body).encode("utf-8")
         self.send_response(200)

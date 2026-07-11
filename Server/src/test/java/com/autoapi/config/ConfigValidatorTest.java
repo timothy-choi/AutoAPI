@@ -82,6 +82,57 @@ class ConfigValidatorTest {
     assertThrows(ConfigLoadException.class, () -> ConfigValidator.validate(config));
   }
 
+  @Test
+  void acceptsUpstreamOriginWithoutPath() {
+    RuntimeConfig config =
+        new RuntimeConfig(
+            new GatewayConfig("0.0.0.0", 8080),
+            List.of(route("r", "h", "/v1", Set.of(HttpMethod.GET), "http://u:8080")));
+    assertDoesNotThrow(() -> ConfigValidator.validate(config));
+  }
+
+  @Test
+  void acceptsUpstreamWithRootPath() {
+    RuntimeConfig config =
+        new RuntimeConfig(
+            new GatewayConfig("0.0.0.0", 8080),
+            List.of(route("r", "h", "/v1", Set.of(HttpMethod.GET), "http://u:8080/")));
+    assertDoesNotThrow(() -> ConfigValidator.validate(config));
+  }
+
+  @Test
+  void rejectsUpstreamWithNonRootPath() {
+    RuntimeConfig config =
+        new RuntimeConfig(
+            new GatewayConfig("0.0.0.0", 8080),
+            List.of(route("r", "h", "/v1", Set.of(HttpMethod.GET), "http://u:8080/internal-api")));
+    ConfigLoadException ex =
+        assertThrows(ConfigLoadException.class, () -> ConfigValidator.validate(config));
+    assertTrue(ex.getMessage().contains("origin only"));
+  }
+
+  @Test
+  void rejectsUpstreamWithQuery() {
+    RuntimeConfig config =
+        new RuntimeConfig(
+            new GatewayConfig("0.0.0.0", 8080),
+            List.of(route("r", "h", "/v1", Set.of(HttpMethod.GET), "http://u:8080?mode=test")));
+    ConfigLoadException ex =
+        assertThrows(ConfigLoadException.class, () -> ConfigValidator.validate(config));
+    assertTrue(ex.getMessage().contains("query"));
+  }
+
+  @Test
+  void rejectsUpstreamWithFragment() {
+    RuntimeConfig config =
+        new RuntimeConfig(
+            new GatewayConfig("0.0.0.0", 8080),
+            List.of(route("r", "h", "/v1", Set.of(HttpMethod.GET), "http://u:8080#fragment")));
+    ConfigLoadException ex =
+        assertThrows(ConfigLoadException.class, () -> ConfigValidator.validate(config));
+    assertTrue(ex.getMessage().contains("fragment"));
+  }
+
   private RouteConfig validRoute() {
     return route("r", "h", "/v1", Set.of(HttpMethod.GET), "http://u:8080");
   }

@@ -44,4 +44,13 @@ curl -H "Host: api.autoapi.local" http://localhost:8080/v1/orders/123
 
 ## CI/CD
 
-Pull requests that touch `Server/` run Java tests, Gradle checks, Compose validation, and a container integration test. Container images publish to GitHub Container Registry on pushes to `main` and version tags — not from pull requests. No cloud deployment is performed. See [`Server/README.md`](Server/README.md#cicd).
+Every relevant push to **any branch** runs Java verification, Compose validation, integration checks, and container build/smoke validation. Pull requests and non-`main` branch pushes validate but **do not** publish container images.
+
+| Trigger | Validation | GHCR publication |
+|---------|------------|------------------|
+| Push to any branch (relevant paths) | Yes | No |
+| Pull request | Yes | No |
+| Push to `main` | Yes | `:main` and `:sha-<short>` |
+| Semantic version tag `v*.*.*` | Yes | Semver tags and `latest` |
+
+No cloud deployment is performed. See [`Server/README.md`](Server/README.md#cicd) for full policy details.

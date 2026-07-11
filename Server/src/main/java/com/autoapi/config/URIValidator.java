@@ -26,5 +26,22 @@ final class URIValidator {
       throw new ConfigLoadException(
           "Upstream URI must not contain user-info credentials for route: " + routeId);
     }
+    if (uri.getQuery() != null && !uri.getQuery().isEmpty()) {
+      throw new ConfigLoadException(
+          "Upstream URI must not contain a query string for route: " + routeId);
+    }
+    if (uri.getFragment() != null && !uri.getFragment().isEmpty()) {
+      throw new ConfigLoadException(
+          "Upstream URI must not contain a fragment for route: " + routeId);
+    }
+    String path = uri.getPath();
+    if (path != null && !path.isEmpty() && !"/".equals(path)) {
+      throw new ConfigLoadException(
+          "Upstream URI must identify an origin only (no path beyond '/') for route: "
+              + routeId
+              + "; got path '"
+              + path
+              + "'");
+    }
   }
 }

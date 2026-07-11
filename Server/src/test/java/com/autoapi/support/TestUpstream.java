@@ -20,6 +20,8 @@ public final class TestUpstream {
   private final int port;
   private final AtomicReference<String> lastPath = new AtomicReference<>("");
   private final AtomicReference<String> lastRequestId = new AtomicReference<>("");
+  private final AtomicReference<String> lastHost = new AtomicReference<>("");
+  private final AtomicReference<String> lastForwardedHost = new AtomicReference<>("");
 
   private TestUpstream(HttpServer server, int port) {
     this.server = server;
@@ -34,11 +36,17 @@ public final class TestUpstream {
         exchange -> {
           upstream.lastPath.set(exchange.getRequestURI().getPath());
           upstream.lastRequestId.set(exchange.getRequestHeaders().getFirst("X-Request-ID"));
+          upstream.lastHost.set(exchange.getRequestHeaders().getFirst("Host"));
+          upstream.lastForwardedHost.set(exchange.getRequestHeaders().getFirst("X-Forwarded-Host"));
           byte[] body =
               ("{\"path\":\""
                       + exchange.getRequestURI().getPath()
                       + "\",\"requestId\":\""
                       + upstream.lastRequestId.get()
+                      + "\",\"receivedHost\":\""
+                      + escapeJson(upstream.lastHost.get())
+                      + "\",\"receivedForwardedHost\":\""
+                      + escapeJson(upstream.lastForwardedHost.get())
                       + "\"}")
                   .getBytes(StandardCharsets.UTF_8);
           exchange.getResponseHeaders().add("Content-Type", "application/json");
@@ -51,6 +59,13 @@ public final class TestUpstream {
     return upstream;
   }
 
+  private static String escapeJson(String value) {
+    if (value == null) {
+      return "";
+    }
+    return value.replace("\\", "\\\\").replace("\"", "\\\"");
+  }
+
   public int port() {
     return port;
   }
@@ -61,6 +76,14 @@ public final class TestUpstream {
 
   public String lastRequestId() {
     return lastRequestId.get();
+  }
+
+  public String lastHost() {
+    return lastHost.get();
+  }
+
+  public String lastForwardedHost() {
+    return lastForwardedHost.get();
   }
 
   public void stop() {
@@ -84,6 +107,29 @@ public final class TestUpstream {
         }
         """
             .formatted(upstream.port());
+    Path config = directory.resolve("runtime-test.json");
+    Files.writeString(config, json);
+    return config;
+  }
+
+  public static Path writeConfigWithUpstreamUrl(Path directory, String upstreamUrl)
+      throws IOException {
+    String json =
+        """
+        {
+          "gateway": { "listenAddress": "127.0.0.1", "port": 8080 },
+          "routes": [
+            {
+              "id": "orders-route",
+              "host": "api.autoapi.local",
+              "pathPrefix": "/v1/orders",
+              "methods": ["GET", "POST"],
+              "upstream": { "url": "%s" }
+            }
+          ]
+        }
+        """
+            .formatted(upstreamUrl);
     Path config = directory.resolve("runtime-test.json");
     Files.writeString(config, json);
     return config;

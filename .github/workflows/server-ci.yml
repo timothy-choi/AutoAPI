@@ -7,16 +7,17 @@ on:
       - "tests/mock-upstream/**"
       - "deploy/config/**"
       - "docker-compose.yml"
-      - "scripts/smoke-server.sh"
+      - "scripts/**"
       - ".github/workflows/server-ci.yml"
   push:
-    branches: [main]
+    branches:
+      - "**"
     paths:
       - "Server/**"
       - "tests/mock-upstream/**"
       - "deploy/config/**"
       - "docker-compose.yml"
-      - "scripts/smoke-server.sh"
+      - "scripts/**"
       - ".github/workflows/server-ci.yml"
   workflow_dispatch:
 
@@ -86,12 +87,6 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-
-      - name: Download boot JAR
-        uses: actions/download-artifact@v4
-        with:
-          name: autoapi-server-jar
-          path: Server/build/libs
 
       - name: Start compose stack
         run: docker compose up --build -d

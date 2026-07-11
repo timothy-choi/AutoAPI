@@ -1,13 +1,17 @@
 package com.autoapi.proxy;
 
+import com.autoapi.config.HostNormalizer;
 import com.autoapi.config.RouteConfig;
 import com.autoapi.config.RuntimeConfig;
 import com.autoapi.middleware.RequestIdSupport;
 import com.autoapi.routing.RouteMatchResult;
 import com.autoapi.routing.RouteMatcher;
+import com.autoapi.routing.RouteNotFoundReason;
 import com.autoapi.web.ErrorResponseWriter;
 import java.net.URI;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -22,6 +26,8 @@ import reactor.netty.http.client.HttpClient;
 
 @Component
 public class ProxyHandler {
+
+  private static final Logger log = LoggerFactory.getLogger(ProxyHandler.class);
 
   private final RouteMatcher routeMatcher;
   private final WebClient webClient;
@@ -41,14 +47,15 @@ public class ProxyHandler {
   public Mono<Void> handle(ServerWebExchange exchange) {
     RuntimeConfig config = exchange.getAttribute(GatewayAttributes.RUNTIME_CONFIG);
     if (config == null) {
-      return errorWriter.internalError(exchange, "Runtime configuration unavailable");
+      return errorWriter.internalError(
+          exchange, new IllegalStateException("Runtime configuration unavailable"));
     }
 
     ServerHttpRequest request = exchange.getRequest();
     String requestId = RequestIdSupport.getRequestId(exchange);
     HttpMethod method = request.getMethod();
     if (method == null) {
-      return errorWriter.internalError(exchange, "Missing HTTP method");
+      return errorWriter.internalError(exchange, new IllegalStateException("Missing HTTP method"));
     }
 
     RouteMatchResult match =
@@ -58,7 +65,7 @@ public class ProxyHandler {
             method);
 
     if (!match.isMatched()) {
-      if (match.reason() == com.autoapi.routing.RouteNotFoundReason.METHOD_NOT_ALLOWED) {
+      if (match.reason() == RouteNotFoundReason.METHOD_NOT_ALLOWED) {
         return errorWriter.methodNotAllowed(exchange, match.allowedMethods());
       }
       return errorWriter.routeNotFound(exchange);
@@ -89,6 +96,8 @@ public class ProxyHandler {
   private Mono<Void> forward(
       ServerWebExchange exchange, RouteConfig route, URI targetUri, String requestId) {
     ServerHttpRequest incoming = exchange.getRequest();
+    String upstreamHost = route.upstream().url().getAuthority();
+    String normalizedClientHost = normalizedClientHost(incoming);
 
     return webClient
         .method(incoming.getMethod())
@@ -97,8 +106,10 @@ public class ProxyHandler {
             headers -> {
               headers.addAll(incoming.getHeaders());
               HopByHopHeaders.sanitizeClientRequestHeaders(headers);
+              headers.remove(HttpHeaders.HOST);
+              headers.set(HttpHeaders.HOST, upstreamHost);
               headers.set(RequestIdSupport.HEADER, requestId);
-              headers.set("X-Forwarded-Host", hostHeaderValue(incoming));
+              headers.set("X-Forwarded-Host", normalizedClientHost);
               headers.set(
                   "X-Forwarded-Proto",
                   incoming.getURI().getScheme() != null ? incoming.getURI().getScheme() : "http");
@@ -111,12 +122,29 @@ public class ProxyHandler {
         .body(BodyInserters.fromDataBuffers(incoming.getBody()))
         .exchangeToMono(response -> writeUpstreamResponse(exchange, response, requestId))
         .onErrorResume(
-            WebClientRequestException.class, ex -> errorWriter.upstreamUnavailable(exchange, ex));
+            WebClientRequestException.class, ex -> errorWriter.upstreamUnavailable(exchange, ex))
+        .onErrorResume(
+            Throwable.class,
+            ex -> {
+              if (exchange.getResponse().isCommitted()) {
+                log.warn(
+                    "requestId={} routeId={} upstream={} error after response commit: {}",
+                    requestId,
+                    exchange.getAttribute(GatewayAttributes.MATCHED_ROUTE_ID),
+                    exchange.getAttribute(GatewayAttributes.UPSTREAM_AUTHORITY),
+                    ex.getClass().getSimpleName());
+                return Mono.error(ex);
+              }
+              return errorWriter.internalError(exchange, ex);
+            });
   }
 
-  private static String hostHeaderValue(ServerHttpRequest request) {
+  static String normalizedClientHost(ServerHttpRequest request) {
     String host = request.getHeaders().getFirst(HttpHeaders.HOST);
-    return host != null ? host : "localhost";
+    if (host == null || host.isBlank()) {
+      return "localhost";
+    }
+    return HostNormalizer.normalize(host);
   }
 
   private Mono<Void> writeUpstreamResponse(
@@ -128,6 +156,15 @@ public class ProxyHandler {
     responseHeaders.set(RequestIdSupport.HEADER, requestId);
     return exchange
         .getResponse()
-        .writeWith(response.bodyToFlux(org.springframework.core.io.buffer.DataBuffer.class));
+        .writeWith(response.bodyToFlux(org.springframework.core.io.buffer.DataBuffer.class))
+        .onErrorResume(
+            Throwable.class,
+            ex -> {
+              if (exchange.getResponse().isCommitted()) {
+                log.warn("requestId={} upstream response stream failed after commit", requestId);
+                return Mono.error(ex);
+              }
+              return errorWriter.internalError(exchange, ex);
+            });
   }
 }

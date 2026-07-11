@@ -96,6 +96,55 @@ class GatewayIntegrationTest {
         .isEqualTo("ROUTE_NOT_FOUND");
   }
 
+  @Test
+  void upstreamReceivesSelectedUpstreamAuthorityAsHost() {
+    webTestClient
+        .get()
+        .uri("/v1/orders/123")
+        .header(HttpHeaders.HOST, "api.autoapi.local")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.receivedHost")
+        .isEqualTo("127.0.0.1:" + upstream.port());
+    org.junit.jupiter.api.Assertions.assertEquals(
+        "127.0.0.1:" + upstream.port(), upstream.lastHost());
+  }
+
+  @Test
+  void upstreamReceivesNormalizedClientHostInForwardedHost() {
+    webTestClient
+        .get()
+        .uri("/v1/orders/123")
+        .header(HttpHeaders.HOST, "API.AUTOAPI.LOCAL:8080")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.receivedForwardedHost")
+        .isEqualTo("api.autoapi.local");
+    org.junit.jupiter.api.Assertions.assertEquals(
+        "api.autoapi.local", upstream.lastForwardedHost());
+  }
+
+  @Test
+  void forgedForwardingHeadersAreNotTrusted() {
+    webTestClient
+        .get()
+        .uri("/v1/orders/123")
+        .header(HttpHeaders.HOST, "api.autoapi.local")
+        .header("X-Forwarded-Host", "evil.example")
+        .header("X-Forwarded-For", "203.0.113.1")
+        .header("X-Forwarded-Proto", "https")
+        .exchange()
+        .expectStatus()
+        .isOk();
+    org.junit.jupiter.api.Assertions.assertEquals(
+        "api.autoapi.local", upstream.lastForwardedHost());
+    org.junit.jupiter.api.Assertions.assertNotEquals("evil.example", upstream.lastForwardedHost());
+  }
+
   static class Initializer
       implements org.springframework.context.ApplicationContextInitializer<
           org.springframework.context.ConfigurableApplicationContext> {
