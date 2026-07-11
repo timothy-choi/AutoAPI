@@ -9,7 +9,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -18,7 +17,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @ContextConfiguration(initializers = ControlPlaneIntegrationTest.Initializer.class)
 public abstract class ControlPlaneIntegrationTest {
 
-  @Container
   static final PostgreSQLContainer<?> POSTGRES =
       new PostgreSQLContainer<>("postgres:16-alpine")
           .withDatabaseName("autoapi")
@@ -30,11 +28,13 @@ public abstract class ControlPlaneIntegrationTest {
   protected static final java.nio.file.Path configPath;
 
   static {
+    POSTGRES.start();
     try {
       tempDir = java.nio.file.Files.createTempDirectory("autoapi-cp-it");
       upstream = TestUpstream.start();
       configPath = TestUpstream.writeConfig(upstream, tempDir);
     } catch (java.io.IOException e) {
+      POSTGRES.stop();
       throw new ExceptionInInitializerError(e);
     }
   }
@@ -42,13 +42,14 @@ public abstract class ControlPlaneIntegrationTest {
   @org.springframework.beans.factory.annotation.Autowired protected WebTestClient webTestClient;
 
   @AfterAll
-  static void stopUpstream() {
+  static void shutdown() {
     upstream.stop();
+    POSTGRES.stop();
   }
 
   @DynamicPropertySource
   static void postgresProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.r2dbc.url", () -> r2dbcUrl(POSTGRES));
+    registry.add("spring.r2dbc.url", ControlPlaneIntegrationTest::r2dbcUrl);
     registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
     registry.add("spring.datasource.username", POSTGRES::getUsername);
     registry.add("spring.datasource.password", POSTGRES::getPassword);
@@ -56,13 +57,14 @@ public abstract class ControlPlaneIntegrationTest {
     registry.add("autoapi.controlplane.enabled", () -> "true");
   }
 
-  private static String r2dbcUrl(PostgreSQLContainer<?> postgres) {
+  private static String r2dbcUrl() {
     return "r2dbc:postgresql://"
-        + postgres.getHost()
+        + POSTGRES.getHost()
         + ":"
-        + postgres.getFirstMappedPort()
+        + POSTGRES.getMappedPort(5432)
         + "/"
-        + postgres.getDatabaseName();
+        + POSTGRES.getDatabaseName()
+        + "?sslMode=disable";
   }
 
   static class Initializer

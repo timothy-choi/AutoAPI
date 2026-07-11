@@ -7,7 +7,7 @@ spring:
   main:
     web-application-type: reactive
   r2dbc:
-    url: ${AUTOAPI_R2DBC_URL:r2dbc:postgresql://localhost:5432/autoapi}
+    url: ${AUTOAPI_R2DBC_URL:r2dbc:postgresql://localhost:5432/autoapi?sslMode=disable}
     username: ${POSTGRES_USER:autoapi}
     password: ${POSTGRES_PASSWORD:autoapi}
   datasource:

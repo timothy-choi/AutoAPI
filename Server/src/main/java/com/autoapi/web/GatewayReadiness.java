@@ -1,6 +1,7 @@
 package com.autoapi.web;
 
 import com.autoapi.controlplane.DatabaseReadinessChecker;
+import java.time.Duration;
 import java.util.Optional;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -19,12 +20,16 @@ public class GatewayReadiness {
 
   @EventListener(ApplicationReadyEvent.class)
   public void onReady() {
-    applicationReady = true;
-    databaseReadinessChecker.ifPresent(
+    databaseReadinessChecker.ifPresentOrElse(
         checker ->
-            checker
-                .isDatabaseReady()
-                .subscribe(ready -> databaseReady = ready, error -> databaseReady = false));
+            databaseReady =
+                checker
+                    .isDatabaseReady()
+                    .onErrorReturn(false)
+                    .blockOptional(Duration.ofSeconds(30))
+                    .orElse(false),
+        () -> databaseReady = true);
+    applicationReady = true;
   }
 
   public boolean isReady() {
