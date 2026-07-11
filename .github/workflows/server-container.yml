@@ -72,7 +72,7 @@ jobs:
       # Publication tags are computed here but applied only after smoke validation.
       - name: Docker metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository_owner }}/autoapi-server
           tags: |
