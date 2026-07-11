@@ -56,7 +56,7 @@ jobs:
 
       - name: Upload test reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: server-test-reports
           path: |
@@ -65,7 +65,7 @@ jobs:
           retention-days: 14
 
       - name: Upload boot JAR
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: autoapi-server-jar
           path: Server/build/libs/*-SNAPSHOT.jar
