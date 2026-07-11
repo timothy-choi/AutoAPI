@@ -4,28 +4,37 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
+# Lifecycle modes:
+# - Self-managed (default): start Compose, wait for readiness, run assertions, cleanup on exit.
+# - Externally managed (SMOKE_SKIP_UP=true): assume Compose is already running; never cleanup.
+started_stack=false
+
 cleanup() {
-  docker compose down -v || true
+  if [[ "${started_stack}" == "true" ]]; then
+    docker compose down -v || true
+  fi
 }
+
 trap cleanup EXIT
 
-if [[ "${SMOKE_SKIP_UP:-}" != "true" ]]; then
+if [[ "${SMOKE_SKIP_UP:-false}" != "true" ]]; then
+  started_stack=true
   docker compose up --build -d
-fi
 
-ready=false
-for _ in $(seq 1 30); do
-  if curl --fail --silent http://localhost:8080/readyz >/dev/null; then
-    ready=true
-    break
+  ready=false
+  for _ in $(seq 1 30); do
+    if curl --fail --silent http://localhost:8080/readyz >/dev/null; then
+      ready=true
+      break
+    fi
+    sleep 2
+  done
+
+  if [[ "${ready}" != "true" ]]; then
+    echo "Gateway did not become ready" >&2
+    docker compose logs
+    exit 1
   fi
-  sleep 2
-done
-
-if [[ "${ready}" != "true" ]]; then
-  echo "Gateway did not become ready" >&2
-  docker compose logs
-  exit 1
 fi
 
 echo "== Proxy success =="
