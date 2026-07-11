@@ -24,7 +24,7 @@ class Handler(BaseHTTPRequestHandler):
     def _handle(self) -> None:
         request_id = self.headers.get("X-Request-ID", "")
         body = {
-            "service": "upstream-v1",
+            "service": os.environ.get("UPSTREAM_ID", "upstream-v1"),
             "method": self.command,
             "path": self.path,
             "requestId": request_id,

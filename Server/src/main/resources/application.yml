@@ -25,6 +25,7 @@ logging:
     com.autoapi: INFO
 
 autoapi:
+  role: ${AUTOAPI_ROLE:combined}
   config:
     path: ${AUTOAPI_CONFIG_PATH:deploy/config/runtime.json}
   controlplane:
@@ -32,3 +33,15 @@ autoapi:
     compiled-gateway:
       listen-address: 0.0.0.0
       port: 8080
+  gateway:
+    config-source: ${AUTOAPI_GATEWAY_CONFIG_SOURCE:static}
+    api-id: ${AUTOAPI_GATEWAY_API_ID:}
+    control-plane-base-url: ${AUTOAPI_CONTROL_PLANE_BASE_URL:http://control-plane:8080}
+    poll-interval: ${AUTOAPI_GATEWAY_POLL_INTERVAL:5s}
+    initial-load-timeout: ${AUTOAPI_GATEWAY_INITIAL_LOAD_TIMEOUT:30s}
+    listen-address: ${AUTOAPI_GATEWAY_LISTEN_ADDRESS:0.0.0.0}
+    port: ${AUTOAPI_GATEWAY_PORT:8080}
+    control-plane-client:
+      connect-timeout: 5s
+      response-timeout: 15s
+      max-in-memory-size-bytes: 4194304

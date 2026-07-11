@@ -27,6 +27,13 @@ public final class GatewayBootstrap {
     System.setProperty("server.address", runtimeConfig.gateway().listenAddress());
   }
 
+  public static void applyGatewayListenFromEnvironment() {
+    String port = System.getenv().getOrDefault("AUTOAPI_GATEWAY_PORT", "8080");
+    String address = System.getenv().getOrDefault("AUTOAPI_GATEWAY_LISTEN_ADDRESS", "0.0.0.0");
+    System.setProperty("server.port", port);
+    System.setProperty("server.address", address);
+  }
+
   public static ApplicationContextInitializer<ConfigurableApplicationContext> initializer(
       RuntimeConfig runtimeConfig) {
     return context -> {

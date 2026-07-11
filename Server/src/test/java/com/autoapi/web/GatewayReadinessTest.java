@@ -9,7 +9,12 @@ import com.autoapi.config.RouteConfig;
 import com.autoapi.config.RuntimeConfig;
 import com.autoapi.config.RuntimeConfigHolder;
 import com.autoapi.config.UpstreamConfig;
+import com.autoapi.controlplane.ControlPlaneProperties;
 import com.autoapi.controlplane.DatabaseReadinessChecker;
+import com.autoapi.gateway.config.ActiveRuntimeBundle;
+import com.autoapi.gateway.config.ActiveRuntimeConfigHolder;
+import com.autoapi.runtime.AutoApiRole;
+import com.autoapi.runtime.AutoApiRuntimeProperties;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,13 +29,19 @@ import reactor.test.StepVerifier;
 
 class GatewayReadinessTest {
 
-  private RuntimeConfigHolder runtimeConfigHolder;
-  private GatewayReadiness readiness;
+  private AutoApiRuntimeProperties runtimeProperties;
+  private ActiveRuntimeConfigHolder activeRuntimeConfigHolder;
 
   @BeforeEach
   void setUp() {
-    runtimeConfigHolder =
-        new RuntimeConfigHolder(
+    runtimeProperties = new AutoApiRuntimeProperties();
+    runtimeProperties.setRole(AutoApiRole.GATEWAY);
+    activeRuntimeConfigHolder = new ActiveRuntimeConfigHolder();
+    activeRuntimeConfigHolder.activate(
+        new ActiveRuntimeBundle(
+            null,
+            0,
+            "static",
             new RuntimeConfig(
                 new GatewayConfig("0.0.0.0", 8080),
                 List.of(
@@ -39,19 +50,19 @@ class GatewayReadinessTest {
                         "api.autoapi.local",
                         "/v1/orders",
                         Set.of(HttpMethod.GET),
-                        new UpstreamConfig(URI.create("http://127.0.0.1:9080"))))));
-    readiness = new GatewayReadiness(runtimeConfigHolder, Optional.empty());
+                        new UpstreamConfig(URI.create("http://127.0.0.1:9080")))))));
   }
 
   @Test
   void isReadyReturnsFalseBeforeApplicationReadyEvent() {
+    GatewayReadiness readiness = buildReadiness(Optional.empty(), Optional.empty());
     StepVerifier.create(readiness.isReady()).expectNext(false).verifyComplete();
   }
 
   @Test
-  void isReadyReturnsTrueWhenLocalComponentsReadyAndControlPlaneDisabled() {
+  void isReadyReturnsTrueWhenGatewayHasActiveConfigAndNoDatabaseRequired() {
+    GatewayReadiness readiness = buildReadiness(Optional.empty(), Optional.empty());
     readiness.onReady();
-
     StepVerifier.create(readiness.isReady()).expectNext(true).verifyComplete();
   }
 
@@ -59,9 +70,13 @@ class GatewayReadinessTest {
   void isReadyReturnsTrueWhenDatabaseCheckSucceeds() {
     DatabaseReadinessChecker databaseReadinessChecker = mock(DatabaseReadinessChecker.class);
     when(databaseReadinessChecker.isDatabaseReady()).thenReturn(Mono.just(true));
-    readiness = new GatewayReadiness(runtimeConfigHolder, Optional.of(databaseReadinessChecker));
+    runtimeProperties.setRole(AutoApiRole.COMBINED);
+    ControlPlaneProperties controlPlaneProperties =
+        new ControlPlaneProperties(
+            true, new ControlPlaneProperties.CompiledGatewayProperties("0.0.0.0", 8080));
+    GatewayReadiness readiness =
+        buildReadiness(Optional.of(controlPlaneProperties), Optional.of(databaseReadinessChecker));
     readiness.onReady();
-
     StepVerifier.create(readiness.isReady()).expectNext(true).verifyComplete();
   }
 
@@ -69,9 +84,13 @@ class GatewayReadinessTest {
   void isReadyReturnsFalseWhenDatabaseCheckReturnsFalse() {
     DatabaseReadinessChecker databaseReadinessChecker = mock(DatabaseReadinessChecker.class);
     when(databaseReadinessChecker.isDatabaseReady()).thenReturn(Mono.just(false));
-    readiness = new GatewayReadiness(runtimeConfigHolder, Optional.of(databaseReadinessChecker));
+    runtimeProperties.setRole(AutoApiRole.COMBINED);
+    ControlPlaneProperties controlPlaneProperties =
+        new ControlPlaneProperties(
+            true, new ControlPlaneProperties.CompiledGatewayProperties("0.0.0.0", 8080));
+    GatewayReadiness readiness =
+        buildReadiness(Optional.of(controlPlaneProperties), Optional.of(databaseReadinessChecker));
     readiness.onReady();
-
     StepVerifier.create(readiness.isReady()).expectNext(false).verifyComplete();
   }
 
@@ -80,9 +99,26 @@ class GatewayReadinessTest {
     DatabaseReadinessChecker databaseReadinessChecker = mock(DatabaseReadinessChecker.class);
     when(databaseReadinessChecker.isDatabaseReady())
         .thenReturn(Mono.error(new IllegalStateException("connection refused")));
-    readiness = new GatewayReadiness(runtimeConfigHolder, Optional.of(databaseReadinessChecker));
+    runtimeProperties.setRole(AutoApiRole.COMBINED);
+    ControlPlaneProperties controlPlaneProperties =
+        new ControlPlaneProperties(
+            true, new ControlPlaneProperties.CompiledGatewayProperties("0.0.0.0", 8080));
+    GatewayReadiness readiness =
+        buildReadiness(Optional.of(controlPlaneProperties), Optional.of(databaseReadinessChecker));
     readiness.onReady();
+    StepVerifier.create(readiness.isReady()).expectNext(false).verifyComplete();
+  }
 
+  @Test
+  void isReadyReturnsFalseWhenNoActiveGatewayConfig() {
+    GatewayReadiness readiness =
+        new GatewayReadiness(
+            runtimeProperties,
+            Optional.empty(),
+            Optional.empty(),
+            new ActiveRuntimeConfigHolder(),
+            Optional.empty());
+    readiness.onReady();
     StepVerifier.create(readiness.isReady()).expectNext(false).verifyComplete();
   }
 
@@ -94,5 +130,18 @@ class GatewayReadinessTest {
     assertFalse(contents.contains(".block("));
     assertFalse(contents.contains(".blockFirst("));
     assertFalse(contents.contains(".blockLast("));
+  }
+
+  private GatewayReadiness buildReadiness(
+      Optional<ControlPlaneProperties> controlPlaneProperties,
+      Optional<DatabaseReadinessChecker> databaseReadinessChecker) {
+    RuntimeConfigHolder runtimeConfigHolder =
+        new RuntimeConfigHolder(activeRuntimeConfigHolder.getActive().runtimeConfig());
+    return new GatewayReadiness(
+        runtimeProperties,
+        controlPlaneProperties,
+        Optional.of(runtimeConfigHolder),
+        activeRuntimeConfigHolder,
+        databaseReadinessChecker);
   }
 }

@@ -2,8 +2,13 @@ package com.autoapi.web;
 
 import com.autoapi.config.RuntimeConfig;
 import com.autoapi.config.RuntimeConfigHolder;
+import com.autoapi.gateway.config.ActiveRuntimeBundle;
+import com.autoapi.gateway.config.ActiveRuntimeConfigHolder;
 import com.autoapi.proxy.GatewayAttributes;
 import com.autoapi.proxy.ProxyHandler;
+import com.autoapi.runtime.AutoApiRole;
+import com.autoapi.runtime.ConditionalOnAutoApiRole;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -18,6 +23,7 @@ import org.springframework.web.server.WebFilter;
 public class GatewayWebConfiguration {
 
   @Bean
+  @ConditionalOnBean(RuntimeConfigHolder.class)
   RuntimeConfig runtimeConfig(RuntimeConfigHolder holder) {
     return holder.config();
   }
@@ -51,13 +57,22 @@ public class GatewayWebConfiguration {
 
   @Bean
   @Order(10)
-  WebFilter gatewayProxyFilter(RuntimeConfig runtimeConfig, ProxyHandler proxyHandler) {
+  @ConditionalOnAutoApiRole({AutoApiRole.GATEWAY, AutoApiRole.COMBINED})
+  WebFilter gatewayProxyFilter(
+      ActiveRuntimeConfigHolder activeRuntimeConfigHolder,
+      ProxyHandler proxyHandler,
+      ErrorResponseWriter errorResponseWriter) {
     return (exchange, chain) -> {
       String path = exchange.getRequest().getPath().pathWithinApplication().value();
       if (GatewayReservedPaths.isReservedPath(path)) {
         return chain.filter(exchange);
       }
-      exchange.getAttributes().put(GatewayAttributes.RUNTIME_CONFIG, runtimeConfig);
+      ActiveRuntimeBundle bundle = activeRuntimeConfigHolder.getActiveForRequest();
+      if (bundle == null) {
+        return errorResponseWriter.gatewayNotReady(exchange);
+      }
+      exchange.getAttributes().put(GatewayAttributes.ACTIVE_RUNTIME_BUNDLE, bundle);
+      exchange.getAttributes().put(GatewayAttributes.RUNTIME_CONFIG, bundle.runtimeConfig());
       return proxyHandler.handle(exchange);
     };
   }

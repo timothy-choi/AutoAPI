@@ -68,6 +68,30 @@ public final class ControlPlaneException extends RuntimeException {
         "INTERNAL_CONTROL_PLANE_ERROR", message, HttpStatus.INTERNAL_SERVER_ERROR, List.of(), null);
   }
 
+  public static ControlPlaneException configVersionNotFound(String message) {
+    return new ControlPlaneException(
+        "CONFIG_VERSION_NOT_FOUND", message, HttpStatus.NOT_FOUND, List.of(), null);
+  }
+
+  public static ControlPlaneException desiredVersionConflict(String message) {
+    return new ControlPlaneException(
+        "DESIRED_VERSION_CONFLICT", message, HttpStatus.CONFLICT, List.of(), null);
+  }
+
+  public static ControlPlaneException configVersionNotActivatable(String message) {
+    return new ControlPlaneException(
+        "CONFIG_VERSION_NOT_ACTIVATABLE",
+        message,
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        List.of(),
+        null);
+  }
+
+  public static ControlPlaneException desiredConfigNotSet(String message) {
+    return new ControlPlaneException(
+        "DESIRED_CONFIG_NOT_SET", message, HttpStatus.NOT_FOUND, List.of(), null);
+  }
+
   public String code() {
     return code;
   }
