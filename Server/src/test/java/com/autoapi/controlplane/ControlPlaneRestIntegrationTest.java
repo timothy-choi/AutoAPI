@@ -116,13 +116,92 @@ class ControlPlaneRestIntegrationTest extends ControlPlaneIntegrationTest {
 
   @Test
   void managementRoutesAreNotProxied() {
+    String upstreamPathBefore = upstream.lastPath();
+
     webTestClient
         .get()
         .uri("/api/v1/projects")
         .header("Host", "api.autoapi.local")
         .exchange()
         .expectStatus()
-        .isOk();
+        .isOk()
+        .expectHeader()
+        .contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
+        .expectBody()
+        .jsonPath("$")
+        .isArray();
+
+    org.junit.jupiter.api.Assertions.assertEquals(
+        upstreamPathBefore,
+        upstream.lastPath(),
+        "Management GET must not reach the configured upstream");
+  }
+
+  @Test
+  void unknownManagementPathsAreNotProxied() {
+    String upstreamPathBefore = upstream.lastPath();
+
+    webTestClient
+        .get()
+        .uri("/api/v1/does-not-exist")
+        .header("Host", "api.autoapi.local")
+        .exchange()
+        .expectStatus()
+        .isNotFound()
+        .expectBody()
+        .jsonPath("$.error.code")
+        .doesNotExist();
+
+    org.junit.jupiter.api.Assertions.assertEquals(
+        upstreamPathBefore, upstream.lastPath(), "Unknown management paths must not be proxied");
+  }
+
+  @Test
+  void similarPathsOutsideManagementNamespaceAreNotReserved() {
+    webTestClient
+        .get()
+        .uri("/api/v1example")
+        .header("Host", "api.autoapi.local")
+        .exchange()
+        .expectStatus()
+        .isNotFound()
+        .expectBody()
+        .jsonPath("$.error.code")
+        .isEqualTo("ROUTE_NOT_FOUND");
+
+    webTestClient
+        .get()
+        .uri("/api/v10/example")
+        .header("Host", "api.autoapi.local")
+        .exchange()
+        .expectStatus()
+        .isNotFound()
+        .expectBody()
+        .jsonPath("$.error.code")
+        .isEqualTo("ROUTE_NOT_FOUND");
+  }
+
+  @Test
+  void postManagementProjectsReachesControlPlane() {
+    String upstreamPathBefore = upstream.lastPath();
+
+    webTestClient
+        .post()
+        .uri("/api/v1/projects")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue("{\"name\":\"management-post-check\",\"description\":\"demo\"}")
+        .header("Host", "api.autoapi.local")
+        .exchange()
+        .expectStatus()
+        .isCreated()
+        .expectBody()
+        .jsonPath("$.name")
+        .isEqualTo("management-post-check");
+
+    org.junit.jupiter.api.Assertions.assertEquals(
+        upstreamPathBefore,
+        upstream.lastPath(),
+        "Management POST must not reach the configured upstream");
   }
 
   @Test
@@ -137,6 +216,8 @@ class ControlPlaneRestIntegrationTest extends ControlPlaneIntegrationTest {
         .expectBody()
         .jsonPath("$.path")
         .isEqualTo("/v1/orders/123");
+
+    org.junit.jupiter.api.Assertions.assertEquals("/v1/orders/123", upstream.lastPath());
   }
 
   private byte[] postJson(String uri, String body) {
