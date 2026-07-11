@@ -39,7 +39,7 @@ public class GatewayWebConfiguration {
   WebFilter gatewayProxyFilter(RuntimeConfig runtimeConfig, ProxyHandler proxyHandler) {
     return (exchange, chain) -> {
       String path = exchange.getRequest().getPath().pathWithinApplication().value();
-      if ("/healthz".equals(path) || "/readyz".equals(path)) {
+      if ("/healthz".equals(path) || "/readyz".equals(path) || path.startsWith("/api/v1/")) {
         return chain.filter(exchange);
       }
       exchange.getAttributes().put(GatewayAttributes.RUNTIME_CONFIG, runtimeConfig);

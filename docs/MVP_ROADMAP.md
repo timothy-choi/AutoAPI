@@ -91,30 +91,35 @@ Phase 2 is subdivided into reviewable slices (2A–2C).
 
 Minimal control plane compiles draft configuration into immutable published versions.
 
+#### Status: **Implemented (Java, in-process with gateway)**
+
+Phase 2A lives under `Server/src/main/java/com/autoapi/controlplane/` in the same Spring Boot process as the Phase 1 gateway data plane. The live gateway still loads static JSON from file; compiled database versions are stored but not activated.
+
 #### Implementation Tasks
 
-- [ ] FastAPI app `control-plane/` with SQLAlchemy models (projects, apis, routes, pools, targets, config_versions)
-- [ ] Alembic migrations (`apis.enabled`, `apis.desired_config_version`)
-- [ ] CRUD endpoints for projects, apis, routes, pools, targets
-- [ ] `POST /apis/{id}/config/validate`
-- [ ] `POST /apis/{id}/config/versions` — compile draft → immutable snapshot + monotonic version
-- [ ] `GET /apis/{id}/config/versions` and `GET /apis/{id}/config/versions/{version}` (metadata)
-- [ ] Snapshot serializer: draft tables → `RuntimeConfig` JSON + SHA-256 hash
+- [x] Java control plane with R2DBC (PostgreSQL) persistence and Flyway migrations
+- [x] CRUD endpoints for projects, apis, routes, pools, targets
+- [x] `POST /api/v1/apis/{id}/config/validate`
+- [x] `POST /api/v1/apis/{id}/config/versions` — compile draft → immutable snapshot + monotonic version
+- [x] `GET /api/v1/apis/{id}/config/versions` and `GET /api/v1/apis/{id}/config/versions/{version}`
+- [x] Deterministic snapshot compiler with SHA-256 hash over canonical JSON (hash excludes version metadata)
 
 #### Components/Files Affected
 
-- `control-plane/app/` (models, routers, services, schemas)
-- `control-plane/alembic/`
+- `Server/src/main/java/com/autoapi/controlplane/`
+- `Server/src/main/resources/db/migration/`
+- `docker-compose.yml` (PostgreSQL service)
 
 #### Tests
 
-- [ ] Unit: snapshot serializer and validator
-- [ ] Integration: create version returns monotonic version number and content_hash
+- [x] Unit: snapshot compiler and draft validator
+- [x] Integration: Testcontainers PostgreSQL + management REST flow
 
 #### Definition of Done
 
-- Operator can validate and create config versions via REST
-- Versions are INSERT-only; no gateway integration yet
+- Operator can validate and create config versions via REST at `/api/v1/**`
+- Versions are INSERT-only; gateway polling and activation deferred to Phase 2B
+- Authentication deferred; local unauthenticated operator acceptable for Phase 2A
 
 ---
 

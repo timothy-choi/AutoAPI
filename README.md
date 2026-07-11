@@ -12,7 +12,7 @@ AutoAPI is being renovated into a **distributed API runtime and traffic-manageme
 
 ## Currently implemented
 
-**Phase 1 — local Java gateway vertical slice**
+**Phase 1 — Java gateway data plane**
 
 - Static JSON runtime configuration loaded at startup
 - Host, longest path-prefix, and HTTP method routing
@@ -21,19 +21,24 @@ AutoAPI is being renovated into a **distributed API runtime and traffic-manageme
 - Operational `/healthz` and `/readyz` endpoints
 - Controlled JSON error responses
 
-See [`Server/README.md`](Server/README.md) for build, run, and configuration details.
+**Phase 2A — control-plane configuration compilation (in-process)**
+
+- PostgreSQL-backed draft management (projects, APIs, pools, targets, routes)
+- Validation and deterministic compilation into immutable configuration versions
+- Management REST API at `/api/v1/**`
+- **Live gateway still uses static Phase 1 file config** — no polling or activation yet
+
+See [`Server/README.md`](Server/README.md) for build, run, management API, and configuration details.
 
 ## Roadmap (not yet implemented)
 
-The following are documented in `docs/` but **not** implemented in this repository yet:
+The following remain documented in `docs/` but are **not** implemented yet:
 
-- FastAPI control plane and PostgreSQL
-- Immutable configuration versions, polling, ACK/NACK, convergence
+- Gateway configuration polling and atomic activation (Phase 2B)
+- ACK/NACK and convergence (Phase 2C)
 - API-key authentication and distributed rate limiting (Redis)
 - Health-aware backend selection, retries, canary traffic splitting
 - AWS deployment
-
-Do not assume these capabilities exist until the corresponding roadmap phase lands in `Server/` or future services.
 
 ## Quick start (Phase 1)
 

@@ -60,6 +60,22 @@ class UpstreamFailureIntegrationTest {
 
     @Override
     public void initialize(org.springframework.context.ConfigurableApplicationContext context) {
+      org.springframework.core.env.MapPropertySource propertySource =
+          new org.springframework.core.env.MapPropertySource(
+              "upstreamFailureIntegrationTest",
+              java.util.Map.of(
+                  "autoapi.controlplane.enabled",
+                  "false",
+                  "spring.flyway.enabled",
+                  "false",
+                  "spring.autoconfigure.exclude",
+                  String.join(
+                      ",",
+                      "org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration",
+                      "org.springframework.boot.autoconfigure.data.r2dbc.R2dbcDataAutoConfiguration",
+                      "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration",
+                      "org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration")));
+      context.getEnvironment().getPropertySources().addFirst(propertySource);
       TestUpstream.initializer(configPath).initialize(context);
     }
   }

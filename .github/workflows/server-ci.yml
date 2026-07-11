@@ -110,7 +110,9 @@ jobs:
       - name: Run smoke assertions
         env:
           SMOKE_SKIP_UP: "true"
-        run: ./scripts/smoke-server.sh
+        run: |
+          ./scripts/smoke-server.sh
+          ./scripts/smoke-control-plane.sh
 
       - name: Compose cleanup
         if: always()

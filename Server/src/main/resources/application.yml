@@ -6,6 +6,18 @@ spring:
     timeout-per-shutdown-phase: 30s
   main:
     web-application-type: reactive
+  r2dbc:
+    url: ${AUTOAPI_R2DBC_URL:r2dbc:postgresql://localhost:5432/autoapi}
+    username: ${POSTGRES_USER:autoapi}
+    password: ${POSTGRES_PASSWORD:autoapi}
+  datasource:
+    url: ${AUTOAPI_JDBC_URL:jdbc:postgresql://localhost:5432/autoapi}
+    username: ${POSTGRES_USER:autoapi}
+    password: ${POSTGRES_PASSWORD:autoapi}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
 
 logging:
   level:
@@ -15,3 +27,8 @@ logging:
 autoapi:
   config:
     path: ${AUTOAPI_CONFIG_PATH:deploy/config/runtime.json}
+  controlplane:
+    enabled: ${AUTOAPI_CONTROLPLANE_ENABLED:true}
+    compiled-gateway:
+      listen-address: 0.0.0.0
+      port: 8080

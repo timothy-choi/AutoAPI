@@ -1,12 +1,17 @@
-# AutoAPI Server (Phase 1)
+# AutoAPI Server (Phase 1 + Phase 2A)
 
-Java 21 **Spring WebFlux** gateway data plane for AutoAPI. Phase 1 loads a static JSON runtime configuration, matches L7 routes, and asynchronously reverse-proxies matching requests to a configured upstream.
+Java 21 **Spring WebFlux** application combining:
+
+- **Phase 1 gateway data plane** — static JSON runtime configuration, L7 routing, async reverse proxy
+- **Phase 2A management control plane** — PostgreSQL-backed draft resources, validation, immutable compiled configuration versions
+
+The **live gateway still uses static Phase 1 JSON** from file. Compiled database versions are stored but **not activated** (Phase 2B deferred).
 
 ## Why Java WebFlux
 
 The gateway is the live request path. It must handle concurrent HTTP traffic, nonblocking proxy I/O, connection reuse, and streaming bodies. Spring WebFlux on Reactor Netty provides that foundation without adopting Spring Cloud Gateway, keeping route matching, request-ID handling, header policy, and proxy error mapping as AutoAPI-owned code.
 
-## Current capabilities (Phase 1)
+## Current capabilities (Phase 1 data plane)
 
 - Static JSON runtime configuration (validated at startup)
 - Host + longest path-prefix + HTTP method routing
@@ -15,15 +20,26 @@ The gateway is the live request path. It must handle concurrent HTTP traffic, no
 - `/healthz` and `/readyz`
 - JSON error envelope (`404`, `405`, `502`, `500`)
 
+## Current capabilities (Phase 2A control plane)
+
+- PostgreSQL persistence via **Spring Data R2DBC** (nonblocking)
+- **Flyway** schema migrations via JDBC at startup
+- Management REST API at `/api/v1/**` (projects, APIs, upstream pools/targets, routes)
+- Draft graph validation with stable machine-readable error codes
+- Deterministic runtime compilation and **SHA-256** content hashing
+- Immutable `config_versions` snapshots (INSERT-only, no PATCH/PUT)
+- Transaction-safe monotonic version allocation per API (`SELECT ... FOR UPDATE`)
+
+**Not implemented:** authentication, gateway polling, live config activation, ACK/NACK, convergence, Redis, rate limiting.
+
 ## Current limitations
 
-- Static configuration only (no control plane, versions, polling, ACK/NACK)
-- One upstream URL per route
-- No API-key authentication
+- Live gateway uses **static file config only** — compiled versions are not consumed by the proxy yet
+- No gateway registration, heartbeats, or multi-gateway behavior
+- No API-key authentication (management API is unauthenticated in Phase 2A)
 - No rate limiting (no Redis)
 - No retries, health-aware routing, or traffic splitting
-- No PostgreSQL or dynamic config swap
-- No upstream base-path joining or path rewriting
+- No upstream base-path joining or path rewriting on the gateway
 
 ## Build and test
 
@@ -45,10 +61,53 @@ Start a mock upstream separately (`tests/mock-upstream/server.py`) and point `de
 
 ## Run with Docker Compose (from repo root)
 
+Requires PostgreSQL for Phase 2A management readiness.
+
 ```bash
 docker compose up --build
 curl -H 'Host: api.autoapi.local' http://localhost:8080/v1/orders/123
 ```
+
+Copy `.env.example` to `.env` for local overrides if running outside Compose.
+
+## Management API (Phase 2A)
+
+Base path: `/api/v1`. Authentication is **not** implemented in Phase 2A.
+
+Example flow:
+
+```bash
+# Create project
+curl -X POST http://localhost:8080/api/v1/projects \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"payments-platform"}'
+
+# Create API (use project ID from response)
+curl -X POST http://localhost:8080/api/v1/projects/{projectId}/apis \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"orders-api","host":"api.autoapi.local","basePath":"/"}'
+
+# Create upstream pool, target, route — then validate and publish
+curl -X POST http://localhost:8080/api/v1/apis/{apiId}/config/validate
+curl -X POST http://localhost:8080/api/v1/apis/{apiId}/config/versions \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"Initial config"}'
+```
+
+Compiled snapshots include `apiId`, monotonic `version`, `contentHash`, `gateway`, and `routes` with `upstreamPool` metadata. The hash is computed over canonical JSON **excluding** version metadata.
+
+Duplicate unchanged publication returns `409 CONFIG_VERSION_ALREADY_EXISTS`.
+
+Management routes (`/api/v1/**`) are handled in-process and are **not** proxied to configured upstreams.
+
+## Readiness
+
+| Endpoint | Behavior |
+|----------|----------|
+| `/healthz` | Process liveness |
+| `/readyz` | `200` when Phase 1 static config is loaded, gateway is ready, PostgreSQL is reachable, and Flyway migrations completed (when control plane enabled) |
+
+The gateway hot path does **not** query PostgreSQL per request.
 
 ## Configuration path precedence
 
