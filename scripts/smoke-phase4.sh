@@ -57,11 +57,38 @@ PY
 create_api_key() {
   local api_id="$1"
   local key_name="$2"
-  curl --fail --silent \
+  control_plane_json "create API key ${key_name}" \
     -X POST \
     -H 'Content-Type: application/json' \
     -d "{\"name\":\"${key_name}\"}" \
     "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/api-keys"
+}
+
+control_plane_mutate() {
+  local context="$1"
+  shift
+  local status
+  set +e
+  status="$(curl --silent --show-error \
+    -D "${SMOKE_HEADERS_FILE}" \
+    -o "${SMOKE_BODY_FILE}" \
+    -w '%{http_code}' \
+    "$@")"
+  local curl_exit=$?
+  set -e
+  if [[ ${curl_exit} -ne 0 || "${status}" -lt 200 || "${status}" -ge 300 ]]; then
+    echo "${context}: HTTP ${status:-unknown} (curl exit ${curl_exit})" >&2
+    cat "${SMOKE_HEADERS_FILE}" >&2
+    cat "${SMOKE_BODY_FILE}" >&2
+    exit 1
+  fi
+}
+
+control_plane_json() {
+  local context="$1"
+  shift
+  control_plane_mutate "${context}" "$@"
+  cat "${SMOKE_BODY_FILE}"
 }
 
 wait_ready() {
@@ -161,26 +188,31 @@ if [[ "${SMOKE_SKIP_UP}" != "true" ]]; then
 fi
 
 echo "== Creating project, API, pool, route =="
-project_json="$(curl --fail --silent -X POST "${CONTROL_PLANE_URL}/api/v1/projects" \
+project_json="$(control_plane_json "create project" \
+  -X POST "${CONTROL_PLANE_URL}/api/v1/projects" \
   -H 'Content-Type: application/json' \
   -d '{"name":"phase4-platform","description":"Phase 4 smoke"}')"
 project_id="$(json_field "${project_json}" id)"
 
-api_json="$(curl --fail --silent -X POST "${CONTROL_PLANE_URL}/api/v1/projects/${project_id}/apis" \
+api_json="$(control_plane_json "create API" \
+  -X POST "${CONTROL_PLANE_URL}/api/v1/projects/${project_id}/apis" \
   -H 'Content-Type: application/json' \
   -d '{"name":"orders-api","host":"api.autoapi.local","basePath":"/"}')"
 api_id="$(json_field "${api_json}" id)"
 
-pool_json="$(curl --fail --silent -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/upstream-pools" \
+pool_json="$(control_plane_json "create upstream pool" \
+  -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/upstream-pools" \
   -H 'Content-Type: application/json' \
   -d '{"name":"orders-v1","loadBalancing":"ROUND_ROBIN"}')"
 pool_id="$(json_field "${pool_json}" id)"
 
-curl --fail --silent -X POST "${CONTROL_PLANE_URL}/api/v1/upstream-pools/${pool_id}/targets" \
+control_plane_mutate "create upstream target" \
+  -X POST "${CONTROL_PLANE_URL}/api/v1/upstream-pools/${pool_id}/targets" \
   -H 'Content-Type: application/json' \
-  -d '{"url":"http://upstream-v1:8080","enabled":true,"weight":1}' >/dev/null
+  -d '{"url":"http://upstream-v1:8080","enabled":true,"weight":1}'
 
-route_json="$(curl --fail --silent -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/routes" \
+route_json="$(control_plane_json "create route" \
+  -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/routes" \
   -H 'Content-Type: application/json' \
   -d "{\"name\":\"orders-route\",\"host\":\"api.autoapi.local\",\"pathPrefix\":\"/v1/orders\",\"methods\":[\"GET\",\"POST\"],\"upstreamPoolId\":\"${pool_id}\",\"enabled\":true}")"
 route_id="$(json_field "${route_json}" id)"
@@ -192,23 +224,28 @@ AUTH_KEY="$(json_field "${auth_key_json}" plaintextKey)"
 RATE_LIMIT_KEY="$(json_field "${rate_limit_key_json}" plaintextKey)"
 
 echo "== Creating rate-limit policy =="
-policy_json="$(curl --fail --silent -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/rate-limit-policies" \
+policy_json="$(control_plane_json "create rate-limit policy" \
+  -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/rate-limit-policies" \
   -H 'Content-Type: application/json' \
   -d "{\"name\":\"phase4-smoke-limit\",\"limitCount\":${LIMIT_COUNT},\"windowSeconds\":${WINDOW_SECONDS},\"identitySource\":\"API_KEY\",\"redisFailureMode\":\"FAIL_OPEN\"}")"
 policy_id="$(json_field "${policy_json}" id)"
 
-curl --fail --silent -X PUT "${CONTROL_PLANE_URL}/api/v1/routes/${route_id}/policy-binding" \
+control_plane_mutate "bind route policy" \
+  -X PUT "${CONTROL_PLANE_URL}/api/v1/routes/${route_id}/policy-binding" \
   -H 'Content-Type: application/json' \
-  -d "{\"authenticationRequired\":true,\"rateLimitPolicyId\":\"${policy_id}\"}" >/dev/null
+  -d "{\"authenticationRequired\":true,\"rateLimitPolicyId\":\"${policy_id}\"}"
 
 echo "== Publishing and activating =="
-curl --fail --silent -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/validate" >/dev/null
-curl --fail --silent -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/versions" \
+control_plane_mutate "validate configuration" \
+  -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/validate"
+control_plane_mutate "publish configuration version 1" \
+  -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/versions" \
   -H 'Content-Type: application/json' \
-  -d '{"message":"Phase 4 version 1"}' >/dev/null
-curl --fail --silent -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/versions/1/activate" \
+  -d '{"message":"Phase 4 version 1"}'
+control_plane_mutate "activate configuration version 1" \
+  -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/versions/1/activate" \
   -H 'Content-Type: application/json' \
-  -d '{"expectedDesiredVersion":null}' >/dev/null
+  -d '{"expectedDesiredVersion":null}'
 
 export AUTOAPI_GATEWAY_API_ID="${api_id}"
 if [[ "${SMOKE_SKIP_UP}" != "true" ]]; then
@@ -258,16 +295,20 @@ fi
 
 echo "== Publishing short-window policy for reset behavior =="
 RESET_WINDOW_SECONDS=10
-curl --fail --silent -X PATCH "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/rate-limit-policies/${policy_id}" \
+control_plane_mutate "patch rate-limit window for reset behavior" \
+  -X PATCH "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/rate-limit-policies/${policy_id}" \
   -H 'Content-Type: application/json' \
-  -d "{\"windowSeconds\":${RESET_WINDOW_SECONDS}}" >/dev/null
-curl --fail --silent -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/validate" >/dev/null
-curl --fail --silent -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/versions" \
+  -d "{\"windowSeconds\":${RESET_WINDOW_SECONDS}}"
+control_plane_mutate "validate configuration after reset-window patch" \
+  -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/validate"
+control_plane_mutate "publish configuration version 2" \
+  -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/versions" \
   -H 'Content-Type: application/json' \
-  -d '{"message":"Phase 4 version 2 short reset window"}' >/dev/null
-curl --fail --silent -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/versions/2/activate" \
+  -d '{"message":"Phase 4 version 2 short reset window"}'
+control_plane_mutate "activate configuration version 2" \
+  -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/versions/2/activate" \
   -H 'Content-Type: application/json' \
-  -d '{"expectedDesiredVersion":1}' >/dev/null
+  -d '{"expectedDesiredVersion":1}'
 wait_convergence "${api_id}" "CONVERGED"
 
 echo "== Waiting for quota reset =="
@@ -294,16 +335,20 @@ status="$(request_status "${GATEWAY_A_URL}" "${RATE_LIMIT_KEY}")"
 assert_status "FAIL_OPEN during Redis outage via gateway-a" "200" "${status}"
 
 echo "== Switch policy to FAIL_CLOSED =="
-curl --fail --silent -X PATCH "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/rate-limit-policies/${policy_id}" \
+control_plane_mutate "patch rate-limit failure mode to FAIL_CLOSED" \
+  -X PATCH "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/rate-limit-policies/${policy_id}" \
   -H 'Content-Type: application/json' \
-  -d '{"redisFailureMode":"FAIL_CLOSED"}' >/dev/null
-curl --fail --silent -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/validate" >/dev/null
-curl --fail --silent -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/versions" \
+  -d '{"redisFailureMode":"FAIL_CLOSED"}'
+control_plane_mutate "validate configuration after FAIL_CLOSED patch" \
+  -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/validate"
+control_plane_mutate "publish configuration version 3" \
+  -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/versions" \
   -H 'Content-Type: application/json' \
-  -d '{"message":"Phase 4 version 3 FAIL_CLOSED"}' >/dev/null
-curl --fail --silent -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/versions/3/activate" \
+  -d '{"message":"Phase 4 version 3 FAIL_CLOSED"}'
+control_plane_mutate "activate configuration version 3" \
+  -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/versions/3/activate" \
   -H 'Content-Type: application/json' \
-  -d '{"expectedDesiredVersion":2}' >/dev/null
+  -d '{"expectedDesiredVersion":2}'
 wait_convergence "${api_id}" "CONVERGED"
 
 status="$(request_status "${GATEWAY_A_URL}" "${RATE_LIMIT_KEY}")"

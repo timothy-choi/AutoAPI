@@ -4,6 +4,7 @@ import com.autoapi.controlplane.api.ControlPlaneException;
 import com.autoapi.controlplane.apidefinition.ApiDefinitionService;
 import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
 import com.autoapi.controlplane.persistence.RateLimitPolicyRepository;
+import com.autoapi.controlplane.persistence.RateLimitPolicyRepositoryCustom;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
@@ -24,11 +25,15 @@ public class RateLimitPolicyService {
   public static final int MAX_WINDOW_SECONDS = 86_400;
 
   private final RateLimitPolicyRepository policyRepository;
+  private final RateLimitPolicyRepositoryCustom policyRepositoryCustom;
   private final ApiDefinitionService apiDefinitionService;
 
   public RateLimitPolicyService(
-      RateLimitPolicyRepository policyRepository, ApiDefinitionService apiDefinitionService) {
+      RateLimitPolicyRepository policyRepository,
+      RateLimitPolicyRepositoryCustom policyRepositoryCustom,
+      ApiDefinitionService apiDefinitionService) {
     this.policyRepository = policyRepository;
+    this.policyRepositoryCustom = policyRepositoryCustom;
     this.apiDefinitionService = apiDefinitionService;
   }
 
@@ -104,18 +109,14 @@ public class RateLimitPolicyService {
               boolean nextEnabled = enabled == null ? existing.enabled() : enabled;
               validateFields(nextLimit, nextWindow, nextIdentity, nextFailureMode);
               OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-              return policyRepository.save(
-                  new RateLimitPolicyEntity(
-                      existing.id(),
-                      existing.apiId(),
-                      existing.name(),
-                      nextLimit,
-                      nextWindow,
-                      nextIdentity,
-                      nextFailureMode,
-                      nextEnabled,
-                      existing.createdAt(),
-                      now));
+              return policyRepositoryCustom.update(
+                  existing.id(),
+                  nextLimit,
+                  nextWindow,
+                  nextIdentity,
+                  nextFailureMode,
+                  nextEnabled,
+                  now);
             });
   }
 
