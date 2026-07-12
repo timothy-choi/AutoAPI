@@ -18,7 +18,9 @@ class GatewayRedisRateLimitAutoConfigurationTest {
           .withPropertyValues(
               "autoapi.role=gateway",
               "autoapi.security.api-key-pepper=" + SecurityTestFixtures.TEST_PEPPER)
-          .withBean(ReactiveRedisConnectionFactory.class, () -> mock(ReactiveRedisConnectionFactory.class))
+          .withBean(
+              ReactiveRedisConnectionFactory.class,
+              () -> mock(ReactiveRedisConnectionFactory.class))
           .withBean(GatewaySecurityMetrics.class, () -> mock(GatewaySecurityMetrics.class))
           .withUserConfiguration(GatewayRedisRateLimitAutoConfiguration.class);
 
