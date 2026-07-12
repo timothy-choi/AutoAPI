@@ -19,6 +19,7 @@ public class GatewayProperties {
   private String listenAddress = "0.0.0.0";
   private int port = 8080;
   private ControlPlaneClientProperties controlPlaneClient = new ControlPlaneClientProperties();
+  private GatewayRedisProperties redis = new GatewayRedisProperties();
 
   public GatewayConfigSource configSource() {
     return configSource;
@@ -129,5 +130,13 @@ public class GatewayProperties {
 
   public void setControlPlaneClient(ControlPlaneClientProperties controlPlaneClient) {
     this.controlPlaneClient = controlPlaneClient;
+  }
+
+  public GatewayRedisProperties redis() {
+    return redis;
+  }
+
+  public void setRedis(GatewayRedisProperties redis) {
+    this.redis = redis;
   }
 }

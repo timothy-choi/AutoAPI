@@ -91,16 +91,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Bootstrap Phase 2C stack
-        run: ./scripts/bootstrap-phase2c.sh
-
-      - name: Run smoke assertions
-        env:
-          SMOKE_SKIP_UP: "true"
-          SMOKE_CONTROL_PLANE_URL: http://localhost:8081
-        run: |
-          ./scripts/smoke-server.sh
-          ./scripts/smoke-control-plane.sh
+      - name: Run Phase 4 integration smoke
+        run: ./scripts/smoke-phase4.sh
 
       - name: Compose cleanup
         if: always()

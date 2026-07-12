@@ -169,7 +169,9 @@ class GatewayManagementPathIntegrationTest {
                       "org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration",
                       "org.springframework.boot.autoconfigure.data.r2dbc.R2dbcDataAutoConfiguration",
                       "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration",
-                      "org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration")));
+                      "org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration",
+                      "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration",
+                      "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration")));
       context.getEnvironment().getPropertySources().addFirst(propertySource);
       TestUpstream.initializer(configPath).initialize(context);
     }

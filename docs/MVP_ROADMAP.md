@@ -254,29 +254,28 @@ API-key auth enforced at gateway; global rate limit shared across two gateways v
 
 ### Implementation Tasks
 
-- [ ] `api_keys` table (`key_id`, `key_prefix`, `secret_digest`) and management endpoints
-- [ ] Snapshot includes minimum key validation data keyed by `key_id`
-- [ ] Gateway auth: parse `ak_live_<key_id>.<secret>`; HMAC-SHA-256 with env pepper; constant-time compare
-- [ ] Redis in docker-compose
-- [ ] Atomic Lua fixed-window rate limit script (not separate INCR+EXPIRE)
-- [ ] Key shape: `ratelimit:{api_id}:{policy_id}:{identity_hash}:{window_start}`
-- [ ] Per-policy `redis_failure_mode` (default `fail_open` for portfolio MVP)
-- [ ] Quota exceeded → 429; Redis down + fail_closed → 503; Redis down + fail_open → allow + bypass metric
-- [ ] Metrics: `rate_limit_exceeded_total`, `rate_limit_redis_errors_total`, `rate_limit_redis_bypass_total`
+- [x] `api_keys` table (`key_id`, `key_prefix`, `secret_digest`) and management endpoints
+- [x] Snapshot includes minimum key validation data keyed by `key_id`
+- [x] Gateway auth: parse `ak_live_<key_id>.<secret>`; HMAC-SHA-256 with env pepper; constant-time compare
+- [x] Redis in docker-compose
+- [x] Atomic Lua fixed-window rate limit script (not separate INCR+EXPIRE)
+- [x] Key shape: `ratelimit:{api_id}:{policy_id}:{identity_hash}:{window_start}`
+- [x] Per-policy `redis_failure_mode` (default `FAIL_OPEN`)
+- [x] Quota exceeded → 429; Redis down + fail_closed → 503; Redis down + fail_open → allow + bypass metric
+- [x] Metrics: `autoapi_gateway_rate_limit_*`, `autoapi_gateway_auth_*`
 
 ### Components/Files Affected
 
-- `control-plane/app/models/api_keys.py`
-- `control-plane/app/models/rate_limit_policies.py`
-- `gateway/internal/middleware/auth.go`
-- `gateway/internal/middleware/ratelimit.go`
-- `gateway/internal/redis/client.go`
+- `Server/src/main/resources/db/migration/V3__api_keys_and_rate_limits.sql`
+- `Server/src/main/java/com/autoapi/controlplane/api/SecurityManagementRouter.java`
+- `Server/src/main/java/com/autoapi/gateway/auth/*`
+- `Server/src/main/java/com/autoapi/gateway/redis/*`
 
 ### Tests
 
-- [ ] Unit: auth middleware rejects missing/invalid key
-- [ ] Integration: 101st request in window → 429
-- [ ] Integration: 50 req each on 2 gateways → ~100 total allowed, not 200
+- [x] Unit: auth middleware rejects missing/invalid key
+- [x] Integration: sixth request across two gateways → 429 (shared quota)
+- [x] Integration: Redis outage fail_open / fail_closed behavior
 - [ ] Integration: Redis stopped → fail-open or fail-closed per config (both tested)
 
 ### Definition of Done

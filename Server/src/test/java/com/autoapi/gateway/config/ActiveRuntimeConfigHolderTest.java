@@ -137,7 +137,7 @@ class ActiveRuntimeConfigHolderTest {
             now);
 
     HashableRuntimePayload payload =
-        RuntimeConfigCompiler.compile(
+        RuntimeConfigCompiler.compileWithoutSecurity(
             API_ID, GATEWAY, List.of(route), Map.of(poolId, pool), Map.of(poolId, List.of(target)));
     String hash = RuntimeContentHasher.sha256Hex(RuntimeContentHasher.canonicalJson(payload));
     return RuntimeConfigCompiler.toStoredSnapshot(payload, version, hash);
@@ -146,6 +146,11 @@ class ActiveRuntimeConfigHolderTest {
   private static StoredRuntimeSnapshot snapshotWithTamperedHash(long version) {
     StoredRuntimeSnapshot snapshot = validSnapshot(version);
     return new StoredRuntimeSnapshot(
-        snapshot.apiId(), snapshot.version(), "deadbeef", snapshot.gateway(), snapshot.routes());
+        snapshot.apiId(),
+        snapshot.version(),
+        "deadbeef",
+        snapshot.gateway(),
+        snapshot.routes(),
+        snapshot.apiKeys());
   }
 }

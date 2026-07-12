@@ -53,7 +53,7 @@ wait_convergence() {
 }
 
 echo "== Starting PostgreSQL, upstreams, and control plane =="
-docker compose up --build -d postgres upstream-v1 upstream-v2 control-plane
+docker compose up --build -d postgres redis upstream-v1 upstream-v2 control-plane
 wait_ready "${CONTROL_PLANE_URL}" "Control plane"
 
 echo "== Creating project, API, pool, route =="

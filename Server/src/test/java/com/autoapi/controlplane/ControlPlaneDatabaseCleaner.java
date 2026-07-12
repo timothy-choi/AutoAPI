@@ -14,6 +14,9 @@ public final class ControlPlaneDatabaseCleaner {
     databaseClient.sql("DELETE FROM gateway_api_status").fetch().rowsUpdated().block();
     databaseClient.sql("DELETE FROM gateways").fetch().rowsUpdated().block();
     databaseClient.sql("DELETE FROM config_versions").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM route_policy_bindings").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM api_keys").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM rate_limit_policies").fetch().rowsUpdated().block();
     databaseClient.sql("DELETE FROM routes").fetch().rowsUpdated().block();
     databaseClient.sql("DELETE FROM upstream_targets").fetch().rowsUpdated().block();
     databaseClient.sql("DELETE FROM upstream_pools").fetch().rowsUpdated().block();

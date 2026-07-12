@@ -4,10 +4,20 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.util.List;
 import java.util.UUID;
 
-@JsonPropertyOrder({"id", "host", "pathPrefix", "methods", "upstreamPool"})
+@JsonPropertyOrder({
+  "id",
+  "host",
+  "pathPrefix",
+  "methods",
+  "authentication",
+  "rateLimit",
+  "upstreamPool"
+})
 public record CompiledRouteSection(
     UUID id,
     String host,
     String pathPrefix,
     List<String> methods,
+    CompiledAuthenticationSection authentication,
+    CompiledRateLimitSection rateLimit,
     CompiledUpstreamPoolSection upstreamPool) {}

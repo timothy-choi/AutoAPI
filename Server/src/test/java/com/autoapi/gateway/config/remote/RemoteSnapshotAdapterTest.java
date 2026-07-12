@@ -49,7 +49,8 @@ class RemoteSnapshotAdapterTest {
             snapshot.version(),
             "deadbeef",
             snapshot.gateway(),
-            snapshot.routes());
+            snapshot.routes(),
+            snapshot.apiKeys());
 
     RemoteSnapshotValidationException ex =
         assertThrows(
@@ -82,7 +83,7 @@ class RemoteSnapshotAdapterTest {
             now);
 
     HashableRuntimePayload payload =
-        RuntimeConfigCompiler.compile(
+        RuntimeConfigCompiler.compileWithoutSecurity(
             API_ID, GATEWAY, List.of(route), Map.of(poolId, pool), Map.of(poolId, List.of(target)));
     String hash = RuntimeContentHasher.sha256Hex(RuntimeContentHasher.canonicalJson(payload));
     return RuntimeConfigCompiler.toStoredSnapshot(payload, version, hash);

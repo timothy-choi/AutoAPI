@@ -2,8 +2,14 @@ package com.autoapi.controlplane;
 
 import com.autoapi.controlplane.configversion.CompiledGatewaySection;
 import com.autoapi.controlplane.persistence.ApiEntity;
+import com.autoapi.controlplane.persistence.ApiKeyEntity;
+import com.autoapi.controlplane.persistence.ApiKeyRepository;
 import com.autoapi.controlplane.persistence.ApiRepository;
+import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
+import com.autoapi.controlplane.persistence.RateLimitPolicyRepository;
 import com.autoapi.controlplane.persistence.RouteEntity;
+import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
+import com.autoapi.controlplane.persistence.RoutePolicyBindingRepository;
 import com.autoapi.controlplane.persistence.RouteRepository;
 import com.autoapi.controlplane.persistence.UpstreamPoolEntity;
 import com.autoapi.controlplane.persistence.UpstreamPoolRepository;
@@ -26,6 +32,9 @@ public class DraftGraphService {
   private final RouteRepository routeRepository;
   private final UpstreamPoolRepository upstreamPoolRepository;
   private final UpstreamTargetRepository upstreamTargetRepository;
+  private final ApiKeyRepository apiKeyRepository;
+  private final RateLimitPolicyRepository rateLimitPolicyRepository;
+  private final RoutePolicyBindingRepository routePolicyBindingRepository;
   private final ControlPlaneProperties properties;
 
   public DraftGraphService(
@@ -33,11 +42,17 @@ public class DraftGraphService {
       RouteRepository routeRepository,
       UpstreamPoolRepository upstreamPoolRepository,
       UpstreamTargetRepository upstreamTargetRepository,
+      ApiKeyRepository apiKeyRepository,
+      RateLimitPolicyRepository rateLimitPolicyRepository,
+      RoutePolicyBindingRepository routePolicyBindingRepository,
       ControlPlaneProperties properties) {
     this.apiRepository = apiRepository;
     this.routeRepository = routeRepository;
     this.upstreamPoolRepository = upstreamPoolRepository;
     this.upstreamTargetRepository = upstreamTargetRepository;
+    this.apiKeyRepository = apiKeyRepository;
+    this.rateLimitPolicyRepository = rateLimitPolicyRepository;
+    this.routePolicyBindingRepository = routePolicyBindingRepository;
     this.properties = properties;
   }
 
@@ -48,10 +63,22 @@ public class DraftGraphService {
             api ->
                 Mono.zip(
                         routeRepository.findByApiId(apiId).collectList(),
-                        upstreamPoolRepository.findByApiId(apiId).collectList())
+                        upstreamPoolRepository.findByApiId(apiId).collectList(),
+                        apiKeyRepository.findByApiId(apiId).collectList(),
+                        rateLimitPolicyRepository.findByApiId(apiId).collectList(),
+                        routePolicyBindingRepository.findAll().collectList())
                     .flatMap(
                         tuple -> {
                           List<UpstreamPoolEntity> pools = tuple.getT2();
+                          List<RoutePolicyBindingEntity> allBindings = tuple.getT5();
+                          List<RoutePolicyBindingEntity> apiBindings =
+                              allBindings.stream()
+                                  .filter(
+                                      binding ->
+                                          tuple.getT1().stream()
+                                              .anyMatch(
+                                                  route -> route.id().equals(binding.routeId())))
+                                  .toList();
                           return reactor.core.publisher.Flux.fromIterable(pools)
                               .flatMap(
                                   pool -> upstreamTargetRepository.findByUpstreamPoolId(pool.id()))
@@ -59,7 +86,14 @@ public class DraftGraphService {
                               .map(
                                   targets ->
                                       new DraftGraph(
-                                          api, tuple.getT1(), pools, targets, gatewayDefaults()));
+                                          api,
+                                          tuple.getT1(),
+                                          pools,
+                                          targets,
+                                          tuple.getT3(),
+                                          tuple.getT4(),
+                                          apiBindings,
+                                          gatewayDefaults()));
                         }));
   }
 
@@ -73,5 +107,8 @@ public class DraftGraphService {
       List<RouteEntity> routes,
       List<UpstreamPoolEntity> pools,
       List<UpstreamTargetEntity> targets,
+      List<ApiKeyEntity> apiKeys,
+      List<RateLimitPolicyEntity> rateLimitPolicies,
+      List<RoutePolicyBindingEntity> routePolicyBindings,
       CompiledGatewaySection gatewayDefaults) {}
 }

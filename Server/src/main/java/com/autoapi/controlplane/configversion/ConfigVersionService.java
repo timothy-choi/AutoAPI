@@ -4,6 +4,8 @@ import com.autoapi.controlplane.DraftGraphService;
 import com.autoapi.controlplane.api.ControlPlaneException;
 import com.autoapi.controlplane.persistence.ConfigVersionEntity;
 import com.autoapi.controlplane.persistence.ConfigVersionRepository;
+import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
+import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
 import com.autoapi.controlplane.validation.DraftGraphValidator;
 import com.autoapi.controlplane.validation.ValidationResult;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -46,14 +48,7 @@ public class ConfigVersionService {
   public Mono<ValidationResult> validate(UUID apiId) {
     return draftGraphService
         .loadByApiId(apiId)
-        .map(
-            graph ->
-                DraftGraphValidator.validate(
-                    graph.api(),
-                    graph.routes(),
-                    graph.pools(),
-                    graph.targets(),
-                    graph.gatewayDefaults()))
+        .map(DraftGraphValidator::validate)
         .switchIfEmpty(
             Mono.just(
                 com.autoapi.controlplane.validation.ValidationResult.invalid(
@@ -69,13 +64,7 @@ public class ConfigVersionService {
         .switchIfEmpty(Mono.error(ControlPlaneException.notFound("API was not found")))
         .flatMap(
             graph -> {
-              ValidationResult validation =
-                  DraftGraphValidator.validate(
-                      graph.api(),
-                      graph.routes(),
-                      graph.pools(),
-                      graph.targets(),
-                      graph.gatewayDefaults());
+              ValidationResult validation = DraftGraphValidator.validate(graph);
               if (!validation.valid()) {
                 return Mono.error(ControlPlaneException.validationFailed(validation.errors()));
               }
@@ -108,6 +97,17 @@ public class ConfigVersionService {
                     .one()
                     .flatMap(
                         nextVersion -> {
+                          OffsetDateTime publishInstant = OffsetDateTime.now(ZoneOffset.UTC);
+                          java.util.Map<UUID, RoutePolicyBindingEntity> bindingByRouteId =
+                              graph.routePolicyBindings().stream()
+                                  .collect(
+                                      java.util.stream.Collectors.toMap(
+                                          RoutePolicyBindingEntity::routeId, b -> b));
+                          java.util.Map<UUID, RateLimitPolicyEntity> policyById =
+                              graph.rateLimitPolicies().stream()
+                                  .collect(
+                                      java.util.stream.Collectors.toMap(
+                                          RateLimitPolicyEntity::id, p -> p));
                           HashableRuntimePayload payload =
                               RuntimeConfigCompiler.compile(
                                   apiId,
@@ -128,7 +128,11 @@ public class ConfigVersionService {
                                           java.util.stream.Collectors.groupingBy(
                                               com.autoapi.controlplane.persistence
                                                       .UpstreamTargetEntity
-                                                  ::upstreamPoolId)));
+                                                  ::upstreamPoolId)),
+                                  bindingByRouteId,
+                                  policyById,
+                                  graph.apiKeys(),
+                                  publishInstant);
                           StoredRuntimeSnapshot snapshot =
                               RuntimeConfigCompiler.toStoredSnapshot(
                                   payload, nextVersion, validation.contentHash());

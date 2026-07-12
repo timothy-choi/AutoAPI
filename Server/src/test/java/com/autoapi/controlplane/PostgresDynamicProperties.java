@@ -19,5 +19,8 @@ public interface PostgresDynamicProperties {
     registry.add("spring.datasource.username", ControlPlaneIntegrationTest::postgresUsername);
     registry.add("spring.datasource.password", ControlPlaneIntegrationTest::postgresPassword);
     registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+    registry.add(
+        "autoapi.security.api-key-pepper",
+        () -> com.autoapi.support.SecurityTestFixtures.TEST_PEPPER);
   }
 }
