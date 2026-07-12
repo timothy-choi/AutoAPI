@@ -46,6 +46,7 @@ import org.springframework.test.context.DynamicPropertySource;
     properties = {
       "autoapi.role=gateway",
       "autoapi.gateway.config-source=control-plane",
+      "autoapi.gateway.id=test-gateway",
       "autoapi.controlplane.enabled=false",
       "spring.flyway.enabled=false"
     })
@@ -59,6 +60,8 @@ class ControlPlaneConfigPollerTest {
   private static final AtomicBoolean FAIL_DESIRED = new AtomicBoolean(false);
   private static final AtomicInteger DESIRED_REQUESTS = new AtomicInteger(0);
   private static final AtomicInteger SNAPSHOT_REQUESTS = new AtomicInteger(0);
+  private static final AtomicInteger CONFIG_STATUS_REQUESTS = new AtomicInteger(0);
+  private static final AtomicInteger REGISTER_REQUESTS = new AtomicInteger(0);
   private static final AtomicReference<String> LAST_IF_NONE_MATCH = new AtomicReference<>();
 
   private static HttpServer httpServer;
@@ -74,6 +77,13 @@ class ControlPlaneConfigPollerTest {
       httpServer.createContext(
           "/api/v1/gateway-config/" + API_ID + "/versions/1",
           ControlPlaneConfigPollerTest::handleSnapshot);
+      httpServer.createContext(
+          "/api/v1/gateways/register", ControlPlaneConfigPollerTest::handleRegister);
+      httpServer.createContext(
+          "/api/v1/gateways/test-gateway/config-status",
+          ControlPlaneConfigPollerTest::handleConfigStatus);
+      httpServer.createContext(
+          "/api/v1/gateways/test-gateway/heartbeat", ControlPlaneConfigPollerTest::handleHeartbeat);
       httpServer.start();
     } catch (IOException e) {
       throw new ExceptionInInitializerError(e);
@@ -93,8 +103,10 @@ class ControlPlaneConfigPollerTest {
   @DynamicPropertySource
   static void gatewayProperties(DynamicPropertyRegistry registry) {
     registry.add("autoapi.gateway.api-id", () -> API_ID);
+    registry.add("autoapi.gateway.id", () -> "test-gateway");
     registry.add("autoapi.gateway.control-plane-base-url", () -> "http://127.0.0.1:" + mockPort);
     registry.add("autoapi.gateway.poll-interval", () -> "100ms");
+    registry.add("autoapi.gateway.heartbeat-interval", () -> "1h");
   }
 
   @BeforeEach
@@ -116,6 +128,7 @@ class ControlPlaneConfigPollerTest {
     assertEquals("/v1/orders", active.runtimeConfig().routes().getFirst().pathPrefix());
     assertTrue(DESIRED_REQUESTS.get() >= 1);
     assertTrue(SNAPSHOT_REQUESTS.get() >= 1);
+    assertTrue(CONFIG_STATUS_REQUESTS.get() >= 1);
   }
 
   @Test
@@ -145,6 +158,20 @@ class ControlPlaneConfigPollerTest {
     assertSame(activeBefore, activeRuntimeConfigHolder.getActive());
     assertEquals(1, activeRuntimeConfigHolder.getActive().version());
     assertEquals(SNAPSHOT.contentHash(), activeRuntimeConfigHolder.getActive().contentHash());
+  }
+
+  private static void handleRegister(HttpExchange exchange) throws IOException {
+    REGISTER_REQUESTS.incrementAndGet();
+    writeResponse(exchange, 201, "application/json", "{\"gatewayId\":\"test-gateway\"}");
+  }
+
+  private static void handleConfigStatus(HttpExchange exchange) throws IOException {
+    CONFIG_STATUS_REQUESTS.incrementAndGet();
+    writeResponse(exchange, 202, "application/json", "{\"accepted\":true,\"idempotent\":false}");
+  }
+
+  private static void handleHeartbeat(HttpExchange exchange) throws IOException {
+    writeResponse(exchange, 200, "application/json", "{\"gatewayId\":\"test-gateway\"}");
   }
 
   private static void handleDesired(HttpExchange exchange) throws IOException {

@@ -165,40 +165,48 @@ Gateway registration, heartbeats, ACK/NACK, convergence, Redis, auth, rate limit
 
 ---
 
-### Phase 2C — ACK/NACK and Single-Gateway Convergence
+### Phase 2C — ACK/NACK and Multi-Gateway Convergence
+
+**Status: implemented (Java/WebFlux, `Server/`).**
 
 #### Goal
 
-Gateway reports activation results; control plane tracks current status and event history; convergence API works for one gateway.
+Gateways register, send heartbeats, report ACK/NACK; control plane tracks current status and append-only activation history; convergence API works across multiple live gateways.
 
 #### Implementation Tasks
 
-- [ ] `POST /gateways/register`
-- [ ] `POST /gateways/{id}/config-status` (ACK/NACK)
-- [ ] `gateway_api_status` table (current row per gateway+api)
-- [ ] `config_activation_events` table (append-only history)
-- [ ] `POST /config/versions/{version}/activate` with `expected_desired_version` → 409 on conflict
-- [ ] `GET /apis/{id}/convergence` with derived operational state
-- [ ] `operational_events` for `config_version_created`, `config_version_activated`
+- [x] `POST /api/v1/gateways/register` (idempotent re-registration)
+- [x] `POST /api/v1/gateways/{gatewayId}/heartbeat`
+- [x] `POST /api/v1/gateways/{gatewayId}/config-status` (ACK/NACK with reportId idempotency)
+- [x] `gateway_api_status` table (current row per gateway+api)
+- [x] `config_activation_events` table (append-only history)
+- [x] `GET /api/v1/apis/{apiId}/convergence` with derived operational state
+- [x] `GET /api/v1/gateways`, `GET /api/v1/gateways/{gatewayId}`, `GET /api/v1/apis/{apiId}/activation-events`
+- [x] Gateway registration, heartbeat, and ACK/NACK reporting in control-plane config mode
+- [x] Multi-gateway Compose topology (`gateway-a`, `gateway-b`)
 
 #### Components/Files Affected
 
-- `control-plane/app/models/gateway_api_status.py`
-- `control-plane/app/models/config_activation_events.py`
-- `control-plane/app/services/convergence.py`
-- `gateway/internal/controlplane/status.go`
+- `Server/src/main/resources/db/migration/V2__gateway_registration_and_status.sql`
+- `Server/src/main/java/com/autoapi/controlplane/gateway/*`
+- `Server/src/main/java/com/autoapi/gateway/config/remote/*`
+- `docker-compose.yml`, `scripts/bootstrap-phase2c.sh`
 
 #### Tests
 
-- [ ] Integration: invalid config version → NACK → prior version still serves
-- [ ] Integration: activate with stale `expected_desired_version` → 409
-- [ ] Integration: convergence shows CONVERGED for single gateway
+- [x] Registration, heartbeat, ACK/NACK, idempotency, NACK preserves active version
+- [x] Convergence: CONVERGED, DEGRADED, multi-gateway
+- [x] Poller reports ACK after activation
 
 #### Definition of Done
 
-- Single gateway ACK/NACK recorded in current status + event history
-- Invalid version does not break traffic
-- Derived convergence state accurate for one gateway
+- Multiple gateways register and report ACK/NACK
+- Invalid candidate NACK retains prior active version on gateway and in control plane
+- Derived convergence state accurate for live gateways; stale gateways excluded
+
+#### Not in Phase 2C
+
+Authentication, rate limiting, Redis, backend health, retries, traffic splitting, AWS deployment
 
 ---
 

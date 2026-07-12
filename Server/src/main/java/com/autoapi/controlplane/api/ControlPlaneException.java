@@ -92,6 +92,41 @@ public final class ControlPlaneException extends RuntimeException {
         "DESIRED_CONFIG_NOT_SET", message, HttpStatus.NOT_FOUND, List.of(), null);
   }
 
+  public static ControlPlaneException gatewayNotRegistered(String message) {
+    return new ControlPlaneException(
+        "GATEWAY_NOT_REGISTERED", message, HttpStatus.NOT_FOUND, List.of(), null);
+  }
+
+  public static ControlPlaneException invalidGatewayId(String message) {
+    return new ControlPlaneException(
+        "INVALID_GATEWAY_ID", message, HttpStatus.BAD_REQUEST, List.of(), null);
+  }
+
+  public static ControlPlaneException invalidHeartbeat(String message) {
+    return new ControlPlaneException(
+        "INVALID_HEARTBEAT", message, HttpStatus.BAD_REQUEST, List.of(), null);
+  }
+
+  public static ControlPlaneException invalidConfigStatus(String message) {
+    return new ControlPlaneException(
+        "INVALID_CONFIG_STATUS", message, HttpStatus.BAD_REQUEST, List.of(), null);
+  }
+
+  public static ControlPlaneException contentHashMismatch(String message) {
+    return new ControlPlaneException(
+        "CONTENT_HASH_MISMATCH", message, HttpStatus.BAD_REQUEST, List.of(), null);
+  }
+
+  public static ControlPlaneException reportIdConflict(String message) {
+    return new ControlPlaneException(
+        "REPORT_ID_CONFLICT", message, HttpStatus.CONFLICT, List.of(), null);
+  }
+
+  public static ControlPlaneException diagnosticTooLong(String message) {
+    return new ControlPlaneException(
+        "DIAGNOSTIC_TOO_LONG", message, HttpStatus.BAD_REQUEST, List.of(), null);
+  }
+
   public String code() {
     return code;
   }

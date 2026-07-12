@@ -64,7 +64,7 @@ class ActiveRuntimeConfigHolderTest {
     holder.activate(active);
 
     StoredRuntimeSnapshot invalid = snapshotWithTamperedHash(1);
-    assertFalse(activator.activateCandidate(invalid));
+    assertFalse(activator.activateCandidate(invalid).success());
 
     assertSame(active, holder.getActive());
     assertEquals(1, holder.getActive().version());

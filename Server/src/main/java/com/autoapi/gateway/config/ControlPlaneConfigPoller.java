@@ -2,9 +2,12 @@ package com.autoapi.gateway.config;
 
 import com.autoapi.controlplane.configversion.StoredRuntimeSnapshot;
 import com.autoapi.gateway.GatewayProperties;
+import com.autoapi.gateway.config.remote.ConfigStatusReporter;
 import com.autoapi.gateway.config.remote.ControlPlaneConfigClient;
 import com.autoapi.gateway.config.remote.ControlPlaneConfigClient.DesiredMetadataResponse;
 import com.autoapi.gateway.config.remote.ControlPlaneConfigClientException;
+import com.autoapi.gateway.config.remote.GatewayRegistrationManager;
+import com.autoapi.gateway.config.remote.GatewayRegistrationState;
 import com.autoapi.runtime.AutoApiRole;
 import com.autoapi.runtime.ConditionalOnAutoApiRole;
 import jakarta.annotation.PreDestroy;
@@ -31,6 +34,9 @@ public class ControlPlaneConfigPoller {
   private final LocalGatewayConfigActivator activator;
   private final ActiveRuntimeConfigHolder activeRuntimeConfigHolder;
   private final GatewayProperties gatewayProperties;
+  private final GatewayRegistrationState registrationState;
+  private final GatewayRegistrationManager registrationManager;
+  private final ConfigStatusReporter configStatusReporter;
   private final AtomicBoolean pollInProgress = new AtomicBoolean(false);
   private final AtomicBoolean lastFailureLogged = new AtomicBoolean(false);
   private Disposable pollingSubscription;
@@ -39,11 +45,17 @@ public class ControlPlaneConfigPoller {
       ControlPlaneConfigClient client,
       LocalGatewayConfigActivator activator,
       ActiveRuntimeConfigHolder activeRuntimeConfigHolder,
-      GatewayProperties gatewayProperties) {
+      GatewayProperties gatewayProperties,
+      GatewayRegistrationState registrationState,
+      GatewayRegistrationManager registrationManager,
+      ConfigStatusReporter configStatusReporter) {
     this.client = client;
     this.activator = activator;
     this.activeRuntimeConfigHolder = activeRuntimeConfigHolder;
     this.gatewayProperties = gatewayProperties;
+    this.registrationState = registrationState;
+    this.registrationManager = registrationManager;
+    this.configStatusReporter = configStatusReporter;
   }
 
   @EventListener(ApplicationReadyEvent.class)
@@ -77,6 +89,15 @@ public class ControlPlaneConfigPoller {
         || gatewayProperties.pollInterval().isNegative()) {
       throw new IllegalStateException("autoapi.gateway.poll-interval must be positive");
     }
+    String gatewayId = gatewayProperties.gatewayId();
+    if (gatewayId == null || gatewayId.isBlank()) {
+      throw new IllegalStateException(
+          "autoapi.gateway.id is required in control-plane config source mode");
+    }
+    if (!gatewayId.matches("^[a-zA-Z0-9._-]{1,128}$")) {
+      throw new IllegalStateException(
+          "autoapi.gateway.id must match [a-zA-Z0-9._-] and be at most 128 characters");
+    }
   }
 
   private Mono<Void> serializedPoll() {
@@ -87,6 +108,13 @@ public class ControlPlaneConfigPoller {
   }
 
   private Mono<Void> performPoll() {
+    if (!registrationState.isRegistered()) {
+      return registrationManager.awaitRegistered().then(Mono.defer(this::performPollOnce));
+    }
+    return performPollOnce();
+  }
+
+  private Mono<Void> performPollOnce() {
     String currentHash =
         activeRuntimeConfigHolder.getActive() == null
             ? null
@@ -105,7 +133,7 @@ public class ControlPlaneConfigPoller {
               DesiredMetadataResponse metadata = optionalMetadata.get();
               return client
                   .fetchSnapshot(metadata.version(), metadata.contentHash())
-                  .flatMap(snapshot -> activateIfValid(snapshot, metadata));
+                  .flatMap(snapshot -> activateAndReport(snapshot, metadata));
             })
         .doOnSuccess(
             ignored -> {
@@ -131,7 +159,7 @@ public class ControlPlaneConfigPoller {
         .then();
   }
 
-  private Mono<Void> activateIfValid(
+  private Mono<Void> activateAndReport(
       StoredRuntimeSnapshot snapshot, DesiredMetadataResponse metadata) {
     ActiveRuntimeBundle current = activeRuntimeConfigHolder.getActive();
     if (current != null
@@ -139,8 +167,9 @@ public class ControlPlaneConfigPoller {
         && current.contentHash().equals(metadata.contentHash())) {
       return Mono.empty();
     }
-    boolean activated = activator.activateCandidate(snapshot);
-    return activated ? Mono.empty() : Mono.empty();
+    GatewayActivationAttempt attempt = activator.activateCandidate(snapshot);
+    configStatusReporter.submit(attempt);
+    return Mono.empty();
   }
 
   private void logPollFailure(String category, String message) {

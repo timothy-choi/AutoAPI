@@ -49,6 +49,7 @@ services:
     environment:
       AUTOAPI_ROLE: control-plane
       AUTOAPI_CONTROLPLANE_ENABLED: "true"
+      AUTOAPI_CONTROLPLANE_GATEWAY_STALE_AFTER: 15s
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/autoapi
       SPRING_DATASOURCE_USERNAME: autoapi
       SPRING_DATASOURCE_PASSWORD: autoapi
@@ -65,7 +66,7 @@ services:
       retries: 15
       start_period: 40s
 
-  gateway:
+  gateway-a:
     build:
       context: ./Server
     ports:
@@ -74,9 +75,41 @@ services:
       AUTOAPI_ROLE: gateway
       AUTOAPI_CONTROLPLANE_ENABLED: "false"
       AUTOAPI_GATEWAY_CONFIG_SOURCE: control-plane
+      AUTOAPI_GATEWAY_ID: gateway-a
+      AUTOAPI_GATEWAY_GROUP: default
       AUTOAPI_CONTROL_PLANE_BASE_URL: http://control-plane:8080
       AUTOAPI_GATEWAY_API_ID: ${AUTOAPI_GATEWAY_API_ID:-}
       AUTOAPI_GATEWAY_POLL_INTERVAL: 3s
+      AUTOAPI_GATEWAY_HEARTBEAT_INTERVAL: 5s
+    depends_on:
+      control-plane:
+        condition: service_healthy
+      upstream-v1:
+        condition: service_healthy
+      upstream-v2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+      start_period: 60s
+
+  gateway-b:
+    build:
+      context: ./Server
+    ports:
+      - "8082:8080"
+    environment:
+      AUTOAPI_ROLE: gateway
+      AUTOAPI_CONTROLPLANE_ENABLED: "false"
+      AUTOAPI_GATEWAY_CONFIG_SOURCE: control-plane
+      AUTOAPI_GATEWAY_ID: gateway-b
+      AUTOAPI_GATEWAY_GROUP: default
+      AUTOAPI_CONTROL_PLANE_BASE_URL: http://control-plane:8080
+      AUTOAPI_GATEWAY_API_ID: ${AUTOAPI_GATEWAY_API_ID:-}
+      AUTOAPI_GATEWAY_POLL_INTERVAL: 3s
+      AUTOAPI_GATEWAY_HEARTBEAT_INTERVAL: 5s
     depends_on:
       control-plane:
         condition: service_healthy
@@ -96,4 +129,4 @@ volumes:
 
 networks:
   default:
-    name: autoapi-phase2b
+    name: autoapi-phase2c
