@@ -15,11 +15,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import reactor.test.StepVerifier;
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -34,6 +36,9 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 @ContextConfiguration(initializers = GatewayRateLimitIntegrationTest.Initializer.class)
 class GatewayRateLimitIntegrationTest {
 
+  private static final int QUOTA_EXHAUSTION_LIMIT = 5;
+  private static final int QUOTA_EXHAUSTION_WINDOW_SECONDS = 300;
+
   private static final TestUpstream upstream;
   private static final ApiKeyGenerator.GeneratedApiKeyMaterial keyMaterial =
       ApiKeyGenerator.generate();
@@ -47,13 +52,16 @@ class GatewayRateLimitIntegrationTest {
   }
 
   @Autowired private WebTestClient webTestClient;
+  @Autowired private ReactiveStringRedisTemplate redisTemplate;
   @Autowired private FixedWindowRateLimiter fixedWindowRateLimiter;
   @Autowired private GatewayRateLimitService gatewayRateLimitService;
 
   @BeforeEach
-  void requireRateLimitBeans() {
+  void clearRedisAndRequireRateLimitBeans() {
     org.junit.jupiter.api.Assertions.assertNotNull(fixedWindowRateLimiter);
     org.junit.jupiter.api.Assertions.assertNotNull(gatewayRateLimitService);
+    org.junit.jupiter.api.Assertions.assertTrue(RedisDynamicProperties.REDIS.isRunning());
+    StepVerifier.create(RedisDynamicProperties.flushDatabase(redisTemplate)).verifyComplete();
   }
 
   @DynamicPropertySource
@@ -109,7 +117,12 @@ class GatewayRateLimitIntegrationTest {
     @Override
     public void initialize(org.springframework.context.ConfigurableApplicationContext context) {
       RuntimeConfig config =
-          SecurityTestFixtures.protectedRouteConfig(upstream.port(), keyMaterial, true);
+          SecurityTestFixtures.protectedRouteConfig(
+              upstream.port(),
+              keyMaterial,
+              true,
+              QUOTA_EXHAUSTION_LIMIT,
+              QUOTA_EXHAUSTION_WINDOW_SECONDS);
       org.springframework.core.env.MapPropertySource propertySource =
           new org.springframework.core.env.MapPropertySource(
               "gatewayRateLimitIntegrationTest",

@@ -29,10 +29,21 @@ public final class SecurityTestFixtures {
 
   public static RuntimeConfig protectedRouteConfig(
       int upstreamPort, ApiKeyGenerator.GeneratedApiKeyMaterial key, boolean withRateLimit) {
+    return protectedRouteConfig(upstreamPort, key, withRateLimit, 5, 10);
+  }
+
+  public static RuntimeConfig protectedRouteConfig(
+      int upstreamPort,
+      ApiKeyGenerator.GeneratedApiKeyMaterial key,
+      boolean withRateLimit,
+      int limitCount,
+      int windowSeconds) {
     UUID policyId = UUID.fromString("00000000-0000-0000-0000-0000000000f1");
     RuntimeAuthentication authentication = new RuntimeAuthentication(true);
     RuntimeRateLimit rateLimit =
-        withRateLimit ? new RuntimeRateLimit(policyId, 5, 10, "API_KEY", "FAIL_OPEN") : null;
+        withRateLimit
+            ? new RuntimeRateLimit(policyId, limitCount, windowSeconds, "API_KEY", "FAIL_OPEN")
+            : null;
     RouteConfig route =
         new RouteConfig(
             "orders-route",

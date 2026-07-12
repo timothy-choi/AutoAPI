@@ -1,9 +1,11 @@
 package com.autoapi.support;
 
 import com.redis.testcontainers.RedisContainer;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.utility.DockerImageName;
+import reactor.core.publisher.Mono;
 
 public interface RedisDynamicProperties {
 
@@ -27,6 +29,10 @@ public interface RedisDynamicProperties {
         "spring.data.redis.url",
         () -> "redis://" + REDIS.getHost() + ":" + REDIS.getFirstMappedPort());
     registry.add("autoapi.security.api-key-pepper", () -> SecurityTestFixtures.TEST_PEPPER);
+  }
+
+  static Mono<Void> flushDatabase(ReactiveStringRedisTemplate redisTemplate) {
+    return redisTemplate.execute(connection -> connection.serverCommands().flushDb()).then();
   }
 
   @DynamicPropertySource
