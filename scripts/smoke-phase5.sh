@@ -23,6 +23,9 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# shellcheck source=scripts/smoke-phase5-parser-lib.sh
+source "${ROOT}/scripts/smoke-phase5-parser-lib.sh"
+
 json_field() {
   python3 - "$1" "$2" <<'PY'
 import json, sys
@@ -40,35 +43,7 @@ print(payload.get("service", ""))
 PY
 }
 
-# Reads target health by targetId from internal upstream-health JSON.
-# Prints five tab-separated fields: state consecutiveFailures ejectedUntil lastFailureCategory found
-read_target_health() {
-  local health_json="$1"
-  local target_id="$2"
-  python3 - "${health_json}" "${target_id}" <<'PY'
-import json, sys
-payload = json.loads(open(sys.argv[1], encoding="utf-8").read())
-target_id = sys.argv[2]
-for pool in payload.get("pools", []):
-    for target in pool.get("targets", []):
-        if target.get("targetId") == target_id:
-            print(
-                "\t".join(
-                    [
-                        str(target.get("state", "")),
-                        str(target.get("consecutiveFailures", "")),
-                        "" if target.get("ejectedUntil") is None else str(target.get("ejectedUntil")),
-                        "" if target.get("lastFailureCategory") is None else str(target.get("lastFailureCategory")),
-                        "1",
-                    ]
-                )
-            )
-            raise SystemExit(0)
-print("\t\t\t\t0")
-PY
-}
-
-fetch_upstream_health() {
+control_plane_mutate() {
   local curl_exit=0
   local status=""
   set +e
@@ -101,7 +76,11 @@ print_ejection_diagnostics() {
   echo "  failed targetId=${target_id}" >&2
   echo "  threshold=${HEALTH_THRESHOLD}" >&2
   if [[ -n "${health_json}" ]]; then
-    IFS=$'\t' read -r state failures ejected_until category found <<<"$(read_target_health "${health_json}" "${target_id}")"
+    local parsed=""
+    if ! parsed="$(read_parsed_target_health "${health_json}" "${target_id}")"; then
+      return 1
+    fi
+    IFS=$'\t' read -r state failures ejected_until category <<<"${parsed}"
     echo "  target state=${state:-unknown} consecutiveFailures=${failures:-unknown}" >&2
     echo "  ejectedUntil=${ejected_until:-null} lastFailureCategory=${category:-null}" >&2
     echo "  internal health response:" >&2
@@ -355,15 +334,14 @@ for attempt in $(seq 1 "${EJECTION_DRIVE_MAX_ATTEMPTS}"); do
   esac
 
   health_json="$(fetch_upstream_health)"
-  IFS=$'\t' read -r state failures ejected_until category found <<<"$(read_target_health "${health_json}" "${target_v1_id}")"
-  if [[ "${found}" != "1" ]]; then
-    echo "upstream-v1 target ${target_v1_id} not found in health response (attempt ${attempt})" >&2
-    echo "${health_json}" >&2
+  parsed_health=""
+  if ! parsed_health="$(read_parsed_target_health "${health_json}" "${target_v1_id}")"; then
     exit 1
   fi
+  IFS=$'\t' read -r state failures ejected_until category <<<"${parsed_health}"
   last_category="${category}"
 
-  echo "  attempt=${attempt} status=${status} observed_502=${observed_502} target_state=${state} consecutiveFailures=${failures} lastFailureCategory=${category}"
+  echo "  attempt=${attempt} status=${status} observed_502=${observed_502} target_state=${state} consecutiveFailures=${failures} lastFailureCategory=${category} ejectedUntil=${ejected_until:-null}"
 
   if [[ "${state}" == "EJECTED" ]]; then
     ejected=true
@@ -383,7 +361,7 @@ if [[ "${observed_502}" -lt "${HEALTH_THRESHOLD}" ]]; then
   exit 1
 fi
 
-IFS=$'\t' read -r state failures ejected_until category found <<<"$(read_target_health "${health_json}" "${target_v1_id}")"
+IFS=$'\t' read -r state failures ejected_until category <<<"$(read_parsed_target_health "${health_json}" "${target_v1_id}")"
 if [[ "${state}" != "EJECTED" ]]; then
   echo "Expected EJECTED state after loop, got ${state}" >&2
   print_ejection_diagnostics "${attempt}" "${count_200}" "${observed_502}" "${target_v1_id}" "${health_json}"
@@ -450,7 +428,7 @@ if [[ "${recovered}" != "true" ]]; then
 fi
 
 health_json="$(fetch_upstream_health)"
-IFS=$'\t' read -r state failures ejected_until category found <<<"$(read_target_health "${health_json}" "${target_v1_id}")"
+IFS=$'\t' read -r state failures ejected_until category <<<"$(read_parsed_target_health "${health_json}" "${target_v1_id}")"
 if [[ "${state}" != "HEALTHY" ]]; then
   echo "Expected upstream-v1 HEALTHY after recovery, got ${state}" >&2
   echo "${health_json}" >&2
