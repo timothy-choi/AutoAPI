@@ -50,16 +50,31 @@ public class GatewayApiStatusRepository {
     return new GatewayApiStatusEntity(
         row.get("gateway_id", String.class),
         row.get("api_id", UUID.class),
-        row.get("active_version", Long.class),
+        readNullableLong(row, "active_version"),
         row.get("active_content_hash", String.class),
-        row.get("last_attempted_version", Long.class),
+        readNullableLong(row, "last_attempted_version"),
         row.get("last_attempted_content_hash", String.class),
         row.get("last_status", String.class),
         row.get("last_error_code", String.class),
         row.get("last_diagnostic", String.class),
-        row.get("last_apply_duration_ms", Long.class),
+        readNullableLong(row, "last_apply_duration_ms"),
         row.get("last_reported_at", java.time.OffsetDateTime.class),
         row.get("created_at", java.time.OffsetDateTime.class),
         row.get("updated_at", java.time.OffsetDateTime.class));
+  }
+
+  private static Long readNullableLong(io.r2dbc.spi.Readable row, String column) {
+    Object value = row.get(column);
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof Long longValue) {
+      return longValue;
+    }
+    if (value instanceof Number number) {
+      return number.longValue();
+    }
+    throw new IllegalStateException(
+        "Unexpected type for column " + column + ": " + value.getClass().getName());
   }
 }

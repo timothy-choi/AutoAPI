@@ -6,8 +6,6 @@ import com.autoapi.controlplane.gateway.GatewayConfigStatusService.ConfigStatusR
 import com.autoapi.controlplane.persistence.ConfigActivationEventEntity;
 import com.autoapi.controlplane.persistence.ConfigActivationEventRepository;
 import com.autoapi.controlplane.persistence.ConfigVersionRepository;
-import com.autoapi.controlplane.persistence.GatewayApiStatusEntity;
-import com.autoapi.controlplane.persistence.GatewayApiStatusRepository;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
@@ -31,7 +29,6 @@ public class GatewayConfigStatusService {
   private final ApiDefinitionService apiDefinitionService;
   private final ConfigVersionRepository configVersionRepository;
   private final ConfigActivationEventRepository eventRepository;
-  private final GatewayApiStatusRepository gatewayApiStatusRepository;
   private final DatabaseClient databaseClient;
 
   public GatewayConfigStatusService(
@@ -39,13 +36,11 @@ public class GatewayConfigStatusService {
       ApiDefinitionService apiDefinitionService,
       ConfigVersionRepository configVersionRepository,
       ConfigActivationEventRepository eventRepository,
-      GatewayApiStatusRepository gatewayApiStatusRepository,
       DatabaseClient databaseClient) {
     this.registrationService = registrationService;
     this.apiDefinitionService = apiDefinitionService;
     this.configVersionRepository = configVersionRepository;
     this.eventRepository = eventRepository;
-    this.gatewayApiStatusRepository = gatewayApiStatusRepository;
     this.databaseClient = databaseClient;
   }
 
@@ -131,14 +126,6 @@ public class GatewayConfigStatusService {
 
   private Mono<Void> upsertGatewayApiStatus(
       String gatewayId, ConfigStatusRequest request, OffsetDateTime now) {
-    return gatewayApiStatusRepository
-        .findByGatewayIdAndApiId(gatewayId, request.apiId())
-        .flatMap(existing -> updateGatewayApiStatus(gatewayId, request, now, existing))
-        .switchIfEmpty(insertGatewayApiStatus(gatewayId, request, now));
-  }
-
-  private Mono<Void> insertGatewayApiStatus(
-      String gatewayId, ConfigStatusRequest request, OffsetDateTime now) {
     if ("ACK".equals(request.status())) {
       return bindNullableLong(
               databaseClient
@@ -147,22 +134,33 @@ public class GatewayConfigStatusService {
                       INSERT INTO gateway_api_status (
                           gateway_id, api_id, active_version, active_content_hash,
                           last_attempted_version, last_attempted_content_hash,
-                          last_status, last_apply_duration_ms,
+                          last_status, last_error_code, last_diagnostic, last_apply_duration_ms,
                           last_reported_at, created_at, updated_at
                       ) VALUES (
                           :gatewayId, :apiId, :version, :contentHash,
                           :version, :contentHash,
-                          'ACK', :applyDurationMs,
+                          'ACK', NULL, NULL, :applyDurationMs,
                           :now, :now, :now
                       )
+                      ON CONFLICT (gateway_id, api_id) DO UPDATE SET
+                          active_version = EXCLUDED.active_version,
+                          active_content_hash = EXCLUDED.active_content_hash,
+                          last_attempted_version = EXCLUDED.last_attempted_version,
+                          last_attempted_content_hash = EXCLUDED.last_attempted_content_hash,
+                          last_status = EXCLUDED.last_status,
+                          last_error_code = NULL,
+                          last_diagnostic = NULL,
+                          last_apply_duration_ms = EXCLUDED.last_apply_duration_ms,
+                          last_reported_at = EXCLUDED.last_reported_at,
+                          updated_at = EXCLUDED.updated_at
                       """)
                   .bind("gatewayId", gatewayId)
                   .bind("apiId", request.apiId())
                   .bind("version", request.version())
-                  .bind("contentHash", request.contentHash()),
+                  .bind("contentHash", request.contentHash())
+                  .bind("now", now),
               "applyDurationMs",
               request.applyDurationMs())
-          .bind("now", now)
           .fetch()
           .rowsUpdated()
           .then();
@@ -182,85 +180,25 @@ public class GatewayConfigStatusService {
                         'NACK', :errorCode, :diagnostic, :applyDurationMs,
                         :now, :now, :now
                     )
+                    ON CONFLICT (gateway_id, api_id) DO UPDATE SET
+                        active_version = gateway_api_status.active_version,
+                        active_content_hash = gateway_api_status.active_content_hash,
+                        last_attempted_version = EXCLUDED.last_attempted_version,
+                        last_attempted_content_hash = EXCLUDED.last_attempted_content_hash,
+                        last_status = EXCLUDED.last_status,
+                        last_error_code = EXCLUDED.last_error_code,
+                        last_diagnostic = EXCLUDED.last_diagnostic,
+                        last_apply_duration_ms = EXCLUDED.last_apply_duration_ms,
+                        last_reported_at = EXCLUDED.last_reported_at,
+                        updated_at = EXCLUDED.updated_at
                     """)
                 .bind("gatewayId", gatewayId)
                 .bind("apiId", request.apiId())
                 .bind("version", request.version())
                 .bind("contentHash", request.contentHash())
                 .bind("errorCode", request.errorCode())
-                .bind("diagnostic", truncateDiagnostic(request.diagnostic())),
-            "applyDurationMs",
-            request.applyDurationMs())
-        .bind("now", now)
-        .fetch()
-        .rowsUpdated()
-        .then();
-  }
-
-  private Mono<Void> updateGatewayApiStatus(
-      String gatewayId,
-      ConfigStatusRequest request,
-      OffsetDateTime now,
-      GatewayApiStatusEntity existing) {
-    if ("ACK".equals(request.status())) {
-      return bindNullableLong(
-              databaseClient
-                  .sql(
-                      """
-                      UPDATE gateway_api_status
-                      SET active_version = :version,
-                          active_content_hash = :contentHash,
-                          last_attempted_version = :version,
-                          last_attempted_content_hash = :contentHash,
-                          last_status = 'ACK',
-                          last_error_code = NULL,
-                          last_diagnostic = NULL,
-                          last_apply_duration_ms = :applyDurationMs,
-                          last_reported_at = :now,
-                          updated_at = :now
-                      WHERE gateway_id = :gatewayId AND api_id = :apiId
-                      """)
-                  .bind("version", request.version())
-                  .bind("contentHash", request.contentHash())
-                  .bind("now", now)
-                  .bind("gatewayId", gatewayId)
-                  .bind("apiId", request.apiId()),
-              "applyDurationMs",
-              request.applyDurationMs())
-          .fetch()
-          .rowsUpdated()
-          .then();
-    }
-    return bindNullableLong(
-            bindNullableString(
-                bindNullableLong(
-                    databaseClient
-                        .sql(
-                            """
-                            UPDATE gateway_api_status
-                            SET active_version = :activeVersion,
-                                active_content_hash = :activeContentHash,
-                                last_attempted_version = :version,
-                                last_attempted_content_hash = :contentHash,
-                                last_status = 'NACK',
-                                last_error_code = :errorCode,
-                                last_diagnostic = :diagnostic,
-                                last_apply_duration_ms = :applyDurationMs,
-                                last_reported_at = :now,
-                                updated_at = :now
-                            WHERE gateway_id = :gatewayId AND api_id = :apiId
-                            """)
-                        .bind("version", request.version())
-                        .bind("contentHash", request.contentHash())
-                        .bind("errorCode", request.errorCode())
-                        .bind("diagnostic", truncateDiagnostic(request.diagnostic()))
-                        .bind("now", now)
-                        .bind("gatewayId", gatewayId)
-                        .bind("apiId", request.apiId()),
-                    "activeVersion",
-                    existing.activeVersion()),
-                "activeContentHash",
-                existing.activeContentHash()),
+                .bind("diagnostic", truncateDiagnostic(request.diagnostic()))
+                .bind("now", now),
             "applyDurationMs",
             request.applyDurationMs())
         .fetch()
@@ -271,11 +209,6 @@ public class GatewayConfigStatusService {
   private static DatabaseClient.GenericExecuteSpec bindNullableLong(
       DatabaseClient.GenericExecuteSpec spec, String name, Long value) {
     return value == null ? spec.bindNull(name, Long.class) : spec.bind(name, value);
-  }
-
-  private static DatabaseClient.GenericExecuteSpec bindNullableString(
-      DatabaseClient.GenericExecuteSpec spec, String name, String value) {
-    return value == null ? spec.bindNull(name, String.class) : spec.bind(name, value);
   }
 
   private static void validateRequest(ConfigStatusRequest request) {
