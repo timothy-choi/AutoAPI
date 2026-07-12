@@ -27,12 +27,15 @@ dependencies {
     implementation("org.postgresql:r2dbc-postgresql")
     implementation("org.postgresql:postgresql")
     implementation("com.fasterxml.jackson.core:jackson-databind")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("org.springframework.boot:spring-boot-starter-data-redis-reactive")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.projectreactor:reactor-test")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")
     testImplementation("org.testcontainers:r2dbc")
+    testImplementation("com.redis:testcontainers-redis:2.2.2")
 }
 
 tasks.withType<Test> {

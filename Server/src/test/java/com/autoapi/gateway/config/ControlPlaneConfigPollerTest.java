@@ -243,7 +243,7 @@ class ControlPlaneConfigPollerTest {
             now);
 
     HashableRuntimePayload payload =
-        RuntimeConfigCompiler.compile(
+        RuntimeConfigCompiler.compileWithoutSecurity(
             API_ID, GATEWAY, List.of(route), Map.of(poolId, pool), Map.of(poolId, List.of(target)));
     String hash = RuntimeContentHasher.sha256Hex(RuntimeContentHasher.canonicalJson(payload));
     return RuntimeConfigCompiler.toStoredSnapshot(payload, version, hash);
@@ -286,7 +286,9 @@ class ControlPlaneConfigPollerTest {
                       "org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration",
                       "org.springframework.boot.autoconfigure.data.r2dbc.R2dbcDataAutoConfiguration",
                       "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration",
-                      "org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration")));
+                      "org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration",
+                      "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration",
+                      "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration")));
       context.getEnvironment().getPropertySources().addFirst(propertySource);
     }
   }

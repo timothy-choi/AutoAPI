@@ -42,10 +42,10 @@ class RuntimeConfigCompilerTest {
             now);
 
     HashableRuntimePayload first =
-        RuntimeConfigCompiler.compile(
+        RuntimeConfigCompiler.compileWithoutSecurity(
             API_ID, GATEWAY, List.of(route), Map.of(poolId, pool), Map.of(poolId, List.of(target)));
     HashableRuntimePayload second =
-        RuntimeConfigCompiler.compile(
+        RuntimeConfigCompiler.compileWithoutSecurity(
             API_ID, GATEWAY, List.of(route), Map.of(poolId, pool), Map.of(poolId, List.of(target)));
 
     String hash1 = RuntimeContentHasher.sha256Hex(RuntimeContentHasher.canonicalJson(first));
@@ -92,14 +92,14 @@ class RuntimeConfigCompilerTest {
             now);
 
     HashableRuntimePayload payload1 =
-        RuntimeConfigCompiler.compile(
+        RuntimeConfigCompiler.compileWithoutSecurity(
             API_ID,
             GATEWAY,
             List.of(route1),
             Map.of(poolId, pool),
             Map.of(poolId, List.of(target)));
     HashableRuntimePayload payload2 =
-        RuntimeConfigCompiler.compile(
+        RuntimeConfigCompiler.compileWithoutSecurity(
             API_ID,
             GATEWAY,
             List.of(route2),
@@ -134,7 +134,7 @@ class RuntimeConfigCompilerTest {
             now,
             now);
     HashableRuntimePayload payload =
-        RuntimeConfigCompiler.compile(
+        RuntimeConfigCompiler.compileWithoutSecurity(
             API_ID, GATEWAY, List.of(route), Map.of(poolId, pool), Map.of(poolId, List.of(target)));
     String hash = RuntimeContentHasher.sha256Hex(RuntimeContentHasher.canonicalJson(payload));
     StoredRuntimeSnapshot stored = RuntimeConfigCompiler.toStoredSnapshot(payload, 1L, hash);
@@ -167,7 +167,7 @@ class RuntimeConfigCompilerTest {
             now,
             now);
     HashableRuntimePayload payload =
-        RuntimeConfigCompiler.compile(
+        RuntimeConfigCompiler.compileWithoutSecurity(
             API_ID, GATEWAY, List.of(route), Map.of(poolId, pool), Map.of(poolId, List.of(target)));
     assertEquals(List.of("GET", "POST"), payload.routes().getFirst().methods());
   }

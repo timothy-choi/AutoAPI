@@ -2,6 +2,7 @@ package com.autoapi.gateway.config;
 
 import com.autoapi.config.RuntimeConfig;
 import com.autoapi.config.RuntimeConfigHolder;
+import com.autoapi.gateway.GatewayProperties;
 import com.autoapi.runtime.AutoApiRole;
 import com.autoapi.runtime.ConditionalOnAutoApiRole;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -19,17 +20,21 @@ public class StaticActiveConfigBootstrap {
 
   private final RuntimeConfigHolder runtimeConfigHolder;
   private final ActiveRuntimeConfigHolder activeRuntimeConfigHolder;
+  private final GatewayProperties gatewayProperties;
 
   public StaticActiveConfigBootstrap(
       RuntimeConfigHolder runtimeConfigHolder,
-      ActiveRuntimeConfigHolder activeRuntimeConfigHolder) {
+      ActiveRuntimeConfigHolder activeRuntimeConfigHolder,
+      GatewayProperties gatewayProperties) {
     this.runtimeConfigHolder = runtimeConfigHolder;
     this.activeRuntimeConfigHolder = activeRuntimeConfigHolder;
+    this.gatewayProperties = gatewayProperties;
   }
 
   @EventListener(ApplicationReadyEvent.class)
   public void activateStaticConfig() {
     RuntimeConfig config = runtimeConfigHolder.config();
-    activeRuntimeConfigHolder.activate(new ActiveRuntimeBundle(null, 0, "static-file", config));
+    activeRuntimeConfigHolder.activate(
+        new ActiveRuntimeBundle(gatewayProperties.apiId(), 0, "static-file", config));
   }
 }

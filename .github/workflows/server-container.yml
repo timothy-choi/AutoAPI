@@ -116,8 +116,8 @@ jobs:
 
       - name: Remove stale smoke resources
         run: |
-          docker rm -f autoapi-gateway upstream-v1 autoapi-postgres || true
-          docker volume rm autoapi-postgres-smoke || true
+          docker rm -f autoapi-gateway-a autoapi-gateway-b autoapi-gateway upstream-v1 autoapi-postgres autoapi-redis || true
+          docker volume rm autoapi-postgres-smoke autoapi-redis-smoke || true
           docker network rm autoapi-smoke || true
 
       - name: Smoke test built image

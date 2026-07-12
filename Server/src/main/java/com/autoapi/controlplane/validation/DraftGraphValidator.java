@@ -1,16 +1,23 @@
 package com.autoapi.controlplane.validation;
 
 import com.autoapi.config.HostNormalizer;
+import com.autoapi.controlplane.DraftGraphService;
 import com.autoapi.controlplane.configversion.CompiledGatewaySection;
 import com.autoapi.controlplane.configversion.HashableRuntimePayload;
 import com.autoapi.controlplane.configversion.RuntimeConfigCompiler;
 import com.autoapi.controlplane.configversion.RuntimeContentHasher;
 import com.autoapi.controlplane.persistence.ApiEntity;
+import com.autoapi.controlplane.persistence.ApiKeyEntity;
+import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
 import com.autoapi.controlplane.persistence.RouteEntity;
+import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
 import com.autoapi.controlplane.persistence.UpstreamPoolEntity;
 import com.autoapi.controlplane.persistence.UpstreamTargetEntity;
+import com.autoapi.security.ApiKeyDigestService;
 import com.autoapi.validation.UpstreamUriValidator;
 import java.net.URI;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -19,6 +26,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public final class DraftGraphValidator {
 
@@ -27,13 +35,29 @@ public final class DraftGraphValidator {
 
   private DraftGraphValidator() {}
 
+  public static ValidationResult validate(DraftGraphService.DraftGraph graph) {
+    return validate(
+        graph.api(),
+        graph.routes(),
+        graph.pools(),
+        graph.targets(),
+        graph.apiKeys(),
+        graph.rateLimitPolicies(),
+        graph.routePolicyBindings(),
+        graph.gatewayDefaults());
+  }
+
   public static ValidationResult validate(
       ApiEntity api,
       List<RouteEntity> routes,
       List<UpstreamPoolEntity> pools,
       List<UpstreamTargetEntity> targets,
+      List<ApiKeyEntity> apiKeys,
+      List<RateLimitPolicyEntity> rateLimitPolicies,
+      List<RoutePolicyBindingEntity> routePolicyBindings,
       CompiledGatewaySection gatewayDefaults) {
     List<ValidationError> errors = new ArrayList<>();
+    OffsetDateTime publishInstant = OffsetDateTime.now(ZoneOffset.UTC);
 
     if (api == null) {
       errors.add(new ValidationError("API_NOT_FOUND", null, "API was not found"));
@@ -44,10 +68,14 @@ public final class DraftGraphValidator {
     }
 
     Map<UUID, UpstreamPoolEntity> poolById =
-        pools.stream().collect(java.util.stream.Collectors.toMap(UpstreamPoolEntity::id, p -> p));
+        pools.stream().collect(Collectors.toMap(UpstreamPoolEntity::id, p -> p));
     Map<UUID, List<UpstreamTargetEntity>> targetsByPool =
-        targets.stream()
-            .collect(java.util.stream.Collectors.groupingBy(UpstreamTargetEntity::upstreamPoolId));
+        targets.stream().collect(Collectors.groupingBy(UpstreamTargetEntity::upstreamPoolId));
+    Map<UUID, RateLimitPolicyEntity> policyById =
+        rateLimitPolicies.stream().collect(Collectors.toMap(RateLimitPolicyEntity::id, p -> p));
+    Map<UUID, RoutePolicyBindingEntity> bindingByRouteId =
+        routePolicyBindings.stream()
+            .collect(Collectors.toMap(RoutePolicyBindingEntity::routeId, b -> b));
 
     for (UpstreamPoolEntity pool : pools) {
       validatePool(pool, targetsByPool.getOrDefault(pool.id(), List.of()), errors);
@@ -63,9 +91,26 @@ public final class DraftGraphValidator {
 
     for (RouteEntity route : enabledRoutes) {
       validateRoute(route, api.id(), poolById, errors);
+      validateRoutePolicyBinding(route, api.id(), bindingByRouteId, policyById, errors);
     }
 
     validateRouteAmbiguity(enabledRoutes, errors);
+    validateApiKeys(apiKeys, publishInstant, errors);
+
+    long publishableKeyCount =
+        apiKeys.stream()
+            .filter(key -> RuntimeConfigCompiler.isPublishableAt(key, publishInstant))
+            .count();
+    for (RouteEntity route : enabledRoutes) {
+      RoutePolicyBindingEntity binding = bindingByRouteId.get(route.id());
+      if (binding != null && binding.authenticationRequired() && publishableKeyCount == 0) {
+        errors.add(
+            new ValidationError(
+                "AUTH_ROUTE_NO_API_KEYS",
+                route.id(),
+                "Authentication-required route has no enabled, non-revoked, unexpired API keys"));
+      }
+    }
 
     if (!errors.isEmpty()) {
       return ValidationResult.invalid(errors);
@@ -73,7 +118,20 @@ public final class DraftGraphValidator {
 
     HashableRuntimePayload payload =
         RuntimeConfigCompiler.compile(
-            api.id(), gatewayDefaults, enabledRoutes, poolById, targetsByPool);
+            api.id(),
+            gatewayDefaults,
+            enabledRoutes,
+            poolById,
+            targetsByPool,
+            bindingByRouteId,
+            policyById,
+            apiKeys,
+            publishInstant);
+    validateCompiledPayload(payload, errors);
+    if (!errors.isEmpty()) {
+      return ValidationResult.invalid(errors);
+    }
+
     String contentHash =
         RuntimeContentHasher.sha256Hex(RuntimeContentHasher.canonicalJson(payload));
     ValidationSummary summary =
@@ -82,6 +140,126 @@ public final class DraftGraphValidator {
             pools.size(),
             (int) targets.stream().filter(UpstreamTargetEntity::enabled).count());
     return ValidationResult.valid(contentHash, summary);
+  }
+
+  /** Backward-compatible entry for tests that omit security draft resources. */
+  public static ValidationResult validate(
+      ApiEntity api,
+      List<RouteEntity> routes,
+      List<UpstreamPoolEntity> pools,
+      List<UpstreamTargetEntity> targets,
+      CompiledGatewaySection gatewayDefaults) {
+    return validate(api, routes, pools, targets, List.of(), List.of(), List.of(), gatewayDefaults);
+  }
+
+  private static void validateCompiledPayload(
+      HashableRuntimePayload payload, List<ValidationError> errors) {
+    for (var key : payload.apiKeys()) {
+      if (key.secretDigest() == null
+          || key.secretDigest().length() != ApiKeyDigestService.DIGEST_LENGTH_BYTES * 2) {
+        errors.add(
+            new ValidationError(
+                "API_KEY_DIGEST_INVALID",
+                null,
+                "Compiled API key digest must be a 64-character hex SHA-256 HMAC value"));
+      }
+    }
+  }
+
+  private static void validateApiKeys(
+      List<ApiKeyEntity> apiKeys, OffsetDateTime publishInstant, List<ValidationError> errors) {
+    for (ApiKeyEntity key : apiKeys) {
+      if (key.secretDigest() == null
+          || key.secretDigest().length != ApiKeyDigestService.DIGEST_LENGTH_BYTES) {
+        errors.add(
+            new ValidationError(
+                "API_KEY_DIGEST_INVALID", key.id(), "API key secret digest has invalid length"));
+      }
+      if (key.revokedAt() != null && RuntimeConfigCompiler.isPublishableAt(key, publishInstant)) {
+        errors.add(
+            new ValidationError(
+                "API_KEY_REVOKED_INCLUDED", key.id(), "Revoked API key cannot be published"));
+      }
+    }
+  }
+
+  private static void validateRoutePolicyBinding(
+      RouteEntity route,
+      UUID apiId,
+      Map<UUID, RoutePolicyBindingEntity> bindingByRouteId,
+      Map<UUID, RateLimitPolicyEntity> policyById,
+      List<ValidationError> errors) {
+    RoutePolicyBindingEntity binding = bindingByRouteId.get(route.id());
+    if (binding == null) {
+      return;
+    }
+    if (binding.rateLimitPolicyId() != null && !binding.authenticationRequired()) {
+      errors.add(
+          new ValidationError(
+              "RATE_LIMIT_REQUIRES_AUTH",
+              route.id(),
+              "Rate limit policy requires authenticationRequired=true"));
+    }
+    if (binding.rateLimitPolicyId() == null) {
+      return;
+    }
+    RateLimitPolicyEntity policy = policyById.get(binding.rateLimitPolicyId());
+    if (policy == null) {
+      errors.add(
+          new ValidationError(
+              "RATE_LIMIT_POLICY_NOT_FOUND",
+              route.id(),
+              "Route references missing rate limit policy"));
+      return;
+    }
+    if (!policy.apiId().equals(apiId)) {
+      errors.add(
+          new ValidationError(
+              "RATE_LIMIT_POLICY_WRONG_API",
+              route.id(),
+              "Rate limit policy belongs to another API"));
+    }
+    if (!policy.enabled()) {
+      errors.add(
+          new ValidationError(
+              "RATE_LIMIT_POLICY_DISABLED",
+              policy.id(),
+              "Disabled rate limit policy cannot be bound"));
+    }
+    validateRateLimitPolicyFields(policy, errors);
+  }
+
+  private static void validateRateLimitPolicyFields(
+      RateLimitPolicyEntity policy, List<ValidationError> errors) {
+    if (!"API_KEY".equals(policy.identitySource())) {
+      errors.add(
+          new ValidationError(
+              "RATE_LIMIT_IDENTITY_UNSUPPORTED",
+              policy.id(),
+              "Unsupported identity source: " + policy.identitySource()));
+    }
+    if (!"FAIL_OPEN".equals(policy.redisFailureMode())
+        && !"FAIL_CLOSED".equals(policy.redisFailureMode())) {
+      errors.add(
+          new ValidationError(
+              "RATE_LIMIT_FAILURE_MODE_UNSUPPORTED",
+              policy.id(),
+              "Unsupported redis failure mode: " + policy.redisFailureMode()));
+    }
+    if (policy.limitCount() <= 0 || policy.limitCount() > 10_000_000) {
+      errors.add(
+          new ValidationError(
+              "RATE_LIMIT_COUNT_INVALID",
+              policy.id(),
+              "limitCount must be between 1 and 10000000"));
+    }
+    if (policy.windowSeconds() <= 0 || policy.windowSeconds() > 86_400) {
+      errors.add(
+          new ValidationError(
+              "RATE_LIMIT_WINDOW_INVALID",
+              policy.id(),
+              "windowSeconds must be between 1 and 86400"));
+    }
   }
 
   private static void validatePool(

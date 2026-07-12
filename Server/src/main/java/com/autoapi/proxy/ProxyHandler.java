@@ -4,6 +4,7 @@ import com.autoapi.config.HostNormalizer;
 import com.autoapi.config.RouteConfig;
 import com.autoapi.config.RuntimeConfig;
 import com.autoapi.gateway.config.ActiveRuntimeBundle;
+import com.autoapi.gateway.security.GatewaySecurityEnforcer;
 import com.autoapi.middleware.RequestIdSupport;
 import com.autoapi.routing.RouteMatchResult;
 import com.autoapi.routing.RouteMatcher;
@@ -13,6 +14,7 @@ import java.net.URI;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -30,11 +32,17 @@ public class ProxyHandler {
 
   private static final Logger log = LoggerFactory.getLogger(ProxyHandler.class);
 
+  private static final GatewaySecurityEnforcer NOOP_SECURITY =
+      (exchange, bundle, route) -> Mono.empty();
+
   private final WebClient webClient;
   private final ErrorResponseWriter errorWriter;
+  private final GatewaySecurityEnforcer securityPipeline;
 
-  public ProxyHandler(ErrorResponseWriter errorWriter) {
+  public ProxyHandler(
+      ErrorResponseWriter errorWriter, ObjectProvider<GatewaySecurityEnforcer> securityPipeline) {
     this.errorWriter = errorWriter;
+    this.securityPipeline = securityPipeline.getIfAvailable(() -> NOOP_SECURITY);
     this.webClient =
         WebClient.builder()
             .clientConnector(
@@ -73,11 +81,21 @@ public class ProxyHandler {
 
     RouteConfig route = match.matchedRoute().orElseThrow();
     exchange.getAttributes().put(GatewayAttributes.MATCHED_ROUTE_ID, route.id());
-    URI upstreamUri = bundle.selectUpstream(route);
-    exchange.getAttributes().put(GatewayAttributes.UPSTREAM_AUTHORITY, upstreamUri.getAuthority());
-
-    URI targetUri = buildUpstreamUri(upstreamUri, request);
-    return forward(exchange, upstreamUri.getAuthority(), targetUri, requestId);
+    return securityPipeline
+        .enforce(exchange, bundle, route)
+        .then(
+            Mono.defer(
+                () -> {
+                  if (exchange.getResponse().isCommitted()) {
+                    return Mono.empty();
+                  }
+                  URI upstreamUri = bundle.selectUpstream(route);
+                  exchange
+                      .getAttributes()
+                      .put(GatewayAttributes.UPSTREAM_AUTHORITY, upstreamUri.getAuthority());
+                  URI targetUri = buildUpstreamUri(upstreamUri, request);
+                  return forward(exchange, upstreamUri.getAuthority(), targetUri, requestId);
+                }));
   }
 
   private URI buildUpstreamUri(URI base, ServerHttpRequest request) {

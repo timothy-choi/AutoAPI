@@ -1,0 +1,42 @@
+package com.autoapi.support;
+
+import com.redis.testcontainers.RedisContainer;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.utility.DockerImageName;
+import reactor.core.publisher.Mono;
+
+public interface RedisDynamicProperties {
+
+  RedisContainer REDIS =
+      new RedisContainer(DockerImageName.parse("redis:7-alpine")).withExposedPorts(6379);
+
+  static void startRedisIfNeeded() {
+    if (!REDIS.isRunning()) {
+      try {
+        REDIS.start();
+      } catch (RuntimeException ex) {
+        throw new IllegalStateException(
+            "Redis Testcontainers tests require a running Docker daemon", ex);
+      }
+    }
+  }
+
+  static void registerRedisProperties(DynamicPropertyRegistry registry) {
+    startRedisIfNeeded();
+    registry.add(
+        "spring.data.redis.url",
+        () -> "redis://" + REDIS.getHost() + ":" + REDIS.getFirstMappedPort());
+    registry.add("autoapi.security.api-key-pepper", () -> SecurityTestFixtures.TEST_PEPPER);
+  }
+
+  static Mono<Void> flushDatabase(ReactiveStringRedisTemplate redisTemplate) {
+    return redisTemplate.execute(connection -> connection.serverCommands().flushDb()).then();
+  }
+
+  @DynamicPropertySource
+  static void registerRedis(DynamicPropertyRegistry registry) {
+    registerRedisProperties(registry);
+  }
+}

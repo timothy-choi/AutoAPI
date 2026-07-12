@@ -72,6 +72,46 @@ public class ErrorResponseWriter {
         "An internal gateway error occurred");
   }
 
+  public Mono<Void> invalidApiKey(ServerWebExchange exchange) {
+    if (!exchange.getResponse().isCommitted()) {
+      exchange.getResponse().getHeaders().set("WWW-Authenticate", "Bearer");
+    }
+    return write(
+        exchange, HttpStatus.UNAUTHORIZED, "INVALID_API_KEY", "A valid API key is required");
+  }
+
+  public Mono<Void> rateLimitExceeded(
+      ServerWebExchange exchange,
+      com.autoapi.gateway.redis.GatewayRateLimitService.RateLimitDecision decision) {
+    if (!exchange.getResponse().isCommitted()) {
+      exchange.getResponse().getHeaders().set("RateLimit-Limit", String.valueOf(decision.limit()));
+      exchange.getResponse().getHeaders().set("RateLimit-Remaining", "0");
+      exchange
+          .getResponse()
+          .getHeaders()
+          .set("RateLimit-Reset", String.valueOf(decision.resetEpochSeconds()));
+      if (decision.retryAfterSeconds() > 0) {
+        exchange
+            .getResponse()
+            .getHeaders()
+            .set("Retry-After", String.valueOf(decision.retryAfterSeconds()));
+      }
+    }
+    return write(
+        exchange,
+        HttpStatus.TOO_MANY_REQUESTS,
+        "RATE_LIMIT_EXCEEDED",
+        "The request rate limit has been exceeded");
+  }
+
+  public Mono<Void> rateLimitDependencyUnavailable(ServerWebExchange exchange) {
+    return write(
+        exchange,
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "RATE_LIMIT_DEPENDENCY_UNAVAILABLE",
+        "Rate limiting is temporarily unavailable");
+  }
+
   private void logProxyFailure(ServerWebExchange exchange, Throwable cause) {
     log.warn(
         "requestId={} routeId={} upstream={} errorType={} message={}",

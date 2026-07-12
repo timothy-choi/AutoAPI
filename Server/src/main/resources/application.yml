@@ -6,6 +6,11 @@ spring:
     timeout-per-shutdown-phase: 30s
   main:
     web-application-type: reactive
+  data:
+    redis:
+      url: ${AUTOAPI_REDIS_URL:redis://127.0.0.1:6379}
+      timeout: 1s
+      connect-timeout: 2s
   r2dbc:
     url: ${SPRING_R2DBC_URL:r2dbc:postgresql://localhost:5432/autoapi?sslMode=disable}
     username: ${SPRING_R2DBC_USERNAME:${POSTGRES_USER:autoapi}}
@@ -26,6 +31,8 @@ logging:
 
 autoapi:
   role: ${AUTOAPI_ROLE:combined}
+  security:
+    api-key-pepper: ${AUTOAPI_API_KEY_PEPPER:}
   config:
     path: ${AUTOAPI_CONFIG_PATH:deploy/config/runtime.json}
   controlplane:
@@ -51,3 +58,16 @@ autoapi:
       connect-timeout: 5s
       response-timeout: 15s
       max-in-memory-size-bytes: 4194304
+    redis:
+      url: ${AUTOAPI_REDIS_URL:redis://redis:6379}
+      connect-timeout: 2s
+      command-timeout: 1s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    tags:
+      application: autoapi-server

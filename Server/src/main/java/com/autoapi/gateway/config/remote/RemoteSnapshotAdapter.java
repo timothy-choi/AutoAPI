@@ -2,19 +2,28 @@ package com.autoapi.gateway.config.remote;
 
 import com.autoapi.config.GatewayConfig;
 import com.autoapi.config.RouteConfig;
+import com.autoapi.config.RuntimeApiKey;
+import com.autoapi.config.RuntimeAuthentication;
 import com.autoapi.config.RuntimeConfig;
+import com.autoapi.config.RuntimeRateLimit;
 import com.autoapi.config.UpstreamConfig;
+import com.autoapi.controlplane.configversion.CompiledRateLimitSection;
 import com.autoapi.controlplane.configversion.CompiledRouteSection;
 import com.autoapi.controlplane.configversion.CompiledUpstreamPoolSection;
 import com.autoapi.controlplane.configversion.CompiledUpstreamTargetSection;
+import com.autoapi.controlplane.configversion.HashableRuntimePayload;
 import com.autoapi.controlplane.configversion.RuntimeContentHasher;
 import com.autoapi.controlplane.configversion.StoredRuntimeSnapshot;
 import com.autoapi.gateway.config.ActiveRuntimeBundle;
 import com.autoapi.validation.UpstreamUriValidator;
 import java.net.URI;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpMethod;
@@ -31,10 +40,12 @@ public final class RemoteSnapshotAdapter {
     for (CompiledRouteSection route : snapshot.routes()) {
       routes.add(toRouteConfig(route));
     }
+    Map<String, RuntimeApiKey> apiKeys = toApiKeyMap(snapshot.apiKeys());
     RuntimeConfig runtimeConfig =
         new RuntimeConfig(
             new GatewayConfig(snapshot.gateway().listenAddress(), snapshot.gateway().port()),
-            routes);
+            routes,
+            apiKeys);
     return new ActiveRuntimeBundle(
         snapshot.apiId(), snapshot.version(), snapshot.contentHash(), runtimeConfig);
   }
@@ -58,17 +69,35 @@ public final class RemoteSnapshotAdapter {
     if (snapshot.routes() == null || snapshot.routes().isEmpty()) {
       throw new RemoteSnapshotValidationException("Snapshot must contain at least one route");
     }
+    if (snapshot.apiKeys() == null) {
+      throw new RemoteSnapshotValidationException("Snapshot apiKeys section is required");
+    }
   }
 
   private static void verifyContentHash(StoredRuntimeSnapshot snapshot) {
     String payloadHash =
         RuntimeContentHasher.sha256Hex(
             RuntimeContentHasher.canonicalJson(
-                new com.autoapi.controlplane.configversion.HashableRuntimePayload(
-                    snapshot.apiId(), snapshot.gateway(), snapshot.routes())));
+                new HashableRuntimePayload(
+                    snapshot.apiId(), snapshot.gateway(), snapshot.routes(), snapshot.apiKeys())));
     if (!payloadHash.equals(snapshot.contentHash())) {
       throw new RemoteSnapshotValidationException("Snapshot content hash mismatch");
     }
+  }
+
+  private static Map<String, RuntimeApiKey> toApiKeyMap(
+      List<com.autoapi.controlplane.configversion.CompiledApiKeySection> apiKeys) {
+    Map<String, RuntimeApiKey> map = new LinkedHashMap<>();
+    for (var key : apiKeys) {
+      map.put(
+          key.keyId(),
+          new RuntimeApiKey(
+              key.keyId(),
+              HexFormat.of().parseHex(key.secretDigest()),
+              key.enabled(),
+              key.expiresAt() == null ? null : Instant.parse(key.expiresAt())));
+    }
+    return Map.copyOf(map);
   }
 
   private static RouteConfig toRouteConfig(CompiledRouteSection route) {
@@ -86,8 +115,31 @@ public final class RemoteSnapshotAdapter {
       methods.add(HttpMethod.valueOf(method));
     }
     UpstreamConfig upstream = toUpstreamConfig(route.upstreamPool());
+    RuntimeAuthentication authentication = null;
+    if (route.authentication() != null && route.authentication().required()) {
+      authentication = new RuntimeAuthentication(true);
+    }
+    RuntimeRateLimit rateLimit = null;
+    if (route.rateLimit() != null) {
+      rateLimit = toRuntimeRateLimit(route.rateLimit());
+    }
     return new RouteConfig(
-        route.id().toString(), route.host(), route.pathPrefix(), methods, upstream);
+        route.id().toString(),
+        route.host(),
+        route.pathPrefix(),
+        methods,
+        upstream,
+        authentication,
+        rateLimit);
+  }
+
+  private static RuntimeRateLimit toRuntimeRateLimit(CompiledRateLimitSection section) {
+    return new RuntimeRateLimit(
+        section.policyId(),
+        section.limitCount(),
+        section.windowSeconds(),
+        section.identitySource(),
+        section.redisFailureMode());
   }
 
   private static UpstreamConfig toUpstreamConfig(CompiledUpstreamPoolSection pool) {
