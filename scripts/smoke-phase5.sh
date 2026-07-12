@@ -12,16 +12,16 @@ EJECTION_SECONDS="${SMOKE_EJECTION_SECONDS:-5}"
 EJECTION_DRIVE_MAX_ATTEMPTS="${SMOKE_EJECTION_DRIVE_MAX_ATTEMPTS:-20}"
 POST_EJECTION_REQUESTS="${SMOKE_POST_EJECTION_REQUESTS:-8}"
 
-SMOKE_HEADERS_FILE="$(mktemp "${TMPDIR:-/tmp}/smoke-phase5-headers.XXXXXX")"
-SMOKE_BODY_FILE="$(mktemp "${TMPDIR:-/tmp}/smoke-phase5-body.XXXXXX")"
-SMOKE_HEALTH_FILE="$(mktemp "${TMPDIR:-/tmp}/smoke-phase5-health.XXXXXX")"
+SMOKE_HEADERS_FILE=""
+SMOKE_BODY_FILE=""
+SMOKE_HEALTH_FILE=""
+
 cleanup() {
   rm -f "${SMOKE_HEADERS_FILE}" "${SMOKE_BODY_FILE}" "${SMOKE_HEALTH_FILE}"
-  if [[ "${SMOKE_SKIP_UP}" != "true" ]]; then
+  if [[ "${SMOKE_SKIP_UP:-false}" != "true" ]]; then
     docker compose down -v >/dev/null 2>&1 || true
   fi
 }
-trap cleanup EXIT
 
 # shellcheck source=scripts/smoke-phase5-parser-lib.sh
 source "${ROOT}/scripts/smoke-phase5-parser-lib.sh"
@@ -43,7 +43,7 @@ print(payload.get("service", ""))
 PY
 }
 
-control_plane_mutate() {
+fetch_upstream_health() {
   local curl_exit=0
   local status=""
   set +e
@@ -205,6 +205,12 @@ gateway_request() {
   fi
   printf '%s' "${status}"
 }
+
+main() {
+  SMOKE_HEADERS_FILE="$(mktemp "${TMPDIR:-/tmp}/smoke-phase5-headers.XXXXXX")"
+  SMOKE_BODY_FILE="$(mktemp "${TMPDIR:-/tmp}/smoke-phase5-body.XXXXXX")"
+  SMOKE_HEALTH_FILE="$(mktemp "${TMPDIR:-/tmp}/smoke-phase5-health.XXXXXX")"
+  trap cleanup EXIT
 
 if [[ "${SMOKE_SKIP_UP}" != "true" ]]; then
   docker compose down -v >/dev/null 2>&1 || true
@@ -436,3 +442,8 @@ if [[ "${state}" != "HEALTHY" ]]; then
 fi
 
 echo "Phase 5 passive health smoke passed"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
