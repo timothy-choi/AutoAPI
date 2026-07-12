@@ -1,6 +1,7 @@
 package com.autoapi.controlplane.configversion;
 
 import com.autoapi.controlplane.persistence.ApiKeyEntity;
+import com.autoapi.controlplane.persistence.BackendHealthPolicyEntity;
 import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
 import com.autoapi.controlplane.persistence.RouteEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
@@ -29,6 +30,7 @@ public final class RuntimeConfigCompiler {
       Map<UUID, List<UpstreamTargetEntity>> targetsByPool,
       Map<UUID, RoutePolicyBindingEntity> bindingByRouteId,
       Map<UUID, RateLimitPolicyEntity> policyById,
+      Map<UUID, BackendHealthPolicyEntity> healthPolicyById,
       List<ApiKeyEntity> apiKeys,
       OffsetDateTime publishInstant) {
     List<CompiledRouteSection> compiledRoutes = new ArrayList<>();
@@ -44,8 +46,20 @@ public final class RuntimeConfigCompiler {
           poolTargets.stream()
               .map(t -> new CompiledUpstreamTargetSection(t.id(), t.url(), t.weight()))
               .toList();
+      CompiledBackendHealthSection backendHealth = null;
+      if (pool.backendHealthPolicyId() != null) {
+        BackendHealthPolicyEntity healthPolicy = healthPolicyById.get(pool.backendHealthPolicyId());
+        if (healthPolicy != null && healthPolicy.enabled()) {
+          backendHealth =
+              new CompiledBackendHealthSection(
+                  healthPolicy.consecutiveFailureThreshold(),
+                  healthPolicy.ejectionDurationSeconds(),
+                  healthPolicy.maxEjectionPercent());
+        }
+      }
       CompiledUpstreamPoolSection compiledPool =
-          new CompiledUpstreamPoolSection(pool.id(), pool.loadBalancing(), compiledTargets);
+          new CompiledUpstreamPoolSection(
+              pool.id(), pool.loadBalancing(), backendHealth, compiledTargets);
       List<String> methods =
           java.util.Arrays.stream(route.methods())
               .map(m -> m.toUpperCase(Locale.ROOT))
@@ -151,6 +165,7 @@ public final class RuntimeConfigCompiler {
         enabledRoutes,
         poolById,
         targetsByPool,
+        Map.of(),
         Map.of(),
         Map.of(),
         List.of(),

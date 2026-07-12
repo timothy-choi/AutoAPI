@@ -4,10 +4,13 @@ import com.autoapi.controlplane.configversion.StoredRuntimeSnapshot;
 import com.autoapi.gateway.GatewayProperties;
 import com.autoapi.gateway.config.remote.RemoteSnapshotAdapter;
 import com.autoapi.gateway.config.remote.RemoteSnapshotValidationException;
+import com.autoapi.gateway.health.GatewayHealthReconciler;
+import com.autoapi.gateway.health.TargetHealthRegistry;
 import com.autoapi.runtime.AutoApiRole;
 import com.autoapi.runtime.ConditionalOnAutoApiRole;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -18,11 +21,15 @@ public class LocalGatewayConfigActivator {
 
   private final ActiveRuntimeConfigHolder activeRuntimeConfigHolder;
   private final GatewayProperties gatewayProperties;
+  private final ObjectProvider<TargetHealthRegistry> targetHealthRegistry;
 
   public LocalGatewayConfigActivator(
-      ActiveRuntimeConfigHolder activeRuntimeConfigHolder, GatewayProperties gatewayProperties) {
+      ActiveRuntimeConfigHolder activeRuntimeConfigHolder,
+      GatewayProperties gatewayProperties,
+      ObjectProvider<TargetHealthRegistry> targetHealthRegistry) {
     this.activeRuntimeConfigHolder = activeRuntimeConfigHolder;
     this.gatewayProperties = gatewayProperties;
+    this.targetHealthRegistry = targetHealthRegistry;
   }
 
   public GatewayActivationAttempt activateCandidate(StoredRuntimeSnapshot snapshot) {
@@ -30,6 +37,8 @@ public class LocalGatewayConfigActivator {
     try {
       ActiveRuntimeBundle candidate =
           RemoteSnapshotAdapter.toActiveBundle(snapshot, gatewayProperties.apiId());
+      targetHealthRegistry.ifAvailable(
+          registry -> GatewayHealthReconciler.reconcile(registry, candidate));
       activeRuntimeConfigHolder.activate(candidate);
       long durationMs = (System.nanoTime() - started) / 1_000_000L;
       log.info(

@@ -59,7 +59,8 @@ class DraftGraphValidatorTest {
     UUID apiId = UUID.randomUUID();
     UUID poolId = UUID.randomUUID();
     ApiEntity api = api(apiId, true);
-    UpstreamPoolEntity pool = new UpstreamPoolEntity(poolId, apiId, "pool", "LEAST_CONN", NOW, NOW);
+    UpstreamPoolEntity pool =
+        new UpstreamPoolEntity(poolId, apiId, "pool", "LEAST_CONN", null, NOW, NOW);
     UpstreamTargetEntity target = target(poolId);
     RouteEntity route = route(apiId, poolId, "/v1", "GET");
     ValidationResult result =
@@ -103,7 +104,7 @@ class DraftGraphValidatorTest {
   }
 
   private static UpstreamPoolEntity pool(UUID poolId, UUID apiId) {
-    return new UpstreamPoolEntity(poolId, apiId, "orders-v1", "ROUND_ROBIN", NOW, NOW);
+    return new UpstreamPoolEntity(poolId, apiId, "orders-v1", "ROUND_ROBIN", null, NOW, NOW);
   }
 
   private static UpstreamTargetEntity target(UUID poolId) {

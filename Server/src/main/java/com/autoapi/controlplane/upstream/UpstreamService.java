@@ -2,8 +2,10 @@ package com.autoapi.controlplane.upstream;
 
 import com.autoapi.controlplane.api.ControlPlaneException;
 import com.autoapi.controlplane.apidefinition.ApiDefinitionService;
+import com.autoapi.controlplane.persistence.BackendHealthPolicyRepository;
 import com.autoapi.controlplane.persistence.UpstreamPoolEntity;
 import com.autoapi.controlplane.persistence.UpstreamPoolRepository;
+import com.autoapi.controlplane.persistence.UpstreamPoolRepositoryCustom;
 import com.autoapi.controlplane.persistence.UpstreamTargetEntity;
 import com.autoapi.controlplane.persistence.UpstreamTargetRepository;
 import com.autoapi.validation.UpstreamUriValidator;
@@ -25,15 +27,21 @@ import reactor.core.publisher.Mono;
 public class UpstreamService {
 
   private final UpstreamPoolRepository upstreamPoolRepository;
+  private final UpstreamPoolRepositoryCustom upstreamPoolRepositoryCustom;
   private final UpstreamTargetRepository upstreamTargetRepository;
+  private final BackendHealthPolicyRepository backendHealthPolicyRepository;
   private final ApiDefinitionService apiDefinitionService;
 
   public UpstreamService(
       UpstreamPoolRepository upstreamPoolRepository,
+      UpstreamPoolRepositoryCustom upstreamPoolRepositoryCustom,
       UpstreamTargetRepository upstreamTargetRepository,
+      BackendHealthPolicyRepository backendHealthPolicyRepository,
       ApiDefinitionService apiDefinitionService) {
     this.upstreamPoolRepository = upstreamPoolRepository;
+    this.upstreamPoolRepositoryCustom = upstreamPoolRepositoryCustom;
     this.upstreamTargetRepository = upstreamTargetRepository;
+    this.backendHealthPolicyRepository = backendHealthPolicyRepository;
     this.apiDefinitionService = apiDefinitionService;
   }
 
@@ -49,7 +57,7 @@ public class UpstreamService {
               OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
               UpstreamPoolEntity entity =
                   new UpstreamPoolEntity(
-                      UUID.randomUUID(), api.id(), name, loadBalancing, now, now);
+                      UUID.randomUUID(), api.id(), name, loadBalancing, null, now, now);
               return upstreamPoolRepository
                   .save(entity)
                   .onErrorMap(
@@ -99,5 +107,41 @@ public class UpstreamService {
 
   public Flux<UpstreamTargetEntity> listTargets(UUID poolId) {
     return getPool(poolId).thenMany(upstreamTargetRepository.findByUpstreamPoolId(poolId));
+  }
+
+  public Mono<UpstreamPoolEntity> bindBackendHealthPolicy(UUID poolId, UUID policyId) {
+    if (policyId == null) {
+      return Mono.error(ControlPlaneException.invalidRequest("backendHealthPolicyId is required"));
+    }
+    return getPool(poolId)
+        .flatMap(
+            pool ->
+                backendHealthPolicyRepository
+                    .findById(policyId)
+                    .switchIfEmpty(
+                        Mono.error(
+                            ControlPlaneException.notFound("Backend health policy was not found")))
+                    .flatMap(
+                        policy -> {
+                          if (!policy.apiId().equals(pool.apiId())) {
+                            return Mono.error(
+                                ControlPlaneException.invalidRequest(
+                                    "Backend health policy must belong to the same API as the pool"));
+                          }
+                          if (!policy.enabled()) {
+                            return Mono.error(
+                                ControlPlaneException.invalidRequest(
+                                    "Backend health policy must be enabled"));
+                          }
+                          OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+                          return upstreamPoolRepositoryCustom.updateBackendHealthPolicy(
+                              poolId, policyId, now);
+                        }));
+  }
+
+  public Mono<UpstreamPoolEntity> clearBackendHealthPolicy(UUID poolId) {
+    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    return getPool(poolId)
+        .flatMap(pool -> upstreamPoolRepositoryCustom.clearBackendHealthPolicy(poolId, now));
   }
 }

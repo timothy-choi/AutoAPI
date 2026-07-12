@@ -28,11 +28,11 @@ class ControlPlaneRestIntegrationTest extends ControlPlaneIntegrationTest {
                 "SELECT COUNT(*) AS count FROM information_schema.tables WHERE table_schema ="
                     + " 'public' AND table_name IN ('projects', 'apis', 'upstream_pools',"
                     + " 'upstream_targets', 'routes', 'config_versions', 'api_keys',"
-                    + " 'rate_limit_policies', 'route_policy_bindings')")
+                    + " 'rate_limit_policies', 'route_policy_bindings', 'backend_health_policies')")
             .map(row -> row.get("count", Long.class))
             .one()
             .block();
-    assertEquals(9L, tableCount);
+    assertEquals(10L, tableCount);
   }
 
   @BeforeEach

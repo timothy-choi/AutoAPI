@@ -1,5 +1,6 @@
 package com.autoapi.gateway.config.remote;
 
+import com.autoapi.config.BackendHealthPolicyConfig;
 import com.autoapi.config.GatewayConfig;
 import com.autoapi.config.RouteConfig;
 import com.autoapi.config.RuntimeApiKey;
@@ -7,6 +8,7 @@ import com.autoapi.config.RuntimeAuthentication;
 import com.autoapi.config.RuntimeConfig;
 import com.autoapi.config.RuntimeRateLimit;
 import com.autoapi.config.UpstreamConfig;
+import com.autoapi.config.UpstreamTargetReference;
 import com.autoapi.controlplane.configversion.CompiledRateLimitSection;
 import com.autoapi.controlplane.configversion.CompiledRouteSection;
 import com.autoapi.controlplane.configversion.CompiledUpstreamPoolSection;
@@ -150,18 +152,31 @@ public final class RemoteSnapshotAdapter {
       throw new RemoteSnapshotValidationException(
           "Unsupported load balancing algorithm: " + pool.algorithm());
     }
-    List<URI> targets = new ArrayList<>();
+    List<UpstreamTargetReference> targets = new ArrayList<>();
     for (CompiledUpstreamTargetSection target : pool.targets()) {
       URI uri = URI.create(target.url());
       UpstreamUriValidator.validate(uri, "compiled target");
-      targets.add(uri);
+      targets.add(new UpstreamTargetReference(target.id(), uri, target.weight()));
     }
     if (targets.isEmpty()) {
       throw new RemoteSnapshotValidationException("Upstream pool must contain enabled targets");
     }
+    BackendHealthPolicyConfig health = toBackendHealthPolicy(pool.backendHealth());
     if (targets.size() == 1) {
-      return UpstreamConfig.single(targets.getFirst());
+      UpstreamTargetReference only = targets.getFirst();
+      return new UpstreamConfig(pool.id(), only.url(), List.of(only), health);
     }
-    return UpstreamConfig.roundRobin(targets);
+    return UpstreamConfig.roundRobin(pool.id(), targets, health);
+  }
+
+  private static BackendHealthPolicyConfig toBackendHealthPolicy(
+      com.autoapi.controlplane.configversion.CompiledBackendHealthSection section) {
+    if (section == null) {
+      return null;
+    }
+    return new BackendHealthPolicyConfig(
+        section.consecutiveFailureThreshold(),
+        section.ejectionDurationSeconds(),
+        section.maxEjectionPercent());
   }
 }

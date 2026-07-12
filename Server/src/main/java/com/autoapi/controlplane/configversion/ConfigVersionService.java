@@ -2,6 +2,7 @@ package com.autoapi.controlplane.configversion;
 
 import com.autoapi.controlplane.DraftGraphService;
 import com.autoapi.controlplane.api.ControlPlaneException;
+import com.autoapi.controlplane.persistence.BackendHealthPolicyEntity;
 import com.autoapi.controlplane.persistence.ConfigVersionEntity;
 import com.autoapi.controlplane.persistence.ConfigVersionRepository;
 import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
@@ -108,6 +109,11 @@ public class ConfigVersionService {
                                   .collect(
                                       java.util.stream.Collectors.toMap(
                                           RateLimitPolicyEntity::id, p -> p));
+                          java.util.Map<UUID, BackendHealthPolicyEntity> healthPolicyById =
+                              graph.backendHealthPolicies().stream()
+                                  .collect(
+                                      java.util.stream.Collectors.toMap(
+                                          BackendHealthPolicyEntity::id, p -> p));
                           HashableRuntimePayload payload =
                               RuntimeConfigCompiler.compile(
                                   apiId,
@@ -131,6 +137,7 @@ public class ConfigVersionService {
                                                   ::upstreamPoolId)),
                                   bindingByRouteId,
                                   policyById,
+                                  healthPolicyById,
                                   graph.apiKeys(),
                                   publishInstant);
                           StoredRuntimeSnapshot snapshot =

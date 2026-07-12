@@ -15,6 +15,8 @@ class GatewayReservedPathsTest {
     assertTrue(GatewayReservedPaths.isReservedPath("/api/v1/"));
     assertTrue(GatewayReservedPaths.isReservedPath("/api/v1/projects"));
     assertTrue(GatewayReservedPaths.isReservedPath("/api/v1/apis/123"));
+    assertTrue(GatewayReservedPaths.isReservedPath("/internal/v1/upstream-health"));
+    assertTrue(GatewayReservedPaths.isReservedPath("/internal/v1"));
   }
 
   @Test

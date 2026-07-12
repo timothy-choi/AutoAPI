@@ -395,6 +395,78 @@ API keys are scoped to the parent API (`api_id`). Rate-limit and other policies 
 
 ---
 
+## Backend Health Policies (Phase 5)
+
+Passive transport-failure detection is configured in the control plane and compiled into upstream pool snapshots. Gateway-local ejection state is **not** stored in PostgreSQL or Redis.
+
+### `POST /api/v1/apis/{api_id}/backend-health-policies`
+
+**Purpose:** Create a passive health policy for an API.
+
+**Request:**
+
+```json
+{
+  "name": "orders-passive-health",
+  "consecutiveFailureThreshold": 3,
+  "ejectionDurationSeconds": 30,
+  "maxEjectionPercent": 50,
+  "enabled": true
+}
+```
+
+**Response:** `201 Created`
+
+---
+
+### `GET /api/v1/apis/{api_id}/backend-health-policies`
+
+**Purpose:** List policies for an API.
+
+**Response:** `200`
+
+---
+
+### `GET /api/v1/apis/{api_id}/backend-health-policies/{policy_id}`
+
+**Purpose:** Get one policy.
+
+**Response:** `200`
+
+---
+
+### `PATCH /api/v1/apis/{api_id}/backend-health-policies/{policy_id}`
+
+**Purpose:** Partial update. Omitted fields retain existing values.
+
+**Response:** `200`
+
+---
+
+### `PUT /api/v1/upstream-pools/{pool_id}/backend-health-policy`
+
+**Purpose:** Bind an enabled policy to a draft upstream pool (same API).
+
+**Request:**
+
+```json
+{
+  "backendHealthPolicyId": "uuid"
+}
+```
+
+**Response:** `200 OK`
+
+---
+
+### `DELETE /api/v1/upstream-pools/{pool_id}/backend-health-policy`
+
+**Purpose:** Remove passive-health binding from the draft pool (does not delete the policy record).
+
+**Response:** `200 OK`
+
+---
+
 ## Retry Policies
 
 ### `POST /api/v1/apis/{api_id}/retry-policies`

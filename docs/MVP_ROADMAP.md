@@ -286,38 +286,37 @@ API-key auth enforced at gateway; global rate limit shared across two gateways v
 
 ---
 
-## Phase 5: Health-Aware Load Balancing
+## Phase 5: Health-Aware Load Balancing ✅ (implemented)
 
 ### Goal
 
-Multiple targets per pool; unhealthy targets removed from rotation after consecutive failures.
+Multiple targets per pool; temporarily eject targets after consecutive **transport** failures; health-aware round robin among eligible targets.
 
-### Implementation Tasks
+### Implemented (Phase 5)
 
-- [ ] Multiple targets in pool (docker-compose: `upstream-v1-a`, `upstream-v1-b`)
-- [ ] Gateway passive health tracker: HEALTHY → UNHEALTHY → HALF_OPEN state machine
-- [ ] Health-affecting failures: connection refused/reset, transport error, timeout, 502, 503, 504 (not all 500)
-- [ ] Mark UNHEALTHY after N consecutive health-affecting failures
-- [ ] HALF_OPEN recovery: cooldown → single success → HEALTHY
-- [ ] Round-robin among healthy targets only
-- [ ] 503 when all targets unhealthy
+- [x] `backend_health_policies` management API and pool binding
+- [x] Passive transport-failure classification (not HTTP 5xx)
+- [x] Consecutive-failure threshold and temporary ejection with expiry
+- [x] `maxEjectionPercent` cap per pool
+- [x] Health-aware round robin; all-ejected fallback to earliest expiry
+- [x] Gateway-local health registry (not PostgreSQL, not Redis)
+- [x] Internal `GET /internal/v1/upstream-health` visibility endpoint
+- [x] Config activation reconciliation by target fingerprint (`targetId + normalized URL`)
+- [x] `scripts/smoke-phase5.sh` passive ejection and recovery scenario
 
-### Components/Files Affected
+### Not implemented (deferred)
 
-- `gateway/internal/upstream/health.go`
-- `gateway/internal/upstream/selector.go`
-- `docker-compose.yml` (multiple upstreams)
-
-### Tests
-
-- [ ] Integration: kill one upstream → traffic flows to remaining
-- [ ] Integration: kill all upstreams → 503
-- [ ] Integration: recover upstream → traffic resumes
+- [ ] Active periodic health probes
+- [ ] Half-open circuit-breaker state
+- [ ] HTTP 5xx-based outlier detection
+- [ ] Automatic request retries / hedging
+- [ ] Global synchronized backend health store
 
 ### Definition of Done
 
-- Failed backend stops receiving new requests within failure threshold
-- No control-plane involvement in health state
+- Failed backend stops receiving new requests after failure threshold (per gateway)
+- No control-plane or PostgreSQL query on the data-plane request path for health state
+- Ejected upstream does not fail gateway `/readyz`
 
 ---
 

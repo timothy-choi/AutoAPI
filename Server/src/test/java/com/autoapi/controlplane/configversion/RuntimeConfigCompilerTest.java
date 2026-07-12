@@ -25,7 +25,7 @@ class RuntimeConfigCompilerTest {
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
 
     UpstreamPoolEntity pool =
-        new UpstreamPoolEntity(poolId, API_ID, "orders-v1", "ROUND_ROBIN", now, now);
+        new UpstreamPoolEntity(poolId, API_ID, "orders-v1", "ROUND_ROBIN", null, now, now);
     UpstreamTargetEntity target =
         new UpstreamTargetEntity(targetId, poolId, "http://upstream-v1:8080", true, 1, now, now);
     RouteEntity route =
@@ -63,7 +63,7 @@ class RuntimeConfigCompilerTest {
     UUID routeB = UUID.randomUUID();
 
     UpstreamPoolEntity pool =
-        new UpstreamPoolEntity(poolId, API_ID, "orders-v1", "ROUND_ROBIN", now, now);
+        new UpstreamPoolEntity(poolId, API_ID, "orders-v1", "ROUND_ROBIN", null, now, now);
     UpstreamTargetEntity target =
         new UpstreamTargetEntity(targetId, poolId, "http://upstream-v1:8080", true, 1, now, now);
     RouteEntity route1 =
@@ -118,7 +118,7 @@ class RuntimeConfigCompilerTest {
     UUID targetId = UUID.randomUUID();
     UUID routeId = UUID.randomUUID();
     UpstreamPoolEntity pool =
-        new UpstreamPoolEntity(poolId, API_ID, "orders-v1", "ROUND_ROBIN", now, now);
+        new UpstreamPoolEntity(poolId, API_ID, "orders-v1", "ROUND_ROBIN", null, now, now);
     UpstreamTargetEntity target =
         new UpstreamTargetEntity(targetId, poolId, "http://upstream-v1:8080", true, 1, now, now);
     RouteEntity route =
@@ -151,7 +151,7 @@ class RuntimeConfigCompilerTest {
     UUID targetId = UUID.randomUUID();
     UUID routeId = UUID.randomUUID();
     UpstreamPoolEntity pool =
-        new UpstreamPoolEntity(poolId, API_ID, "orders-v1", "ROUND_ROBIN", now, now);
+        new UpstreamPoolEntity(poolId, API_ID, "orders-v1", "ROUND_ROBIN", null, now, now);
     UpstreamTargetEntity target =
         new UpstreamTargetEntity(targetId, poolId, "http://upstream-v1:8080", true, 1, now, now);
     RouteEntity route =

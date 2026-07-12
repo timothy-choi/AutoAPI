@@ -112,6 +112,14 @@ public class ErrorResponseWriter {
         "Rate limiting is temporarily unavailable");
   }
 
+  public Mono<Void> noAvailableUpstream(ServerWebExchange exchange) {
+    return write(
+        exchange,
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "NO_AVAILABLE_UPSTREAM",
+        "No upstream target is available");
+  }
+
   private void logProxyFailure(ServerWebExchange exchange, Throwable cause) {
     log.warn(
         "requestId={} routeId={} upstream={} errorType={} message={}",

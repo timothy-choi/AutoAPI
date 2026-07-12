@@ -141,7 +141,7 @@ net/http Server
   └── Handler entry:
         cfg := activeConfig.Load()   // once per request; passed through context
         RequestID(cfg) → RouteMatch(cfg) → Auth(cfg) → RateLimit(cfg)
-        → TrafficSplit(cfg) → BackendSelect(cfg) → OutboundExecute(cfg)
+        → HealthAwareTargetSelect(cfg) → OutboundProxy → PassiveHealthUpdate
         → Telemetry
   └── activeConfig atomic.Pointer[RuntimeConfig]
   └── configPoller goroutine
