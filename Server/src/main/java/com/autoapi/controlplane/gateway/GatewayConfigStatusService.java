@@ -86,25 +86,27 @@ public class GatewayConfigStatusService {
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
     UUID eventId = UUID.randomUUID();
     var insertSpec =
-        databaseClient
-            .sql(
-                """
-                INSERT INTO config_activation_events (
-                    id, gateway_id, api_id, version, content_hash, report_id, status,
-                    error_code, diagnostic, apply_duration_ms, created_at
-                ) VALUES (
-                    :id, :gatewayId, :apiId, :version, :contentHash, :reportId, :status,
-                    :errorCode, :diagnostic, :applyDurationMs, :createdAt
-                )
-                """)
-            .bind("id", eventId)
-            .bind("gatewayId", gatewayId)
-            .bind("apiId", request.apiId())
-            .bind("version", request.version())
-            .bind("contentHash", request.contentHash())
-            .bind("reportId", request.reportId())
-            .bind("status", request.status())
-            .bind("applyDurationMs", request.applyDurationMs())
+        bindNullableLong(
+                databaseClient
+                    .sql(
+                        """
+                        INSERT INTO config_activation_events (
+                            id, gateway_id, api_id, version, content_hash, report_id, status,
+                            error_code, diagnostic, apply_duration_ms, created_at
+                        ) VALUES (
+                            :id, :gatewayId, :apiId, :version, :contentHash, :reportId, :status,
+                            :errorCode, :diagnostic, :applyDurationMs, :createdAt
+                        )
+                        """)
+                    .bind("id", eventId)
+                    .bind("gatewayId", gatewayId)
+                    .bind("apiId", request.apiId())
+                    .bind("version", request.version())
+                    .bind("contentHash", request.contentHash())
+                    .bind("reportId", request.reportId())
+                    .bind("status", request.status()),
+                "applyDurationMs",
+                request.applyDurationMs())
             .bind("createdAt", now);
     if ("ACK".equals(request.status())) {
       insertSpec =
@@ -138,53 +140,57 @@ public class GatewayConfigStatusService {
   private Mono<Void> insertGatewayApiStatus(
       String gatewayId, ConfigStatusRequest request, OffsetDateTime now) {
     if ("ACK".equals(request.status())) {
-      return databaseClient
-          .sql(
-              """
-              INSERT INTO gateway_api_status (
-                  gateway_id, api_id, active_version, active_content_hash,
-                  last_attempted_version, last_attempted_content_hash,
-                  last_status, last_apply_duration_ms,
-                  last_reported_at, created_at, updated_at
-              ) VALUES (
-                  :gatewayId, :apiId, :version, :contentHash,
-                  :version, :contentHash,
-                  'ACK', :applyDurationMs,
-                  :now, :now, :now
-              )
-              """)
-          .bind("gatewayId", gatewayId)
-          .bind("apiId", request.apiId())
-          .bind("version", request.version())
-          .bind("contentHash", request.contentHash())
-          .bind("applyDurationMs", request.applyDurationMs())
+      return bindNullableLong(
+              databaseClient
+                  .sql(
+                      """
+                      INSERT INTO gateway_api_status (
+                          gateway_id, api_id, active_version, active_content_hash,
+                          last_attempted_version, last_attempted_content_hash,
+                          last_status, last_apply_duration_ms,
+                          last_reported_at, created_at, updated_at
+                      ) VALUES (
+                          :gatewayId, :apiId, :version, :contentHash,
+                          :version, :contentHash,
+                          'ACK', :applyDurationMs,
+                          :now, :now, :now
+                      )
+                      """)
+                  .bind("gatewayId", gatewayId)
+                  .bind("apiId", request.apiId())
+                  .bind("version", request.version())
+                  .bind("contentHash", request.contentHash()),
+              "applyDurationMs",
+              request.applyDurationMs())
           .bind("now", now)
           .fetch()
           .rowsUpdated()
           .then();
     }
-    return databaseClient
-        .sql(
-            """
-            INSERT INTO gateway_api_status (
-                gateway_id, api_id, active_version, active_content_hash,
-                last_attempted_version, last_attempted_content_hash,
-                last_status, last_error_code, last_diagnostic, last_apply_duration_ms,
-                last_reported_at, created_at, updated_at
-            ) VALUES (
-                :gatewayId, :apiId, NULL, NULL,
-                :version, :contentHash,
-                'NACK', :errorCode, :diagnostic, :applyDurationMs,
-                :now, :now, :now
-            )
-            """)
-        .bind("gatewayId", gatewayId)
-        .bind("apiId", request.apiId())
-        .bind("version", request.version())
-        .bind("contentHash", request.contentHash())
-        .bind("errorCode", request.errorCode())
-        .bind("diagnostic", truncateDiagnostic(request.diagnostic()))
-        .bind("applyDurationMs", request.applyDurationMs())
+    return bindNullableLong(
+            databaseClient
+                .sql(
+                    """
+                    INSERT INTO gateway_api_status (
+                        gateway_id, api_id, active_version, active_content_hash,
+                        last_attempted_version, last_attempted_content_hash,
+                        last_status, last_error_code, last_diagnostic, last_apply_duration_ms,
+                        last_reported_at, created_at, updated_at
+                    ) VALUES (
+                        :gatewayId, :apiId, NULL, NULL,
+                        :version, :contentHash,
+                        'NACK', :errorCode, :diagnostic, :applyDurationMs,
+                        :now, :now, :now
+                    )
+                    """)
+                .bind("gatewayId", gatewayId)
+                .bind("apiId", request.apiId())
+                .bind("version", request.version())
+                .bind("contentHash", request.contentHash())
+                .bind("errorCode", request.errorCode())
+                .bind("diagnostic", truncateDiagnostic(request.diagnostic())),
+            "applyDurationMs",
+            request.applyDurationMs())
         .bind("now", now)
         .fetch()
         .rowsUpdated()
@@ -197,61 +203,79 @@ public class GatewayConfigStatusService {
       OffsetDateTime now,
       GatewayApiStatusEntity existing) {
     if ("ACK".equals(request.status())) {
-      return databaseClient
-          .sql(
-              """
-              UPDATE gateway_api_status
-              SET active_version = :version,
-                  active_content_hash = :contentHash,
-                  last_attempted_version = :version,
-                  last_attempted_content_hash = :contentHash,
-                  last_status = 'ACK',
-                  last_error_code = NULL,
-                  last_diagnostic = NULL,
-                  last_apply_duration_ms = :applyDurationMs,
-                  last_reported_at = :now,
-                  updated_at = :now
-              WHERE gateway_id = :gatewayId AND api_id = :apiId
-              """)
-          .bind("version", request.version())
-          .bind("contentHash", request.contentHash())
-          .bind("applyDurationMs", request.applyDurationMs())
-          .bind("now", now)
-          .bind("gatewayId", gatewayId)
-          .bind("apiId", request.apiId())
+      return bindNullableLong(
+              databaseClient
+                  .sql(
+                      """
+                      UPDATE gateway_api_status
+                      SET active_version = :version,
+                          active_content_hash = :contentHash,
+                          last_attempted_version = :version,
+                          last_attempted_content_hash = :contentHash,
+                          last_status = 'ACK',
+                          last_error_code = NULL,
+                          last_diagnostic = NULL,
+                          last_apply_duration_ms = :applyDurationMs,
+                          last_reported_at = :now,
+                          updated_at = :now
+                      WHERE gateway_id = :gatewayId AND api_id = :apiId
+                      """)
+                  .bind("version", request.version())
+                  .bind("contentHash", request.contentHash())
+                  .bind("now", now)
+                  .bind("gatewayId", gatewayId)
+                  .bind("apiId", request.apiId()),
+              "applyDurationMs",
+              request.applyDurationMs())
           .fetch()
           .rowsUpdated()
           .then();
     }
-    return databaseClient
-        .sql(
-            """
-            UPDATE gateway_api_status
-            SET active_version = :activeVersion,
-                active_content_hash = :activeContentHash,
-                last_attempted_version = :version,
-                last_attempted_content_hash = :contentHash,
-                last_status = 'NACK',
-                last_error_code = :errorCode,
-                last_diagnostic = :diagnostic,
-                last_apply_duration_ms = :applyDurationMs,
-                last_reported_at = :now,
-                updated_at = :now
-            WHERE gateway_id = :gatewayId AND api_id = :apiId
-            """)
-        .bind("activeVersion", existing.activeVersion())
-        .bind("activeContentHash", existing.activeContentHash())
-        .bind("version", request.version())
-        .bind("contentHash", request.contentHash())
-        .bind("errorCode", request.errorCode())
-        .bind("diagnostic", truncateDiagnostic(request.diagnostic()))
-        .bind("applyDurationMs", request.applyDurationMs())
-        .bind("now", now)
-        .bind("gatewayId", gatewayId)
-        .bind("apiId", request.apiId())
+    return bindNullableLong(
+            bindNullableString(
+                bindNullableLong(
+                    databaseClient
+                        .sql(
+                            """
+                            UPDATE gateway_api_status
+                            SET active_version = :activeVersion,
+                                active_content_hash = :activeContentHash,
+                                last_attempted_version = :version,
+                                last_attempted_content_hash = :contentHash,
+                                last_status = 'NACK',
+                                last_error_code = :errorCode,
+                                last_diagnostic = :diagnostic,
+                                last_apply_duration_ms = :applyDurationMs,
+                                last_reported_at = :now,
+                                updated_at = :now
+                            WHERE gateway_id = :gatewayId AND api_id = :apiId
+                            """)
+                        .bind("version", request.version())
+                        .bind("contentHash", request.contentHash())
+                        .bind("errorCode", request.errorCode())
+                        .bind("diagnostic", truncateDiagnostic(request.diagnostic()))
+                        .bind("now", now)
+                        .bind("gatewayId", gatewayId)
+                        .bind("apiId", request.apiId()),
+                    "activeVersion",
+                    existing.activeVersion()),
+                "activeContentHash",
+                existing.activeContentHash()),
+            "applyDurationMs",
+            request.applyDurationMs())
         .fetch()
         .rowsUpdated()
         .then();
+  }
+
+  private static DatabaseClient.GenericExecuteSpec bindNullableLong(
+      DatabaseClient.GenericExecuteSpec spec, String name, Long value) {
+    return value == null ? spec.bindNull(name, Long.class) : spec.bind(name, value);
+  }
+
+  private static DatabaseClient.GenericExecuteSpec bindNullableString(
+      DatabaseClient.GenericExecuteSpec spec, String name, String value) {
+    return value == null ? spec.bindNull(name, String.class) : spec.bind(name, value);
   }
 
   private static void validateRequest(ConfigStatusRequest request) {

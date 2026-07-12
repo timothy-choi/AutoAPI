@@ -36,12 +36,27 @@ public class GatewayProperties {
     this.gatewayId = gatewayId;
   }
 
+  /**
+   * Binds {@code autoapi.gateway.id} from {@code application.yml} and {@code AUTOAPI_GATEWAY_ID}.
+   */
+  public void setId(String id) {
+    this.gatewayId = id;
+  }
+
   public String gatewayGroup() {
     return gatewayGroup;
   }
 
   public void setGatewayGroup(String gatewayGroup) {
     this.gatewayGroup = gatewayGroup;
+  }
+
+  /**
+   * Binds {@code autoapi.gateway.group} from {@code application.yml} and {@code
+   * AUTOAPI_GATEWAY_GROUP}.
+   */
+  public void setGroup(String group) {
+    this.gatewayGroup = group;
   }
 
   public UUID apiId() {

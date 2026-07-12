@@ -128,7 +128,7 @@ class ControlPlaneConfigPollerTest {
     assertEquals("/v1/orders", active.runtimeConfig().routes().getFirst().pathPrefix());
     assertTrue(DESIRED_REQUESTS.get() >= 1);
     assertTrue(SNAPSHOT_REQUESTS.get() >= 1);
-    assertTrue(CONFIG_STATUS_REQUESTS.get() >= 1);
+    awaitUntil(() -> CONFIG_STATUS_REQUESTS.get() >= 1, Duration.ofSeconds(5));
   }
 
   @Test

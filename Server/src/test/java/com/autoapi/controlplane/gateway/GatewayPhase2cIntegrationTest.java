@@ -378,14 +378,42 @@ class GatewayPhase2cIntegrationTest extends ControlPlaneIntegrationTest {
   }
 
   private void activateVersion(String apiId, long version) {
+    Long expectedDesiredVersion = readDesiredConfigVersion(apiId);
+    String body =
+        expectedDesiredVersion == null
+            ? "{\"expectedDesiredVersion\":null}"
+            : "{\"expectedDesiredVersion\":" + expectedDesiredVersion + "}";
     webTestClient
         .post()
         .uri("/api/v1/apis/" + apiId + "/config/versions/" + version + "/activate")
         .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue("{}")
+        .bodyValue(body)
         .exchange()
         .expectStatus()
         .isOk();
+  }
+
+  private Long readDesiredConfigVersion(String apiId) {
+    byte[] body =
+        webTestClient
+            .get()
+            .uri("/api/v1/apis/" + apiId)
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .returnResult()
+            .getResponseBody();
+    try {
+      var node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(body);
+      if (node.hasNonNull("desiredConfigVersion")) {
+        return node.get("desiredConfigVersion").asLong();
+      }
+      return null;
+    } catch (Exception e) {
+      org.junit.jupiter.api.Assertions.fail(e);
+      return null;
+    }
   }
 
   private void addRoute(String apiId, String pathPrefix, String poolId) {
