@@ -71,9 +71,13 @@ class GatewayReadinessTest {
     DatabaseReadinessChecker databaseReadinessChecker = mock(DatabaseReadinessChecker.class);
     when(databaseReadinessChecker.isDatabaseReady()).thenReturn(Mono.just(true));
     runtimeProperties.setRole(AutoApiRole.COMBINED);
-    ControlPlaneProperties controlPlaneProperties =
-        new ControlPlaneProperties(
-            true, new ControlPlaneProperties.CompiledGatewayProperties("0.0.0.0", 8080));
+    ControlPlaneProperties controlPlaneProperties = new ControlPlaneProperties();
+    controlPlaneProperties.setEnabled(true);
+    ControlPlaneProperties.CompiledGatewayProperties compiled =
+        new ControlPlaneProperties.CompiledGatewayProperties();
+    compiled.setListenAddress("0.0.0.0");
+    compiled.setPort(8080);
+    controlPlaneProperties.setCompiledGateway(compiled);
     GatewayReadiness readiness =
         buildReadiness(Optional.of(controlPlaneProperties), Optional.of(databaseReadinessChecker));
     readiness.onReady();
@@ -85,9 +89,13 @@ class GatewayReadinessTest {
     DatabaseReadinessChecker databaseReadinessChecker = mock(DatabaseReadinessChecker.class);
     when(databaseReadinessChecker.isDatabaseReady()).thenReturn(Mono.just(false));
     runtimeProperties.setRole(AutoApiRole.COMBINED);
-    ControlPlaneProperties controlPlaneProperties =
-        new ControlPlaneProperties(
-            true, new ControlPlaneProperties.CompiledGatewayProperties("0.0.0.0", 8080));
+    ControlPlaneProperties controlPlaneProperties = new ControlPlaneProperties();
+    controlPlaneProperties.setEnabled(true);
+    ControlPlaneProperties.CompiledGatewayProperties compiled =
+        new ControlPlaneProperties.CompiledGatewayProperties();
+    compiled.setListenAddress("0.0.0.0");
+    compiled.setPort(8080);
+    controlPlaneProperties.setCompiledGateway(compiled);
     GatewayReadiness readiness =
         buildReadiness(Optional.of(controlPlaneProperties), Optional.of(databaseReadinessChecker));
     readiness.onReady();
@@ -100,9 +108,13 @@ class GatewayReadinessTest {
     when(databaseReadinessChecker.isDatabaseReady())
         .thenReturn(Mono.error(new IllegalStateException("connection refused")));
     runtimeProperties.setRole(AutoApiRole.COMBINED);
-    ControlPlaneProperties controlPlaneProperties =
-        new ControlPlaneProperties(
-            true, new ControlPlaneProperties.CompiledGatewayProperties("0.0.0.0", 8080));
+    ControlPlaneProperties controlPlaneProperties = new ControlPlaneProperties();
+    controlPlaneProperties.setEnabled(true);
+    ControlPlaneProperties.CompiledGatewayProperties compiled =
+        new ControlPlaneProperties.CompiledGatewayProperties();
+    compiled.setListenAddress("0.0.0.0");
+    compiled.setPort(8080);
+    controlPlaneProperties.setCompiledGateway(compiled);
     GatewayReadiness readiness =
         buildReadiness(Optional.of(controlPlaneProperties), Optional.of(databaseReadinessChecker));
     readiness.onReady();

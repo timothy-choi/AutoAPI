@@ -91,8 +91,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Bootstrap Phase 2B stack
-        run: ./scripts/bootstrap-phase2b.sh
+      - name: Bootstrap Phase 2C stack
+        run: ./scripts/bootstrap-phase2c.sh
 
       - name: Run smoke assertions
         env:

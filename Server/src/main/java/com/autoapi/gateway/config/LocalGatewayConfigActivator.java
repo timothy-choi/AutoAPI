@@ -1,5 +1,6 @@
 package com.autoapi.gateway.config;
 
+import com.autoapi.controlplane.configversion.StoredRuntimeSnapshot;
 import com.autoapi.gateway.GatewayProperties;
 import com.autoapi.gateway.config.remote.RemoteSnapshotAdapter;
 import com.autoapi.gateway.config.remote.RemoteSnapshotValidationException;
@@ -24,12 +25,11 @@ public class LocalGatewayConfigActivator {
     this.gatewayProperties = gatewayProperties;
   }
 
-  public boolean activateCandidate(
-      com.autoapi.controlplane.configversion.StoredRuntimeSnapshot snapshot) {
+  public GatewayActivationAttempt activateCandidate(StoredRuntimeSnapshot snapshot) {
+    long started = System.nanoTime();
     try {
       ActiveRuntimeBundle candidate =
           RemoteSnapshotAdapter.toActiveBundle(snapshot, gatewayProperties.apiId());
-      long started = System.nanoTime();
       activeRuntimeConfigHolder.activate(candidate);
       long durationMs = (System.nanoTime() - started) / 1_000_000L;
       log.info(
@@ -41,14 +41,39 @@ public class LocalGatewayConfigActivator {
           candidate.runtimeConfig().routes().size(),
           countTargets(candidate),
           durationMs);
-      return true;
+      return GatewayActivationAttempt.success(
+          candidate.version(), candidate.contentHash(), durationMs);
     } catch (RemoteSnapshotValidationException ex) {
+      long durationMs = (System.nanoTime() - started) / 1_000_000L;
       log.warn(
           "Rejected gateway configuration candidate apiId={} reason={}",
           gatewayProperties.apiId(),
           ex.getMessage());
-      return false;
+      return GatewayActivationAttempt.failure(
+          snapshot.version(),
+          snapshot.contentHash(),
+          mapErrorCode(ex),
+          safeDiagnostic(ex.getMessage()),
+          durationMs);
     }
+  }
+
+  private static String mapErrorCode(RemoteSnapshotValidationException ex) {
+    String message = ex.getMessage() == null ? "" : ex.getMessage();
+    if (message.contains("hash")) {
+      return "CONTENT_HASH_MISMATCH";
+    }
+    if (message.contains("ROUND_ROBIN")) {
+      return "UNSUPPORTED_RUNTIME_FEATURE";
+    }
+    return "SNAPSHOT_VALIDATION_FAILED";
+  }
+
+  private static String safeDiagnostic(String message) {
+    if (message == null) {
+      return "Validation failed";
+    }
+    return message.length() > 1024 ? message.substring(0, 1024) : message;
   }
 
   private static int countTargets(ActiveRuntimeBundle bundle) {
