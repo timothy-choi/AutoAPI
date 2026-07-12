@@ -22,7 +22,9 @@ class GatewayRedisRateLimitAutoConfigurationTest {
               ReactiveRedisConnectionFactory.class,
               () -> mock(ReactiveRedisConnectionFactory.class))
           .withBean(GatewaySecurityMetrics.class, () -> mock(GatewaySecurityMetrics.class))
-          .withUserConfiguration(GatewayRedisRateLimitAutoConfiguration.class);
+          .withUserConfiguration(
+              GatewayRedisRateLimitAutoConfiguration.class,
+              GatewayRateLimitServiceAutoConfiguration.class);
 
   @Test
   void registersLimiterAndServiceTogether() {

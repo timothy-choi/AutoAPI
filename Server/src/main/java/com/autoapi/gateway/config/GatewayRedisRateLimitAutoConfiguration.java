@@ -1,8 +1,6 @@
 package com.autoapi.gateway.config;
 
-import com.autoapi.gateway.auth.GatewaySecurityMetrics;
 import com.autoapi.gateway.redis.FixedWindowRateLimiter;
-import com.autoapi.gateway.redis.GatewayRateLimitService;
 import com.autoapi.runtime.AutoApiRole;
 import com.autoapi.runtime.ConditionalOnAutoApiRole;
 import com.autoapi.security.ConditionalOnConfiguredApiKeyPepper;
@@ -28,12 +26,5 @@ public class GatewayRedisRateLimitAutoConfiguration {
   @ConditionalOnMissingBean(FixedWindowRateLimiter.class)
   FixedWindowRateLimiter fixedWindowRateLimiter(ReactiveRedisConnectionFactory connectionFactory) {
     return new FixedWindowRateLimiter(new ReactiveStringRedisTemplate(connectionFactory));
-  }
-
-  @Bean
-  @ConditionalOnMissingBean(GatewayRateLimitService.class)
-  GatewayRateLimitService gatewayRateLimitService(
-      FixedWindowRateLimiter rateLimiter, GatewaySecurityMetrics metrics) {
-    return new GatewayRateLimitService(rateLimiter, metrics);
   }
 }

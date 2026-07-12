@@ -1,1 +1,2 @@
 com.autoapi.gateway.config.GatewayRedisRateLimitAutoConfiguration
+com.autoapi.gateway.config.GatewayRateLimitServiceAutoConfiguration
