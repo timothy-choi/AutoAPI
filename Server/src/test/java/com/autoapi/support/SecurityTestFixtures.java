@@ -23,6 +23,8 @@ public final class SecurityTestFixtures {
   public static final String TEST_PEPPER =
       "development-only-test-pepper-minimum-sixteen-characters";
 
+  public static final UUID TEST_API_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
   private SecurityTestFixtures() {}
 
   public static RuntimeConfig protectedRouteConfig(

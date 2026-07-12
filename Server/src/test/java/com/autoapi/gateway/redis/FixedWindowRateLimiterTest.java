@@ -3,7 +3,6 @@ package com.autoapi.gateway.redis;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.autoapi.support.RedisDynamicProperties;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
@@ -78,10 +77,12 @@ class FixedWindowRateLimiterTest implements RedisDynamicProperties {
 
   @Test
   void windowExpires() throws InterruptedException {
+    int windowSeconds = 2;
     String key = "test:ratelimit:expire:" + System.nanoTime();
-    StepVerifier.create(limiter.increment(key, 2)).expectNextCount(1).verifyComplete();
-    Thread.sleep(Duration.ofSeconds(3).toMillis());
-    StepVerifier.create(limiter.increment(key, 2))
+    StepVerifier.create(limiter.increment(key, windowSeconds)).expectNextCount(1).verifyComplete();
+    // TTL is windowSeconds + 5; wait for the Redis key to expire before asserting reset.
+    Thread.sleep(8000);
+    StepVerifier.create(limiter.increment(key, windowSeconds))
         .assertNext(result -> assertEquals(1, result.count()))
         .verifyComplete();
   }

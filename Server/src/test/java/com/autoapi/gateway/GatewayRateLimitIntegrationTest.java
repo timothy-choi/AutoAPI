@@ -14,6 +14,8 @@ import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWeb
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 @SpringBootTest(
@@ -21,11 +23,12 @@ import org.springframework.test.web.reactive.server.WebTestClient;
     properties = {
       "autoapi.role=gateway",
       "autoapi.controlplane.enabled=false",
-      "spring.flyway.enabled=false"
+      "spring.flyway.enabled=false",
+      "autoapi.gateway.api-id=00000000-0000-0000-0000-000000000001"
     })
 @AutoConfigureWebTestClient
 @ContextConfiguration(initializers = GatewayRateLimitIntegrationTest.Initializer.class)
-class GatewayRateLimitIntegrationTest implements RedisDynamicProperties {
+class GatewayRateLimitIntegrationTest {
 
   private static final TestUpstream upstream;
   private static final ApiKeyGenerator.GeneratedApiKeyMaterial keyMaterial =
@@ -40,6 +43,11 @@ class GatewayRateLimitIntegrationTest implements RedisDynamicProperties {
   }
 
   @Autowired private WebTestClient webTestClient;
+
+  @DynamicPropertySource
+  static void registerRedis(DynamicPropertyRegistry registry) {
+    RedisDynamicProperties.registerRedisProperties(registry);
+  }
 
   @AfterAll
   static void shutdown() {

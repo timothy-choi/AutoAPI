@@ -4,6 +4,7 @@ import com.autoapi.controlplane.api.ControlPlaneException;
 import com.autoapi.controlplane.apidefinition.ApiDefinitionService;
 import com.autoapi.controlplane.persistence.ApiKeyEntity;
 import com.autoapi.controlplane.persistence.ApiKeyRepository;
+import com.autoapi.controlplane.persistence.ApiKeyRepositoryCustom;
 import com.autoapi.security.ApiKeyDigestService;
 import com.autoapi.security.ApiKeyGenerator;
 import com.autoapi.security.ApiKeyPepperProperties;
@@ -25,14 +26,17 @@ import reactor.core.publisher.Mono;
 public class ApiKeyService {
 
   private final ApiKeyRepository apiKeyRepository;
+  private final ApiKeyRepositoryCustom apiKeyRepositoryCustom;
   private final ApiDefinitionService apiDefinitionService;
   private final ApiKeyPepperProperties pepperProperties;
 
   public ApiKeyService(
       ApiKeyRepository apiKeyRepository,
+      ApiKeyRepositoryCustom apiKeyRepositoryCustom,
       ApiDefinitionService apiDefinitionService,
       ApiKeyPepperProperties pepperProperties) {
     this.apiKeyRepository = apiKeyRepository;
+    this.apiKeyRepositoryCustom = apiKeyRepositoryCustom;
     this.apiDefinitionService = apiDefinitionService;
     this.pepperProperties = pepperProperties;
   }
@@ -93,20 +97,7 @@ public class ApiKeyService {
                 return Mono.just(existing);
               }
               OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-              ApiKeyEntity revoked =
-                  new ApiKeyEntity(
-                      existing.id(),
-                      existing.apiId(),
-                      existing.keyId(),
-                      existing.name(),
-                      existing.keyPrefix(),
-                      existing.secretDigest(),
-                      false,
-                      existing.expiresAt(),
-                      existing.createdAt(),
-                      now,
-                      now);
-              return apiKeyRepository.save(revoked);
+              return apiKeyRepositoryCustom.revoke(existing.id(), now, now);
             });
   }
 

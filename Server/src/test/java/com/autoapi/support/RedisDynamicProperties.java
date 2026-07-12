@@ -21,12 +21,16 @@ public interface RedisDynamicProperties {
     }
   }
 
-  @DynamicPropertySource
-  static void registerRedis(DynamicPropertyRegistry registry) {
+  static void registerRedisProperties(DynamicPropertyRegistry registry) {
     startRedisIfNeeded();
     registry.add(
         "spring.data.redis.url",
         () -> "redis://" + REDIS.getHost() + ":" + REDIS.getFirstMappedPort());
     registry.add("autoapi.security.api-key-pepper", () -> SecurityTestFixtures.TEST_PEPPER);
+  }
+
+  @DynamicPropertySource
+  static void registerRedis(DynamicPropertyRegistry registry) {
+    registerRedisProperties(registry);
   }
 }
