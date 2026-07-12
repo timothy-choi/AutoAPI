@@ -2,12 +2,15 @@ package com.autoapi.gateway;
 
 import com.autoapi.config.GatewayBootstrap;
 import com.autoapi.config.RuntimeConfig;
+import com.autoapi.gateway.redis.FixedWindowRateLimiter;
+import com.autoapi.gateway.redis.GatewayRateLimitService;
 import com.autoapi.security.ApiKeyGenerator;
 import com.autoapi.support.RedisDynamicProperties;
 import com.autoapi.support.SecurityTestFixtures;
 import com.autoapi.support.TestUpstream;
 import java.io.IOException;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
@@ -24,7 +27,8 @@ import org.springframework.test.web.reactive.server.WebTestClient;
       "autoapi.role=gateway",
       "autoapi.controlplane.enabled=false",
       "spring.flyway.enabled=false",
-      "autoapi.gateway.api-id=00000000-0000-0000-0000-000000000001"
+      "autoapi.gateway.api-id=00000000-0000-0000-0000-000000000001",
+      "autoapi.security.api-key-pepper=" + SecurityTestFixtures.TEST_PEPPER
     })
 @AutoConfigureWebTestClient
 @ContextConfiguration(initializers = GatewayRateLimitIntegrationTest.Initializer.class)
@@ -43,6 +47,14 @@ class GatewayRateLimitIntegrationTest {
   }
 
   @Autowired private WebTestClient webTestClient;
+  @Autowired private FixedWindowRateLimiter fixedWindowRateLimiter;
+  @Autowired private GatewayRateLimitService gatewayRateLimitService;
+
+  @BeforeEach
+  void requireRateLimitBeans() {
+    org.junit.jupiter.api.Assertions.assertNotNull(fixedWindowRateLimiter);
+    org.junit.jupiter.api.Assertions.assertNotNull(gatewayRateLimitService);
+  }
 
   @DynamicPropertySource
   static void registerRedis(DynamicPropertyRegistry registry) {
@@ -57,14 +69,20 @@ class GatewayRateLimitIntegrationTest {
   @Test
   void sixthRequestReturns429AcrossSharedRedis() {
     for (int i = 0; i < 5; i++) {
-      webTestClient
-          .get()
-          .uri("/v1/orders/" + i)
-          .header(HttpHeaders.HOST, "api.autoapi.local")
-          .header(HttpHeaders.AUTHORIZATION, "Bearer " + keyMaterial.plaintextKey())
-          .exchange()
-          .expectStatus()
-          .isOk();
+      var spec =
+          webTestClient
+              .get()
+              .uri("/v1/orders/" + i)
+              .header(HttpHeaders.HOST, "api.autoapi.local")
+              .header(HttpHeaders.AUTHORIZATION, "Bearer " + keyMaterial.plaintextKey())
+              .exchange()
+              .expectStatus()
+              .isOk()
+              .expectHeader()
+              .exists("RateLimit-Limit");
+      if (i == 4) {
+        spec.expectHeader().valueEquals("RateLimit-Remaining", "0");
+      }
     }
 
     webTestClient

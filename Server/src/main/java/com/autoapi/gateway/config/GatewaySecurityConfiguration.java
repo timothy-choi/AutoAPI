@@ -1,18 +1,15 @@
 package com.autoapi.gateway.config;
 
 import com.autoapi.gateway.auth.ApiKeyAuthenticator;
-import com.autoapi.gateway.redis.FixedWindowRateLimiter;
 import com.autoapi.runtime.AutoApiRole;
 import com.autoapi.runtime.ConditionalOnAutoApiRole;
 import com.autoapi.security.ApiKeyPepperProperties;
 import com.autoapi.security.ApiKeyPepperValidator;
 import com.autoapi.security.ConditionalOnConfiguredApiKeyPepper;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
-import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 
 @Configuration
 @ConditionalOnAutoApiRole({AutoApiRole.GATEWAY, AutoApiRole.COMBINED})
@@ -24,19 +21,5 @@ public class GatewaySecurityConfiguration {
   ApiKeyAuthenticator apiKeyAuthenticator(ApiKeyPepperProperties pepperProperties) {
     ApiKeyPepperValidator.requireConfigured(pepperProperties.apiKeyPepper());
     return new ApiKeyAuthenticator(pepperProperties.apiKeyPepper());
-  }
-}
-
-@Configuration
-@ConditionalOnAutoApiRole({AutoApiRole.GATEWAY, AutoApiRole.COMBINED})
-@ConditionalOnClass(ReactiveRedisConnectionFactory.class)
-@ConditionalOnConfiguredApiKeyPepper
-@ConditionalOnBean(ReactiveRedisConnectionFactory.class)
-class GatewayRedisRateLimitConfiguration {
-
-  @Bean
-  @ConditionalOnBean(ReactiveStringRedisTemplate.class)
-  FixedWindowRateLimiter fixedWindowRateLimiter(ReactiveStringRedisTemplate redisTemplate) {
-    return new FixedWindowRateLimiter(redisTemplate);
   }
 }

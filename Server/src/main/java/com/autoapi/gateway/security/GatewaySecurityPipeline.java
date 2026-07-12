@@ -12,7 +12,7 @@ import com.autoapi.proxy.GatewayAttributes;
 import com.autoapi.runtime.AutoApiRole;
 import com.autoapi.runtime.ConditionalOnAutoApiRole;
 import com.autoapi.web.ErrorResponseWriter;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -24,17 +24,17 @@ import reactor.core.publisher.Mono;
 public class GatewaySecurityPipeline implements GatewaySecurityEnforcer {
 
   private final ApiKeyAuthenticator apiKeyAuthenticator;
-  private final GatewayRateLimitService rateLimitService;
+  private final ObjectProvider<GatewayRateLimitService> rateLimitServiceProvider;
   private final GatewaySecurityMetrics metrics;
   private final ErrorResponseWriter errorResponseWriter;
 
   public GatewaySecurityPipeline(
       ApiKeyAuthenticator apiKeyAuthenticator,
-      @Autowired(required = false) GatewayRateLimitService rateLimitService,
+      ObjectProvider<GatewayRateLimitService> rateLimitServiceProvider,
       GatewaySecurityMetrics metrics,
       ErrorResponseWriter errorResponseWriter) {
     this.apiKeyAuthenticator = apiKeyAuthenticator;
-    this.rateLimitService = rateLimitService;
+    this.rateLimitServiceProvider = rateLimitServiceProvider;
     this.metrics = metrics;
     this.errorResponseWriter = errorResponseWriter;
   }
@@ -58,6 +58,7 @@ public class GatewaySecurityPipeline implements GatewaySecurityEnforcer {
     if (!route.rateLimitEnabled()) {
       return Mono.empty();
     }
+    GatewayRateLimitService rateLimitService = rateLimitServiceProvider.getIfAvailable();
     if (rateLimitService == null) {
       metrics.recordRateLimitRedisError(route.id(), route.rateLimit().policyId().toString());
       if ("FAIL_CLOSED".equals(route.rateLimit().redisFailureMode())) {

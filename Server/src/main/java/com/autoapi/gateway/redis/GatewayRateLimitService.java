@@ -3,18 +3,12 @@ package com.autoapi.gateway.redis;
 import com.autoapi.config.RouteConfig;
 import com.autoapi.config.RuntimeRateLimit;
 import com.autoapi.gateway.auth.GatewaySecurityMetrics;
-import com.autoapi.runtime.AutoApiRole;
-import com.autoapi.runtime.ConditionalOnAutoApiRole;
 import java.time.Instant;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
-@Component
-@ConditionalOnAutoApiRole({AutoApiRole.GATEWAY, AutoApiRole.COMBINED})
-@org.springframework.boot.autoconfigure.condition.ConditionalOnBean(FixedWindowRateLimiter.class)
 public class GatewayRateLimitService {
 
   private static final Logger log = LoggerFactory.getLogger(GatewayRateLimitService.class);
