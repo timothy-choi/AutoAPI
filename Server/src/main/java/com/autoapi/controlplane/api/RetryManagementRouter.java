@@ -4,6 +4,7 @@ import com.autoapi.controlplane.persistence.RetryPolicyEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
 import com.autoapi.controlplane.retry.RetryPolicyService;
 import com.autoapi.controlplane.retry.RetryRouteBindingService;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -234,6 +235,7 @@ public class RetryManagementRouter {
     }
   }
 
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   record RouteRetryBindingResponse(UUID routeId, UUID retryPolicyId) {
 
     static RouteRetryBindingResponse from(RoutePolicyBindingEntity entity) {

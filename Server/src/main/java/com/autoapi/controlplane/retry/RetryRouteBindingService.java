@@ -5,6 +5,7 @@ import com.autoapi.controlplane.persistence.RetryPolicyRepository;
 import com.autoapi.controlplane.persistence.RouteEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingRepository;
+import com.autoapi.controlplane.persistence.RoutePolicyBindingRepositoryCustom;
 import com.autoapi.controlplane.persistence.RouteRepository;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -22,14 +23,17 @@ public class RetryRouteBindingService {
 
   private final RouteRepository routeRepository;
   private final RoutePolicyBindingRepository bindingRepository;
+  private final RoutePolicyBindingRepositoryCustom bindingRepositoryCustom;
   private final RetryPolicyRepository retryPolicyRepository;
 
   public RetryRouteBindingService(
       RouteRepository routeRepository,
       RoutePolicyBindingRepository bindingRepository,
+      RoutePolicyBindingRepositoryCustom bindingRepositoryCustom,
       RetryPolicyRepository retryPolicyRepository) {
     this.routeRepository = routeRepository;
     this.bindingRepository = bindingRepository;
+    this.bindingRepositoryCustom = bindingRepositoryCustom;
     this.retryPolicyRepository = retryPolicyRepository;
   }
 
@@ -53,18 +57,30 @@ public class RetryRouteBindingService {
             route ->
                 bindingRepository
                     .findById(routeId)
-                    .flatMap(
-                        existing ->
-                            bindingRepository.save(
-                                new RoutePolicyBindingEntity(
-                                    routeId,
-                                    existing.authenticationRequired(),
-                                    existing.rateLimitPolicyId(),
-                                    null,
-                                    existing.createdAt(),
-                                    OffsetDateTime.now(ZoneOffset.UTC))))
                     .switchIfEmpty(
-                        Mono.error(ControlPlaneException.notFound("Route has no policy binding"))));
+                        Mono.error(ControlPlaneException.notFound("Route has no policy binding")))
+                    .flatMap(
+                        existing -> {
+                          if (existing.retryPolicyId() == null) {
+                            return Mono.error(
+                                ControlPlaneException.notFound(
+                                    "Route has no retry policy binding"));
+                          }
+                          OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+                          RoutePolicyBindingEntity cleared =
+                              new RoutePolicyBindingEntity(
+                                  routeId,
+                                  existing.authenticationRequired(),
+                                  existing.rateLimitPolicyId(),
+                                  null,
+                                  existing.createdAt(),
+                                  now);
+                          if (!existing.authenticationRequired()
+                              && existing.rateLimitPolicyId() == null) {
+                            return bindingRepository.deleteById(routeId).thenReturn(cleared);
+                          }
+                          return bindingRepositoryCustom.clearRetryPolicy(routeId, now);
+                        }));
   }
 
   private Mono<Void> validatePolicy(RouteEntity route, UUID retryPolicyId) {
@@ -106,15 +122,7 @@ public class RetryRouteBindingService {
     return bindingRepository
         .findById(route.id())
         .flatMap(
-            existing ->
-                bindingRepository.save(
-                    new RoutePolicyBindingEntity(
-                        route.id(),
-                        existing.authenticationRequired(),
-                        existing.rateLimitPolicyId(),
-                        retryPolicyId,
-                        existing.createdAt(),
-                        now)))
+            existing -> bindingRepositoryCustom.bindRetryPolicy(route.id(), retryPolicyId, now))
         .switchIfEmpty(
             Mono.defer(
                 () ->
