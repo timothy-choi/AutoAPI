@@ -9,6 +9,7 @@ import com.autoapi.config.GatewayConfig;
 import com.autoapi.config.RouteConfig;
 import com.autoapi.config.RuntimeConfig;
 import com.autoapi.config.UpstreamConfig;
+import com.autoapi.config.UpstreamTargetReference;
 import com.autoapi.controlplane.configversion.CompiledGatewaySection;
 import com.autoapi.controlplane.configversion.HashableRuntimePayload;
 import com.autoapi.controlplane.configversion.RuntimeConfigCompiler;
@@ -18,15 +19,20 @@ import com.autoapi.controlplane.persistence.RouteEntity;
 import com.autoapi.controlplane.persistence.UpstreamPoolEntity;
 import com.autoapi.controlplane.persistence.UpstreamTargetEntity;
 import com.autoapi.gateway.GatewayProperties;
+import com.autoapi.gateway.health.HealthAwareTargetSelector;
+import com.autoapi.gateway.health.TargetHealthRegistry;
 import java.net.URI;
+import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpMethod;
 
 class ActiveRuntimeConfigHolderTest {
@@ -36,13 +42,67 @@ class ActiveRuntimeConfigHolderTest {
 
   private ActiveRuntimeConfigHolder holder;
   private LocalGatewayConfigActivator activator;
+  private HealthAwareTargetSelector targetSelector;
 
   @BeforeEach
   void setUp() {
     holder = new ActiveRuntimeConfigHolder();
     GatewayProperties gatewayProperties = new GatewayProperties();
     gatewayProperties.setApiId(API_ID);
-    activator = new LocalGatewayConfigActivator(holder, gatewayProperties);
+    targetSelector =
+        new HealthAwareTargetSelector(
+            new TargetHealthRegistry(Clock.systemUTC()), Clock.systemUTC());
+    activator =
+        new LocalGatewayConfigActivator(
+            holder,
+            gatewayProperties,
+            registryProvider(new TargetHealthRegistry(Clock.systemUTC())));
+  }
+
+  private static ObjectProvider<TargetHealthRegistry> registryProvider(
+      TargetHealthRegistry registry) {
+    return new ObjectProvider<>() {
+      @Override
+      public TargetHealthRegistry getObject() {
+        return registry;
+      }
+
+      @Override
+      public TargetHealthRegistry getObject(Object... args) {
+        return registry;
+      }
+
+      @Override
+      public TargetHealthRegistry getIfAvailable() {
+        return registry;
+      }
+
+      @Override
+      public TargetHealthRegistry getIfAvailable(
+          java.util.function.Supplier<TargetHealthRegistry> defaultSupplier) {
+        return registry;
+      }
+
+      @Override
+      public void ifAvailable(Consumer<TargetHealthRegistry> dependencyConsumer) {
+        dependencyConsumer.accept(registry);
+      }
+
+      @Override
+      public TargetHealthRegistry getIfUnique() {
+        return registry;
+      }
+
+      @Override
+      public java.util.stream.Stream<TargetHealthRegistry> stream() {
+        return java.util.stream.Stream.of(registry);
+      }
+
+      @Override
+      public java.util.Iterator<TargetHealthRegistry> iterator() {
+        return List.of(registry).iterator();
+      }
+    };
   }
 
   @Test
@@ -72,6 +132,9 @@ class ActiveRuntimeConfigHolderTest {
 
   @Test
   void roundRobinSelectionRotates() {
+    UUID poolId = UUID.fromString("00000000-0000-0000-0000-000000000040");
+    UUID targetAId = UUID.fromString("00000000-0000-0000-0000-000000000041");
+    UUID targetBId = UUID.fromString("00000000-0000-0000-0000-000000000042");
     RouteConfig route =
         new RouteConfig(
             "orders",
@@ -79,8 +142,12 @@ class ActiveRuntimeConfigHolderTest {
             "/v1/orders",
             Set.of(HttpMethod.GET),
             UpstreamConfig.roundRobin(
+                poolId,
                 List.of(
-                    URI.create("http://upstream-a:8080"), URI.create("http://upstream-b:8080"))));
+                    new UpstreamTargetReference(targetAId, URI.create("http://upstream-a:8080"), 1),
+                    new UpstreamTargetReference(
+                        targetBId, URI.create("http://upstream-b:8080"), 1)),
+                null));
     ActiveRuntimeBundle bundle =
         new ActiveRuntimeBundle(
             API_ID,
@@ -89,10 +156,15 @@ class ActiveRuntimeConfigHolderTest {
             new RuntimeConfig(new GatewayConfig("0.0.0.0", 8080), List.of(route)));
     holder.activate(bundle);
 
-    ActiveRuntimeBundle active = holder.getActiveForRequest();
-    assertEquals(URI.create("http://upstream-a:8080"), active.selectUpstream(route));
-    assertEquals(URI.create("http://upstream-b:8080"), active.selectUpstream(route));
-    assertEquals(URI.create("http://upstream-a:8080"), active.selectUpstream(route));
+    var selectedA =
+        targetSelector.select(API_ID, route.upstream().poolId(), route.upstream().targets(), null);
+    var selectedB =
+        targetSelector.select(API_ID, route.upstream().poolId(), route.upstream().targets(), null);
+    var selectedC =
+        targetSelector.select(API_ID, route.upstream().poolId(), route.upstream().targets(), null);
+    assertEquals(URI.create("http://upstream-a:8080"), selectedA.target().url());
+    assertEquals(URI.create("http://upstream-b:8080"), selectedB.target().url());
+    assertEquals(URI.create("http://upstream-a:8080"), selectedC.target().url());
     assertTrue(holder.hasActiveConfig());
   }
 
@@ -120,7 +192,7 @@ class ActiveRuntimeConfigHolderTest {
     UUID targetId = UUID.fromString("00000000-0000-0000-0000-000000000030");
 
     UpstreamPoolEntity pool =
-        new UpstreamPoolEntity(poolId, API_ID, "orders-v1", "ROUND_ROBIN", now, now);
+        new UpstreamPoolEntity(poolId, API_ID, "orders-v1", "ROUND_ROBIN", null, now, now);
     UpstreamTargetEntity target =
         new UpstreamTargetEntity(targetId, poolId, "http://upstream-v1:8080", true, 1, now, now);
     RouteEntity route =

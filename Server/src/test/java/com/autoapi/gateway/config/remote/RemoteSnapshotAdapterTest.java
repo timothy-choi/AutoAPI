@@ -66,7 +66,7 @@ class RemoteSnapshotAdapterTest {
     UUID targetId = UUID.fromString("00000000-0000-0000-0000-000000000030");
 
     UpstreamPoolEntity pool =
-        new UpstreamPoolEntity(poolId, API_ID, "orders-v1", "ROUND_ROBIN", now, now);
+        new UpstreamPoolEntity(poolId, API_ID, "orders-v1", "ROUND_ROBIN", null, now, now);
     UpstreamTargetEntity target =
         new UpstreamTargetEntity(targetId, poolId, "http://upstream-v1:8080", true, 1, now, now);
     RouteEntity route =

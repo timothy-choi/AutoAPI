@@ -5,6 +5,8 @@ import com.autoapi.controlplane.persistence.ApiEntity;
 import com.autoapi.controlplane.persistence.ApiKeyEntity;
 import com.autoapi.controlplane.persistence.ApiKeyRepository;
 import com.autoapi.controlplane.persistence.ApiRepository;
+import com.autoapi.controlplane.persistence.BackendHealthPolicyEntity;
+import com.autoapi.controlplane.persistence.BackendHealthPolicyRepository;
 import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
 import com.autoapi.controlplane.persistence.RateLimitPolicyRepository;
 import com.autoapi.controlplane.persistence.RouteEntity;
@@ -34,6 +36,7 @@ public class DraftGraphService {
   private final UpstreamTargetRepository upstreamTargetRepository;
   private final ApiKeyRepository apiKeyRepository;
   private final RateLimitPolicyRepository rateLimitPolicyRepository;
+  private final BackendHealthPolicyRepository backendHealthPolicyRepository;
   private final RoutePolicyBindingRepository routePolicyBindingRepository;
   private final ControlPlaneProperties properties;
 
@@ -44,6 +47,7 @@ public class DraftGraphService {
       UpstreamTargetRepository upstreamTargetRepository,
       ApiKeyRepository apiKeyRepository,
       RateLimitPolicyRepository rateLimitPolicyRepository,
+      BackendHealthPolicyRepository backendHealthPolicyRepository,
       RoutePolicyBindingRepository routePolicyBindingRepository,
       ControlPlaneProperties properties) {
     this.apiRepository = apiRepository;
@@ -52,6 +56,7 @@ public class DraftGraphService {
     this.upstreamTargetRepository = upstreamTargetRepository;
     this.apiKeyRepository = apiKeyRepository;
     this.rateLimitPolicyRepository = rateLimitPolicyRepository;
+    this.backendHealthPolicyRepository = backendHealthPolicyRepository;
     this.routePolicyBindingRepository = routePolicyBindingRepository;
     this.properties = properties;
   }
@@ -66,11 +71,12 @@ public class DraftGraphService {
                         upstreamPoolRepository.findByApiId(apiId).collectList(),
                         apiKeyRepository.findByApiId(apiId).collectList(),
                         rateLimitPolicyRepository.findByApiId(apiId).collectList(),
+                        backendHealthPolicyRepository.findByApiId(apiId).collectList(),
                         routePolicyBindingRepository.findAll().collectList())
                     .flatMap(
                         tuple -> {
                           List<UpstreamPoolEntity> pools = tuple.getT2();
-                          List<RoutePolicyBindingEntity> allBindings = tuple.getT5();
+                          List<RoutePolicyBindingEntity> allBindings = tuple.getT6();
                           List<RoutePolicyBindingEntity> apiBindings =
                               allBindings.stream()
                                   .filter(
@@ -92,6 +98,7 @@ public class DraftGraphService {
                                           targets,
                                           tuple.getT3(),
                                           tuple.getT4(),
+                                          tuple.getT5(),
                                           apiBindings,
                                           gatewayDefaults()));
                         }));
@@ -109,6 +116,7 @@ public class DraftGraphService {
       List<UpstreamTargetEntity> targets,
       List<ApiKeyEntity> apiKeys,
       List<RateLimitPolicyEntity> rateLimitPolicies,
+      List<BackendHealthPolicyEntity> backendHealthPolicies,
       List<RoutePolicyBindingEntity> routePolicyBindings,
       CompiledGatewaySection gatewayDefaults) {}
 }

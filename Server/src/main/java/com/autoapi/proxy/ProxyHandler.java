@@ -3,7 +3,20 @@ package com.autoapi.proxy;
 import com.autoapi.config.HostNormalizer;
 import com.autoapi.config.RouteConfig;
 import com.autoapi.config.RuntimeConfig;
+import com.autoapi.config.UpstreamConfig;
+import com.autoapi.config.UpstreamTargetReference;
+import com.autoapi.gateway.GatewayProperties;
 import com.autoapi.gateway.config.ActiveRuntimeBundle;
+import com.autoapi.gateway.health.FailureCategory;
+import com.autoapi.gateway.health.FailureClassifier;
+import com.autoapi.gateway.health.GatewayUpstreamHealthMetrics;
+import com.autoapi.gateway.health.HealthAwareTargetSelector;
+import com.autoapi.gateway.health.PassiveHealthPolicy;
+import com.autoapi.gateway.health.ProxyAttemptOutcome;
+import com.autoapi.gateway.health.SelectedTarget;
+import com.autoapi.gateway.health.TargetHealthRegistry;
+import com.autoapi.gateway.health.TargetHealthState;
+import com.autoapi.gateway.health.TargetKey;
 import com.autoapi.gateway.security.GatewaySecurityEnforcer;
 import com.autoapi.middleware.RequestIdSupport;
 import com.autoapi.routing.RouteMatchResult;
@@ -11,7 +24,9 @@ import com.autoapi.routing.RouteMatcher;
 import com.autoapi.routing.RouteNotFoundReason;
 import com.autoapi.web.ErrorResponseWriter;
 import java.net.URI;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -38,11 +53,29 @@ public class ProxyHandler {
   private final WebClient webClient;
   private final ErrorResponseWriter errorWriter;
   private final GatewaySecurityEnforcer securityPipeline;
+  private final ObjectProvider<HealthAwareTargetSelector> targetSelectorProvider;
+  private final ObjectProvider<TargetHealthRegistry> healthRegistryProvider;
+  private final FailureClassifier failureClassifier;
+  private final ObjectProvider<GatewayUpstreamHealthMetrics> healthMetricsProvider;
+  private final String gatewayId;
 
   public ProxyHandler(
-      ErrorResponseWriter errorWriter, ObjectProvider<GatewaySecurityEnforcer> securityPipeline) {
+      ErrorResponseWriter errorWriter,
+      ObjectProvider<GatewaySecurityEnforcer> securityPipeline,
+      ObjectProvider<HealthAwareTargetSelector> targetSelector,
+      ObjectProvider<TargetHealthRegistry> healthRegistry,
+      ObjectProvider<FailureClassifier> failureClassifier,
+      ObjectProvider<GatewayUpstreamHealthMetrics> healthMetrics,
+      ObjectProvider<GatewayProperties> gatewayProperties) {
     this.errorWriter = errorWriter;
     this.securityPipeline = securityPipeline.getIfAvailable(() -> NOOP_SECURITY);
+    this.targetSelectorProvider = targetSelector;
+    this.healthRegistryProvider = healthRegistry;
+    this.failureClassifier = failureClassifier.getIfAvailable(FailureClassifier::new);
+    this.healthMetricsProvider = healthMetrics;
+    GatewayProperties properties = gatewayProperties.getIfAvailable();
+    this.gatewayId =
+        properties == null || properties.gatewayId() == null ? "unknown" : properties.gatewayId();
     this.webClient =
         WebClient.builder()
             .clientConnector(
@@ -89,13 +122,76 @@ public class ProxyHandler {
                   if (exchange.getResponse().isCommitted()) {
                     return Mono.empty();
                   }
-                  URI upstreamUri = bundle.selectUpstream(route);
-                  exchange
-                      .getAttributes()
-                      .put(GatewayAttributes.UPSTREAM_AUTHORITY, upstreamUri.getAuthority());
-                  URI targetUri = buildUpstreamUri(upstreamUri, request);
-                  return forward(exchange, upstreamUri.getAuthority(), targetUri, requestId);
+                  return selectAndForward(exchange, bundle, route, request, requestId);
                 }));
+  }
+
+  private Mono<Void> selectAndForward(
+      ServerWebExchange exchange,
+      ActiveRuntimeBundle bundle,
+      RouteConfig route,
+      ServerHttpRequest request,
+      String requestId) {
+    UpstreamConfig upstream = route.upstream();
+    List<UpstreamTargetReference> targets = upstream.targets();
+    if (targets.isEmpty()) {
+      URI upstreamUri = upstream.url();
+      if (upstreamUri == null) {
+        return errorWriter.noAvailableUpstream(exchange);
+      }
+      exchange
+          .getAttributes()
+          .put(GatewayAttributes.UPSTREAM_AUTHORITY, upstreamUri.getAuthority());
+      URI targetUri = buildUpstreamUri(upstreamUri, request);
+      return forward(exchange, upstreamUri.getAuthority(), targetUri, requestId, null, null, 0);
+    }
+
+    PassiveHealthPolicy policy =
+        upstream.backendHealth() != null
+            ? PassiveHealthPolicy.from(upstream.backendHealth())
+            : null;
+    if (targetSelectorProvider.getIfAvailable() == null) {
+      return errorWriter.internalError(
+          exchange, new IllegalStateException("Health-aware target selector is unavailable"));
+    }
+
+    SelectedTarget selected;
+    try {
+      selected =
+          targetSelectorProvider
+              .getObject()
+              .select(bundle.apiId(), upstream.poolId(), targets, policy);
+    } catch (IllegalArgumentException ex) {
+      return errorWriter.noAvailableUpstream(exchange);
+    }
+
+    UpstreamTargetReference target = selected.target();
+    exchange.getAttributes().put(GatewayAttributes.SELECTED_TARGET_ID, target.targetId());
+    exchange.getAttributes().put(GatewayAttributes.UPSTREAM_AUTHORITY, target.url().getAuthority());
+
+    if (selected.forcedSelection() && healthMetricsProvider.getIfAvailable() != null) {
+      healthMetricsProvider
+          .getObject()
+          .recordForcedSelection(
+              route.id(), upstream.poolId().toString(), target.targetId().toString());
+    }
+    GatewayUpstreamHealthMetrics metrics = healthMetricsProvider.getIfAvailable();
+    if (metrics != null) {
+      metrics.recordUpstreamRequest(
+          route.id(), upstream.poolId().toString(), target.targetId().toString());
+    }
+
+    TargetKey targetKey = new TargetKey(bundle.apiId(), upstream.poolId(), target.targetId());
+    assertSelectedTargetKey(exchange, targetKey);
+    URI targetUri = buildUpstreamUri(target.url(), request);
+    return forward(
+        exchange,
+        target.url().getAuthority(),
+        targetUri,
+        requestId,
+        targetKey,
+        policy,
+        targets.size());
   }
 
   private URI buildUpstreamUri(URI base, ServerHttpRequest request) {
@@ -110,9 +206,17 @@ public class ProxyHandler {
   }
 
   private Mono<Void> forward(
-      ServerWebExchange exchange, String upstreamHost, URI targetUri, String requestId) {
+      ServerWebExchange exchange,
+      String upstreamHost,
+      URI targetUri,
+      String requestId,
+      TargetKey targetKey,
+      PassiveHealthPolicy policy,
+      int poolTargetCount) {
     ServerHttpRequest incoming = exchange.getRequest();
     String normalizedClientHost = normalizedClientHost(incoming);
+    ProxyAttemptOutcome outcome = new ProxyAttemptOutcome();
+    String routeId = exchange.getAttribute(GatewayAttributes.MATCHED_ROUTE_ID);
 
     return webClient
         .method(incoming.getMethod())
@@ -135,35 +239,68 @@ public class ProxyHandler {
               headers.set("X-Forwarded-For", remote);
             })
         .body(BodyInserters.fromDataBuffers(incoming.getBody()))
-        .exchangeToMono(response -> writeUpstreamResponse(exchange, response, requestId))
+        .exchangeToMono(
+            response ->
+                writeUpstreamResponse(
+                    exchange,
+                    response,
+                    requestId,
+                    outcome,
+                    targetKey,
+                    policy,
+                    poolTargetCount,
+                    routeId))
         .onErrorResume(
-            WebClientRequestException.class, ex -> errorWriter.upstreamUnavailable(exchange, ex))
+            WebClientRequestException.class,
+            ex ->
+                handleUpstreamTransportFailure(
+                    exchange, requestId, outcome, targetKey, policy, poolTargetCount, routeId, ex))
         .onErrorResume(
             Throwable.class,
             ex -> {
               if (exchange.getResponse().isCommitted()) {
+                recordTransportFailure(
+                    exchange, requestId, outcome, targetKey, policy, poolTargetCount, routeId, ex);
                 log.warn(
-                    "requestId={} routeId={} upstream={} error after response commit: {}",
+                    "requestId={} routeId={} targetId={} upstream={} error after response commit: {}",
                     requestId,
-                    exchange.getAttribute(GatewayAttributes.MATCHED_ROUTE_ID),
+                    routeId,
+                    targetKey == null ? null : targetKey.targetId(),
                     exchange.getAttribute(GatewayAttributes.UPSTREAM_AUTHORITY),
                     ex.getClass().getSimpleName());
+                if (log.isDebugEnabled()) {
+                  log.debug("requestId={} upstream response stream failure detail", requestId, ex);
+                }
                 return Mono.error(ex);
               }
               return errorWriter.internalError(exchange, ex);
             });
   }
 
-  static String normalizedClientHost(ServerHttpRequest request) {
-    String host = request.getHeaders().getFirst(HttpHeaders.HOST);
-    if (host == null || host.isBlank()) {
-      return "localhost";
-    }
-    return HostNormalizer.normalize(host);
+  private Mono<Void> handleUpstreamTransportFailure(
+      ServerWebExchange exchange,
+      String requestId,
+      ProxyAttemptOutcome outcome,
+      TargetKey targetKey,
+      PassiveHealthPolicy policy,
+      int poolTargetCount,
+      String routeId,
+      WebClientRequestException error) {
+    recordTransportFailure(
+        exchange, requestId, outcome, targetKey, policy, poolTargetCount, routeId, error);
+    return errorWriter.upstreamUnavailable(exchange, error);
   }
 
   private Mono<Void> writeUpstreamResponse(
-      ServerWebExchange exchange, ClientResponse response, String requestId) {
+      ServerWebExchange exchange,
+      ClientResponse response,
+      String requestId,
+      ProxyAttemptOutcome outcome,
+      TargetKey targetKey,
+      PassiveHealthPolicy policy,
+      int poolTargetCount,
+      String routeId) {
+    recordSuccess(exchange, requestId, outcome, targetKey, routeId);
     exchange.getResponse().setStatusCode(response.statusCode());
     HttpHeaders responseHeaders = exchange.getResponse().getHeaders();
     responseHeaders.addAll(response.headers().asHttpHeaders());
@@ -176,10 +313,136 @@ public class ProxyHandler {
             Throwable.class,
             ex -> {
               if (exchange.getResponse().isCommitted()) {
-                log.warn("requestId={} upstream response stream failed after commit", requestId);
+                recordTransportFailure(
+                    exchange, requestId, outcome, targetKey, policy, poolTargetCount, routeId, ex);
+                log.warn(
+                    "requestId={} targetId={} upstream response stream failed after commit",
+                    requestId,
+                    targetKey == null ? null : targetKey.targetId());
+                if (log.isDebugEnabled()) {
+                  log.debug("requestId={} upstream response stream failure detail", requestId, ex);
+                }
                 return Mono.error(ex);
               }
               return errorWriter.internalError(exchange, ex);
             });
+  }
+
+  private void recordSuccess(
+      ServerWebExchange exchange,
+      String requestId,
+      ProxyAttemptOutcome outcome,
+      TargetKey targetKey,
+      String routeId) {
+    TargetHealthRegistry registry = healthRegistryProvider.getIfAvailable();
+    if (targetKey == null || registry == null) {
+      return;
+    }
+    assertSelectedTargetKey(exchange, targetKey);
+    GatewayUpstreamHealthMetrics metrics = healthMetricsProvider.getIfAvailable();
+    outcome.recordSuccess(
+        () -> {
+          TargetHealthState before = registry.getState(targetKey);
+          boolean wasEjected = before.ejectedUntil() != null;
+          registry.recordSuccess(targetKey);
+          TargetHealthState after = registry.getState(targetKey);
+          log.debug(
+              "Passive health recorded transport success requestId={} gatewayId={} routeId={} apiId={} poolId={} targetId={} consecutiveFailures={}",
+              requestId,
+              gatewayId,
+              routeId,
+              targetKey.apiId(),
+              targetKey.poolId(),
+              targetKey.targetId(),
+              after.consecutiveQualifyingFailures());
+          if (wasEjected && metrics != null && routeId != null) {
+            metrics.recordRecovery(
+                routeId, targetKey.poolId().toString(), targetKey.targetId().toString());
+          }
+        });
+  }
+
+  private void recordTransportFailure(
+      ServerWebExchange exchange,
+      String requestId,
+      ProxyAttemptOutcome outcome,
+      TargetKey targetKey,
+      PassiveHealthPolicy policy,
+      int poolTargetCount,
+      String routeId,
+      Throwable error) {
+    TargetHealthRegistry registry = healthRegistryProvider.getIfAvailable();
+    if (targetKey == null || registry == null) {
+      return;
+    }
+    assertSelectedTargetKey(exchange, targetKey);
+    Optional<FailureCategory> category = failureClassifier.resolveQualifyingCategory(error);
+    if (category.isEmpty()) {
+      log.debug(
+          "requestId={} targetId={} ignored non-qualifying transport error type={}",
+          requestId,
+          targetKey.targetId(),
+          error.getClass().getSimpleName());
+      return;
+    }
+    FailureCategory resolvedCategory = category.get();
+    GatewayUpstreamHealthMetrics metrics = healthMetricsProvider.getIfAvailable();
+    outcome.recordFailure(
+        () -> {
+          TargetHealthState before = registry.getState(targetKey);
+          registry.recordFailure(targetKey, resolvedCategory, policy, poolTargetCount);
+          TargetHealthState after = registry.getState(targetKey);
+          boolean ejectedNow =
+              after.ejectedUntil() != null
+                  && (before.ejectedUntil() == null
+                      || !after.ejectedUntil().equals(before.ejectedUntil()));
+          log.warn(
+              "Passive health recorded transport failure requestId={} gatewayId={} routeId={} apiId={} poolId={} targetId={} category={} consecutiveFailures={} ejected={}",
+              requestId,
+              gatewayId,
+              routeId,
+              targetKey.apiId(),
+              targetKey.poolId(),
+              targetKey.targetId(),
+              resolvedCategory,
+              after.consecutiveQualifyingFailures(),
+              ejectedNow);
+          if (log.isDebugEnabled()) {
+            log.debug("requestId={} upstream transport failure detail", requestId, error);
+          }
+          if (routeId != null && metrics != null) {
+            metrics.recordTransportFailure(
+                routeId,
+                targetKey.poolId().toString(),
+                targetKey.targetId().toString(),
+                resolvedCategory.name());
+          }
+          if (ejectedNow && metrics != null && routeId != null) {
+            metrics.recordEjection(
+                routeId,
+                targetKey.poolId().toString(),
+                targetKey.targetId().toString(),
+                resolvedCategory.name());
+          }
+        });
+  }
+
+  private static void assertSelectedTargetKey(ServerWebExchange exchange, TargetKey targetKey) {
+    UUID selectedTargetId = exchange.getAttribute(GatewayAttributes.SELECTED_TARGET_ID);
+    if (selectedTargetId != null && !selectedTargetId.equals(targetKey.targetId())) {
+      throw new IllegalStateException(
+          "Selected target id "
+              + selectedTargetId
+              + " does not match passive-health key "
+              + targetKey.targetId());
+    }
+  }
+
+  static String normalizedClientHost(ServerHttpRequest request) {
+    String host = request.getHeaders().getFirst(HttpHeaders.HOST);
+    if (host == null || host.isBlank()) {
+      return "localhost";
+    }
+    return HostNormalizer.normalize(host);
   }
 }

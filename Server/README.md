@@ -1,6 +1,16 @@
 # AutoAPI Server
 
-Java 21 **Spring WebFlux** application with a nonblocking L7 gateway, PostgreSQL-backed control plane, immutable configuration compilation/activation, multi-gateway convergence, **API-key authentication**, and **cross-gateway Redis rate limiting** (Phase 4).
+Java 21 **Spring WebFlux** application with a nonblocking L7 gateway, PostgreSQL-backed control plane, immutable configuration compilation/activation, multi-gateway convergence, **API-key authentication**, **cross-gateway Redis rate limiting** (Phase 4), and **passive backend health tracking with health-aware routing** (Phase 5).
+
+## Phase 5 highlights
+
+- Passive **transport-failure** detection (connection/DNS/timeout/premature close — not HTTP 5xx)
+- Consecutive-failure threshold, temporary target ejection, and expiry-based recovery through real traffic
+- `maxEjectionPercent` cap; health-aware round robin among eligible targets
+- All-targets-ejected fallback: select earliest `ejectedUntil` (degraded, no same-request retry)
+- Gateway-local health state (`TargetHealthRegistry`); not stored in PostgreSQL or Redis
+- Management API: `backend-health-policies` + pool binding; compiled into immutable pool snapshots
+- Internal visibility: `GET /internal/v1/upstream-health` (trusted network only; unauthenticated MVP)
 
 ## Phase 4 highlights
 
@@ -30,6 +40,7 @@ From repository root:
 ```bash
 docker compose up --build
 ./scripts/smoke-phase4.sh
+./scripts/smoke-phase5.sh
 docker compose down -v
 ```
 
@@ -50,10 +61,11 @@ Changing the pepper invalidates all issued API keys unless they are reissued.
 - Key revocation affects the data plane only after publish + activate of a new config version
 - Gateway `/readyz` stays available when Redis is down; individual routes enforce `FAIL_OPEN` / `FAIL_CLOSED`
 
-## Known limitations (Phase 4)
+## Known limitations (Phase 5)
 
-- No user login, OAuth, billing, or emergency immediate revocation channel
-- Fixed-window boundary bursts; single Redis deployment; no multi-region quotas
-- No retries, backend health-aware routing, or traffic splitting
+- No active health probes, half-open circuit breaker, or HTTP 5xx-based ejection
+- No automatic retries, hedged requests, or traffic splitting within a request
+- Backend health views are **gateway-local** and may differ temporarily across instances
+- Internal upstream-health endpoint is unauthenticated — do not expose publicly
 
 See `docs/ARCHITECTURE.md`, `docs/API_SPEC.md`, and `docs/DISTRIBUTED_SYSTEMS.md` for full design detail.

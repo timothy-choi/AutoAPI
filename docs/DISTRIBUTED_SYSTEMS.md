@@ -221,30 +221,29 @@ Failed backend continues receiving equal share of traffic; error rate stays high
 
 ### Mechanism
 
-Gateway passive health tracking per target (local to each gateway in MVP):
+Gateway passive health tracking per target (**local to each gateway instance** in Phase 5):
 
-**Health-affecting failures:** connection refused, connection reset, transport error, request timeout, HTTP 502, 503, 504. Do **not** treat every HTTP 500 as automatic evidence that the backend instance is unhealthy.
+**Qualifying transport failures (Phase 5):** connection refused, connection reset, DNS failure, connect timeout, response timeout, premature upstream close before a usable response.
 
-**Local state machine:**
+**Non-qualifying in Phase 5:** upstream HTTP 2xx/3xx/4xx/5xx (target was reachable), client disconnect, gateway auth/rate-limit rejection, route-not-found, control-plane polling failure, Redis failure. HTTP 5xx-based outlier detection is deferred.
+
+**Local states:** `HEALTHY` and `EJECTED` (temporary). No half-open probes; recovery happens through real traffic after ejection expiry.
 
 ```text
 HEALTHY
    |
-   | failure threshold reached
+   | consecutive qualifying transport failures >= threshold
    v
-UNHEALTHY
+EJECTED (until ejectedUntil)
    |
-   | cooldown elapsed
+   | expiry + successful real request
    v
-HALF_OPEN
-   | success             | failure
-   v                     v
-HEALTHY              UNHEALTHY
+HEALTHY
 ```
 
-Backend selection skips UNHEALTHY targets; if all UNHEALTHY → 503. Optional active HTTP probe post-MVP.
+Round-robin selects among non-ejected targets. When all targets are ejected, the gateway forces selection of the target with the earliest `ejectedUntil` (degraded mode). No retry to another target within the same request.
 
-Different gateways may temporarily disagree about target health.
+Different gateways may temporarily disagree about target health because observations are local.
 
 ### Tradeoff
 

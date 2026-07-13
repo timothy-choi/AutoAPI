@@ -12,6 +12,7 @@ public record UpstreamPoolEntity(
     @Column("api_id") UUID apiId,
     String name,
     @Column("load_balancing") String loadBalancing,
+    @Column("backend_health_policy_id") UUID backendHealthPolicyId,
     @Column("created_at") OffsetDateTime createdAt,
     @Column("updated_at") OffsetDateTime updatedAt)
     implements NewEntity {}

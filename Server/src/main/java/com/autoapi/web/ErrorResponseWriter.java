@@ -112,14 +112,26 @@ public class ErrorResponseWriter {
         "Rate limiting is temporarily unavailable");
   }
 
+  public Mono<Void> noAvailableUpstream(ServerWebExchange exchange) {
+    return write(
+        exchange,
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "NO_AVAILABLE_UPSTREAM",
+        "No upstream target is available");
+  }
+
   private void logProxyFailure(ServerWebExchange exchange, Throwable cause) {
+    String requestId = com.autoapi.middleware.RequestIdSupport.getRequestId(exchange);
     log.warn(
         "requestId={} routeId={} upstream={} errorType={} message={}",
-        com.autoapi.middleware.RequestIdSupport.getRequestId(exchange),
+        requestId,
         exchange.getAttribute(com.autoapi.proxy.GatewayAttributes.MATCHED_ROUTE_ID),
         exchange.getAttribute(com.autoapi.proxy.GatewayAttributes.UPSTREAM_AUTHORITY),
         cause.getClass().getSimpleName(),
         safeSummary(cause));
+    if (log.isDebugEnabled()) {
+      log.debug("requestId={} controlled proxy error detail", requestId, cause);
+    }
   }
 
   private static String safeSummary(Throwable cause) {

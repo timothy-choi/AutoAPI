@@ -2,12 +2,14 @@ package com.autoapi.controlplane.validation;
 
 import com.autoapi.config.HostNormalizer;
 import com.autoapi.controlplane.DraftGraphService;
+import com.autoapi.controlplane.backendhealth.BackendHealthPolicyService;
 import com.autoapi.controlplane.configversion.CompiledGatewaySection;
 import com.autoapi.controlplane.configversion.HashableRuntimePayload;
 import com.autoapi.controlplane.configversion.RuntimeConfigCompiler;
 import com.autoapi.controlplane.configversion.RuntimeContentHasher;
 import com.autoapi.controlplane.persistence.ApiEntity;
 import com.autoapi.controlplane.persistence.ApiKeyEntity;
+import com.autoapi.controlplane.persistence.BackendHealthPolicyEntity;
 import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
 import com.autoapi.controlplane.persistence.RouteEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
@@ -43,6 +45,7 @@ public final class DraftGraphValidator {
         graph.targets(),
         graph.apiKeys(),
         graph.rateLimitPolicies(),
+        graph.backendHealthPolicies(),
         graph.routePolicyBindings(),
         graph.gatewayDefaults());
   }
@@ -54,6 +57,7 @@ public final class DraftGraphValidator {
       List<UpstreamTargetEntity> targets,
       List<ApiKeyEntity> apiKeys,
       List<RateLimitPolicyEntity> rateLimitPolicies,
+      List<BackendHealthPolicyEntity> backendHealthPolicies,
       List<RoutePolicyBindingEntity> routePolicyBindings,
       CompiledGatewaySection gatewayDefaults) {
     List<ValidationError> errors = new ArrayList<>();
@@ -73,12 +77,16 @@ public final class DraftGraphValidator {
         targets.stream().collect(Collectors.groupingBy(UpstreamTargetEntity::upstreamPoolId));
     Map<UUID, RateLimitPolicyEntity> policyById =
         rateLimitPolicies.stream().collect(Collectors.toMap(RateLimitPolicyEntity::id, p -> p));
+    Map<UUID, BackendHealthPolicyEntity> healthPolicyById =
+        backendHealthPolicies.stream()
+            .collect(Collectors.toMap(BackendHealthPolicyEntity::id, p -> p));
     Map<UUID, RoutePolicyBindingEntity> bindingByRouteId =
         routePolicyBindings.stream()
             .collect(Collectors.toMap(RoutePolicyBindingEntity::routeId, b -> b));
 
     for (UpstreamPoolEntity pool : pools) {
-      validatePool(pool, targetsByPool.getOrDefault(pool.id(), List.of()), errors);
+      validatePool(
+          pool, targetsByPool.getOrDefault(pool.id(), List.of()), healthPolicyById, errors);
     }
 
     List<RouteEntity> enabledRoutes =
@@ -125,6 +133,7 @@ public final class DraftGraphValidator {
             targetsByPool,
             bindingByRouteId,
             policyById,
+            healthPolicyById,
             apiKeys,
             publishInstant);
     validateCompiledPayload(payload, errors);
@@ -149,7 +158,8 @@ public final class DraftGraphValidator {
       List<UpstreamPoolEntity> pools,
       List<UpstreamTargetEntity> targets,
       CompiledGatewaySection gatewayDefaults) {
-    return validate(api, routes, pools, targets, List.of(), List.of(), List.of(), gatewayDefaults);
+    return validate(
+        api, routes, pools, targets, List.of(), List.of(), List.of(), List.of(), gatewayDefaults);
   }
 
   private static void validateCompiledPayload(
@@ -265,6 +275,7 @@ public final class DraftGraphValidator {
   private static void validatePool(
       UpstreamPoolEntity pool,
       List<UpstreamTargetEntity> poolTargets,
+      Map<UUID, BackendHealthPolicyEntity> healthPolicyById,
       List<ValidationError> errors) {
     if (!"ROUND_ROBIN".equals(pool.loadBalancing())) {
       errors.add(
@@ -272,6 +283,41 @@ public final class DraftGraphValidator {
               "POOL_UNSUPPORTED_LOAD_BALANCING",
               pool.id(),
               "Unsupported load balancing algorithm: " + pool.loadBalancing()));
+    }
+    if (pool.backendHealthPolicyId() != null) {
+      BackendHealthPolicyEntity policy = healthPolicyById.get(pool.backendHealthPolicyId());
+      if (policy == null) {
+        errors.add(
+            new ValidationError(
+                "BACKEND_HEALTH_POLICY_NOT_FOUND",
+                pool.id(),
+                "Upstream pool references missing backend health policy"));
+      } else {
+        if (!policy.apiId().equals(pool.apiId())) {
+          errors.add(
+              new ValidationError(
+                  "BACKEND_HEALTH_POLICY_WRONG_API",
+                  pool.id(),
+                  "Backend health policy belongs to another API"));
+        }
+        if (!policy.enabled()) {
+          errors.add(
+              new ValidationError(
+                  "BACKEND_HEALTH_POLICY_DISABLED",
+                  policy.id(),
+                  "Disabled backend health policy cannot be bound"));
+        }
+        try {
+          BackendHealthPolicyService.validateFields(
+              policy.consecutiveFailureThreshold(),
+              policy.ejectionDurationSeconds(),
+              policy.maxEjectionPercent());
+        } catch (RuntimeException ex) {
+          errors.add(
+              new ValidationError(
+                  "BACKEND_HEALTH_POLICY_INVALID", policy.id(), sanitizeMessage(ex.getMessage())));
+        }
+      }
     }
     long enabledCount = poolTargets.stream().filter(UpstreamTargetEntity::enabled).count();
     if (enabledCount == 0) {

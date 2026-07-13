@@ -4,6 +4,7 @@ package com.autoapi.web;
 final class GatewayReservedPaths {
 
   static final String MANAGEMENT_API_PREFIX = "/api/v1";
+  static final String INTERNAL_API_PREFIX = "/internal/v1";
 
   private GatewayReservedPaths() {}
 
@@ -11,6 +12,8 @@ final class GatewayReservedPaths {
     return "/healthz".equals(path)
         || "/readyz".equals(path)
         || MANAGEMENT_API_PREFIX.equals(path)
-        || path.startsWith(MANAGEMENT_API_PREFIX + "/");
+        || path.startsWith(MANAGEMENT_API_PREFIX + "/")
+        || INTERNAL_API_PREFIX.equals(path)
+        || path.startsWith(INTERNAL_API_PREFIX + "/");
   }
 }

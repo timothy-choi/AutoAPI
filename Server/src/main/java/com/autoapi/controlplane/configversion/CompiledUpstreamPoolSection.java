@@ -4,6 +4,9 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.util.List;
 import java.util.UUID;
 
-@JsonPropertyOrder({"id", "algorithm", "targets"})
+@JsonPropertyOrder({"id", "algorithm", "backendHealth", "targets"})
 public record CompiledUpstreamPoolSection(
-    UUID id, String algorithm, List<CompiledUpstreamTargetSection> targets) {}
+    UUID id,
+    String algorithm,
+    CompiledBackendHealthSection backendHealth,
+    List<CompiledUpstreamTargetSection> targets) {}

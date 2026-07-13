@@ -4,6 +4,7 @@ import com.autoapi.config.RuntimeConfig;
 import com.autoapi.config.RuntimeConfigHolder;
 import com.autoapi.gateway.config.ActiveRuntimeBundle;
 import com.autoapi.gateway.config.ActiveRuntimeConfigHolder;
+import com.autoapi.gateway.health.GatewayInternalHealthHandler;
 import com.autoapi.proxy.GatewayAttributes;
 import com.autoapi.proxy.ProxyHandler;
 import com.autoapi.runtime.AutoApiRole;
@@ -52,6 +53,15 @@ public class GatewayWebConfiguration {
                             ServerResponse.status(HttpStatus.SERVICE_UNAVAILABLE)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .bodyValue(java.util.Map.of("status", "DOWN"))))
+        .build();
+  }
+
+  @Bean
+  @Order(5)
+  @ConditionalOnAutoApiRole({AutoApiRole.GATEWAY, AutoApiRole.COMBINED})
+  RouterFunction<ServerResponse> internalGatewayRoutes(GatewayInternalHealthHandler healthHandler) {
+    return RouterFunctions.route()
+        .GET("/internal/v1/upstream-health", healthHandler::upstreamHealth)
         .build();
   }
 

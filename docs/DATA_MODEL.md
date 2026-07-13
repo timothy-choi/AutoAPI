@@ -138,7 +138,8 @@ Named backend groups for load balancing.
 | `id` | UUID | PK |
 | `api_id` | UUID | FK → apis.id |
 | `name` | VARCHAR(128) | NOT NULL |
-| `load_balancing` | VARCHAR(32) | round_robin, weighted, least_conn (post-MVP) |
+| `load_balancing` | VARCHAR(32) | `ROUND_ROBIN` in Phase 5 |
+| `backend_health_policy_id` | UUID | FK → backend_health_policies.id, NULL |
 | `description` | TEXT | |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
@@ -148,6 +149,32 @@ Named backend groups for load balancing.
 **FK:** `api_id` → `apis(id)` ON DELETE CASCADE
 
 **Indexes:** `UNIQUE (api_id, name)`
+
+---
+
+## backend_health_policies
+
+Passive outlier-detection policy for upstream pools (Phase 5).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID | PK |
+| `api_id` | UUID | FK → apis.id |
+| `name` | VARCHAR(128) | NOT NULL |
+| `consecutive_failure_threshold` | INTEGER | 1–100 |
+| `ejection_duration_seconds` | INTEGER | 1–3600 |
+| `max_ejection_percent` | INTEGER | 0–100 (`0` disables ejection) |
+| `enabled` | BOOLEAN | NOT NULL DEFAULT true |
+| `created_at` | TIMESTAMPTZ | |
+| `updated_at` | TIMESTAMPTZ | |
+
+**PK:** `id`
+
+**FK:** `api_id` → `apis(id)` ON DELETE CASCADE
+
+**Indexes:** `UNIQUE (api_id, name)`
+
+Gateway-local failure counters and ejection timestamps are **not** stored here.
 
 ---
 
