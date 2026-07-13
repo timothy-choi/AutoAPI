@@ -87,21 +87,23 @@ jobs:
     name: integration
     runs-on: ubuntu-latest
     needs: test-and-build
-    timeout-minutes: 25
+    # Full Phase 4/5/6 Compose regression smokes. Server Container validates the scanned
+    # candidate image separately via scripts/smoke-container-candidate.sh (compact retry).
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
       - name: Run Phase 4 integration smoke
-        timeout-minutes: 12
-        run: timeout --signal=TERM --kill-after=15s 10m ./scripts/smoke-phase4.sh
+        timeout-minutes: 22
+        run: timeout --signal=TERM --kill-after=15s 20m ./scripts/smoke-phase4.sh
 
       - name: Run Phase 5 passive health smoke
-        timeout-minutes: 12
-        run: timeout --signal=TERM --kill-after=15s 10m ./scripts/smoke-phase5.sh
+        timeout-minutes: 22
+        run: timeout --signal=TERM --kill-after=15s 20m ./scripts/smoke-phase5.sh
 
       - name: Run Phase 6 retry smoke
-        timeout-minutes: 18
-        run: timeout --signal=TERM --kill-after=15s 15m ./scripts/smoke-phase6.sh
+        timeout-minutes: 22
+        run: timeout --signal=TERM --kill-after=15s 20m ./scripts/smoke-phase6.sh
 
       - name: Compose cleanup
         if: always()

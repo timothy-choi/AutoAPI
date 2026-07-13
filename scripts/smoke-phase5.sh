@@ -25,6 +25,10 @@ cleanup() {
 
 # shellcheck source=scripts/smoke-phase5-parser-lib.sh
 source "${ROOT}/scripts/smoke-phase5-parser-lib.sh"
+# shellcheck source=scripts/smoke-curl-lib.sh
+source "${ROOT}/scripts/smoke-curl-lib.sh"
+# shellcheck source=scripts/smoke-compose-lib.sh
+source "${ROOT}/scripts/smoke-compose-lib.sh"
 
 json_field() {
   python3 - "$1" "$2" <<'PY'
@@ -215,7 +219,8 @@ main() {
 if [[ "${SMOKE_SKIP_UP}" != "true" ]]; then
   docker compose down -v >/dev/null 2>&1 || true
   echo "== Starting Phase 5 stack =="
-  docker compose up --build -d postgres redis upstream-v1 upstream-v2 control-plane
+  build_smoke_images_once
+  start_smoke_base_stack
   wait_ready "${CONTROL_PLANE_URL}" "Control plane"
 fi
 
@@ -280,7 +285,7 @@ control_plane_mutate "activate configuration version 1" \
 
 export AUTOAPI_GATEWAY_API_ID="${api_id}"
 if [[ "${SMOKE_SKIP_UP}" != "true" ]]; then
-  docker compose up --build -d gateway-a
+  start_smoke_gateways gateway-a
 fi
 wait_ready "${GATEWAY_A_URL}" "Gateway A"
 wait_convergence "${api_id}"

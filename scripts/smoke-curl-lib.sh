@@ -4,14 +4,26 @@
 SMOKE_CONNECT_TIMEOUT_SECONDS="${SMOKE_CONNECT_TIMEOUT_SECONDS:-3}"
 SMOKE_REQUEST_TIMEOUT_SECONDS="${SMOKE_REQUEST_TIMEOUT_SECONDS:-15}"
 SMOKE_CURRENT_STEP="${SMOKE_CURRENT_STEP:-unknown}"
+CURRENT_STEP="${CURRENT_STEP:-initialization}"
 
 log_step() {
-  printf '[%s] %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$*" >&2
+  if [[ -n "${SMOKE_STARTED_AT:-}" ]]; then
+    local now elapsed
+    now="$(date +%s)"
+    elapsed=$((now - SMOKE_STARTED_AT))
+    printf '[%s elapsed=%ss] %s\n' \
+      "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+      "${elapsed}" \
+      "$*" >&2
+  else
+    printf '[%s] %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$*" >&2
+  fi
 }
 
 set_smoke_step() {
+  CURRENT_STEP="$1"
   SMOKE_CURRENT_STEP="$1"
-  log_step "${SMOKE_CURRENT_STEP}"
+  log_step "${CURRENT_STEP}"
 }
 
 smoke_curl() {

@@ -24,6 +24,8 @@ source "${ROOT}/scripts/smoke-phase5-parser-lib.sh"
 source "${ROOT}/scripts/smoke-wait-lib.sh"
 # shellcheck source=scripts/smoke-retry-lib.sh
 source "${ROOT}/scripts/smoke-retry-lib.sh"
+# shellcheck source=scripts/smoke-compose-lib.sh
+source "${ROOT}/scripts/smoke-compose-lib.sh"
 
 cleanup() {
   rm -f "${SMOKE_HEADERS_FILE}" "${SMOKE_BODY_FILE}" "${SMOKE_HEALTH_FILE}" "${SMOKE_RETRY_FILE}" "${SMOKE_SNAPSHOT_FILE}"
@@ -247,7 +249,8 @@ main() {
   if [[ "${SMOKE_SKIP_UP}" != "true" ]]; then
     set_smoke_step "Starting control-plane stack"
     docker compose down -v >/dev/null 2>&1 || true
-    docker compose up --build -d postgres redis upstream-v1 upstream-v2 control-plane
+    build_smoke_images_once
+    start_smoke_base_stack
     wait_until "Control plane ready" 45 2 wait_http_ready "${CONTROL_PLANE_URL}"
     log_step "Control plane ready"
   fi
@@ -341,7 +344,7 @@ main() {
 
   export AUTOAPI_GATEWAY_API_ID="${api_id}"
   if [[ "${SMOKE_SKIP_UP}" != "true" ]]; then
-    docker compose up --build -d gateway-a
+    start_smoke_gateways gateway-a
   fi
   wait_until "Gateway A ready" 45 2 wait_http_ready "${GATEWAY_A_URL}"
   wait_convergence "${api_id}"
