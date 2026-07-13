@@ -97,6 +97,9 @@ jobs:
       - name: Run Phase 5 passive health smoke
         run: ./scripts/smoke-phase5.sh
 
+      - name: Run Phase 6 retry smoke
+        run: ./scripts/smoke-phase6.sh
+
       - name: Compose cleanup
         if: always()
         run: docker compose down -v

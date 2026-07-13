@@ -3,6 +3,7 @@ package com.autoapi.controlplane.configversion;
 import com.autoapi.controlplane.persistence.ApiKeyEntity;
 import com.autoapi.controlplane.persistence.BackendHealthPolicyEntity;
 import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
+import com.autoapi.controlplane.persistence.RetryPolicyEntity;
 import com.autoapi.controlplane.persistence.RouteEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
 import com.autoapi.controlplane.persistence.UpstreamPoolEntity;
@@ -31,6 +32,7 @@ public final class RuntimeConfigCompiler {
       Map<UUID, RoutePolicyBindingEntity> bindingByRouteId,
       Map<UUID, RateLimitPolicyEntity> policyById,
       Map<UUID, BackendHealthPolicyEntity> healthPolicyById,
+      Map<UUID, RetryPolicyEntity> retryPolicyById,
       List<ApiKeyEntity> apiKeys,
       OffsetDateTime publishInstant) {
     List<CompiledRouteSection> compiledRoutes = new ArrayList<>();
@@ -68,6 +70,7 @@ public final class RuntimeConfigCompiler {
       RoutePolicyBindingEntity binding = bindingByRouteId.get(route.id());
       CompiledAuthenticationSection authentication = null;
       CompiledRateLimitSection rateLimit = null;
+      CompiledRetrySection retry = null;
       if (binding != null && binding.authenticationRequired()) {
         authentication = new CompiledAuthenticationSection(true);
         if (binding.rateLimitPolicyId() != null) {
@@ -83,6 +86,25 @@ public final class RuntimeConfigCompiler {
           }
         }
       }
+      if (binding != null && binding.retryPolicyId() != null) {
+        RetryPolicyEntity retryPolicy = retryPolicyById.get(binding.retryPolicyId());
+        if (retryPolicy != null && retryPolicy.enabled()) {
+          retry =
+              new CompiledRetrySection(
+                  retryPolicy.id(),
+                  retryPolicy.maxAttempts(),
+                  retryPolicy.perAttemptTimeoutMs(),
+                  retryPolicy.retryOnConnectFailure(),
+                  retryPolicy.retryOnConnectionReset(),
+                  retryPolicy.retryOnDnsFailure(),
+                  retryPolicy.retryOnResponseTimeout(),
+                  java.util.Arrays.stream(retryPolicy.retryableMethods()).sorted().toList(),
+                  retryPolicy.requireIdempotencyKeyForUnsafeMethods(),
+                  retryPolicy.budgetPercent(),
+                  retryPolicy.budgetMinRetriesPerSecond(),
+                  retryPolicy.budgetWindowSeconds());
+        }
+      }
       compiledRoutes.add(
           new CompiledRouteSection(
               route.id(),
@@ -91,6 +113,7 @@ public final class RuntimeConfigCompiler {
               methods,
               authentication,
               rateLimit,
+              retry,
               compiledPool));
     }
     List<CompiledApiKeySection> compiledKeys = compileApiKeys(apiKeys, publishInstant);
@@ -165,6 +188,7 @@ public final class RuntimeConfigCompiler {
         enabledRoutes,
         poolById,
         targetsByPool,
+        Map.of(),
         Map.of(),
         Map.of(),
         Map.of(),

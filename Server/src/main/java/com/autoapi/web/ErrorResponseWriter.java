@@ -63,6 +63,12 @@ public class ErrorResponseWriter {
         "Upstream service is unavailable");
   }
 
+  public Mono<Void> upstreamTimeout(ServerWebExchange exchange, Throwable cause) {
+    logProxyFailure(exchange, cause);
+    return write(
+        exchange, HttpStatus.GATEWAY_TIMEOUT, "UPSTREAM_TIMEOUT", "Upstream service timed out");
+  }
+
   public Mono<Void> internalError(ServerWebExchange exchange, Throwable cause) {
     logProxyFailure(exchange, cause);
     return write(

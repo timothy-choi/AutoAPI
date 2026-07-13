@@ -116,7 +116,7 @@ jobs:
 
       - name: Remove stale smoke resources
         run: |
-          docker rm -f autoapi-gateway-a autoapi-gateway-b autoapi-gateway upstream-v1 autoapi-postgres autoapi-redis || true
+          docker rm -f autoapi-gateway-a autoapi-gateway-b autoapi-gateway upstream-v1 upstream-v2 autoapi-postgres autoapi-redis || true
           docker volume rm autoapi-postgres-smoke autoapi-redis-smoke || true
           docker network rm autoapi-smoke || true
 
@@ -149,6 +149,7 @@ jobs:
             exit 1
           fi
           docker run -d --name upstream-v1 --network autoapi-smoke mock-upstream:ci
+          docker run -d --name upstream-v2 --network autoapi-smoke mock-upstream:ci
           cat > /tmp/runtime-smoke.json <<'EOF'
           {
             "gateway": { "listenAddress": "0.0.0.0", "port": 8080 },
@@ -157,7 +158,36 @@ jobs:
               "host": "api.autoapi.local",
               "pathPrefix": "/v1/orders",
               "methods": ["GET", "POST"],
-              "upstream": { "url": "http://upstream-v1:8080" }
+              "upstream": {
+                "poolId": "00000000-0000-0000-0000-000000000010",
+                "url": "http://upstream-v1:8080",
+                "targets": [
+                  {
+                    "targetId": "00000000-0000-0000-0000-000000000030",
+                    "url": "http://upstream-v1:8080",
+                    "weight": 1
+                  },
+                  {
+                    "targetId": "00000000-0000-0000-0000-000000000031",
+                    "url": "http://upstream-v2:8080",
+                    "weight": 1
+                  }
+                ]
+              },
+              "retry": {
+                "policyId": "00000000-0000-0000-0000-000000000040",
+                "maxAttempts": 2,
+                "perAttemptTimeoutMs": 1000,
+                "retryOnConnectFailure": true,
+                "retryOnConnectionReset": true,
+                "retryOnDnsFailure": true,
+                "retryOnResponseTimeout": true,
+                "retryableMethods": ["GET", "POST"],
+                "requireIdempotencyKeyForUnsafeMethods": true,
+                "budgetPercent": 50,
+                "budgetMinRetriesPerSecond": 2,
+                "budgetWindowSeconds": 10
+              }
             }]
           }
           EOF
@@ -169,6 +199,7 @@ jobs:
             -e SPRING_R2DBC_USERNAME=autoapi \
             -e SPRING_R2DBC_PASSWORD=autoapi \
             -e AUTOAPI_CONTROLPLANE_ENABLED=true \
+            -e AUTOAPI_GATEWAY_API_ID=00000000-0000-0000-0000-000000000001 \
             -v /tmp/runtime-smoke.json:/config/runtime.json:ro \
             autoapi-server:ci --autoapi.config.path=/config/runtime.json
           ready=false
@@ -196,11 +227,48 @@ jobs:
           curl --fail --silent -H 'Host: api.autoapi.local' http://localhost:18081/v1/orders/1 | grep path
           curl --fail --silent -H 'Host: api.autoapi.local' http://localhost:18081/v1/orders/1 | grep receivedHost
           curl --fail --silent http://localhost:18081/api/v1/projects | grep -E '^\[|^\[\]$'
+          curl --fail --silent http://localhost:18081/internal/v1/retry-status | grep budgets
+          docker stop upstream-v1
+          retry_ok=false
+          for _ in $(seq 1 20); do
+            status="$(curl --silent -o /tmp/smoke-retry-body.json -w '%{http_code}' -H 'Host: api.autoapi.local' http://localhost:18081/v1/orders/retry-smoke || true)"
+            if [ "${status}" = "200" ] && grep -q path /tmp/smoke-retry-body.json; then
+              retry_ok=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "${retry_ok}" != "true" ]; then
+            echo "Retry smoke failed: expected GET retry success after upstream-v1 stop" >&2
+            docker logs autoapi-gateway --tail 80 >&2 || true
+            exit 1
+          fi
+          post_status="$(curl --silent -o /tmp/smoke-post-body.json -w '%{http_code}' \
+            -H 'Host: api.autoapi.local' \
+            -H 'Content-Type: application/json' \
+            -d '{"smoke":true}' \
+            http://localhost:18081/v1/orders/retry-post-no-key || true)"
+          if [ "${post_status}" != "502" ] && [ "${post_status}" != "504" ] && [ "${post_status}" != "200" ]; then
+            echo "Unexpected POST without Idempotency-Key status: ${post_status}" >&2
+            exit 1
+          fi
+          post_retry_status="$(curl --silent -o /tmp/smoke-post-key-body.json -w '%{http_code}' \
+            -H 'Host: api.autoapi.local' \
+            -H 'Content-Type: application/json' \
+            -H 'Idempotency-Key: container-smoke-key' \
+            -d '{"smoke":true}' \
+            http://localhost:18081/v1/orders/retry-post-with-key || true)"
+          if [ "${post_retry_status}" != "200" ]; then
+            echo "POST with Idempotency-Key did not succeed: ${post_retry_status}" >&2
+            cat /tmp/smoke-post-key-body.json >&2 || true
+            exit 1
+          fi
+          curl --fail --silent http://localhost:18081/internal/v1/upstream-health | grep HEALTHY
 
       - name: Smoke environment cleanup
         if: always()
         run: |
-          docker rm -f autoapi-gateway upstream-v1 autoapi-postgres || true
+          docker rm -f autoapi-gateway upstream-v1 upstream-v2 autoapi-postgres || true
           docker volume rm autoapi-postgres-smoke || true
           docker network rm autoapi-smoke || true
 

@@ -6,6 +6,7 @@ import com.autoapi.controlplane.persistence.BackendHealthPolicyEntity;
 import com.autoapi.controlplane.persistence.ConfigVersionEntity;
 import com.autoapi.controlplane.persistence.ConfigVersionRepository;
 import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
+import com.autoapi.controlplane.persistence.RetryPolicyEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
 import com.autoapi.controlplane.validation.DraftGraphValidator;
 import com.autoapi.controlplane.validation.ValidationResult;
@@ -114,6 +115,11 @@ public class ConfigVersionService {
                                   .collect(
                                       java.util.stream.Collectors.toMap(
                                           BackendHealthPolicyEntity::id, p -> p));
+                          java.util.Map<UUID, RetryPolicyEntity> retryPolicyById =
+                              graph.retryPolicies().stream()
+                                  .collect(
+                                      java.util.stream.Collectors.toMap(
+                                          RetryPolicyEntity::id, p -> p));
                           HashableRuntimePayload payload =
                               RuntimeConfigCompiler.compile(
                                   apiId,
@@ -138,6 +144,7 @@ public class ConfigVersionService {
                                   bindingByRouteId,
                                   policyById,
                                   healthPolicyById,
+                                  retryPolicyById,
                                   graph.apiKeys(),
                                   publishInstant);
                           StoredRuntimeSnapshot snapshot =

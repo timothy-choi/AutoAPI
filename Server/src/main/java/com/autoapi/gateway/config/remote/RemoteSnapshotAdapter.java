@@ -7,6 +7,7 @@ import com.autoapi.config.RuntimeApiKey;
 import com.autoapi.config.RuntimeAuthentication;
 import com.autoapi.config.RuntimeConfig;
 import com.autoapi.config.RuntimeRateLimit;
+import com.autoapi.config.RuntimeRetryPolicyConfig;
 import com.autoapi.config.UpstreamConfig;
 import com.autoapi.config.UpstreamTargetReference;
 import com.autoapi.controlplane.configversion.CompiledRateLimitSection;
@@ -125,6 +126,10 @@ public final class RemoteSnapshotAdapter {
     if (route.rateLimit() != null) {
       rateLimit = toRuntimeRateLimit(route.rateLimit());
     }
+    RuntimeRetryPolicyConfig retry = null;
+    if (route.retry() != null) {
+      retry = toRuntimeRetry(route.retry());
+    }
     return new RouteConfig(
         route.id().toString(),
         route.host(),
@@ -132,7 +137,25 @@ public final class RemoteSnapshotAdapter {
         methods,
         upstream,
         authentication,
-        rateLimit);
+        rateLimit,
+        retry);
+  }
+
+  private static RuntimeRetryPolicyConfig toRuntimeRetry(
+      com.autoapi.controlplane.configversion.CompiledRetrySection section) {
+    return new RuntimeRetryPolicyConfig(
+        section.policyId(),
+        section.maxAttempts(),
+        section.perAttemptTimeoutMs(),
+        section.retryOnConnectFailure(),
+        section.retryOnConnectionReset(),
+        section.retryOnDnsFailure(),
+        section.retryOnResponseTimeout(),
+        section.retryableMethods(),
+        section.requireIdempotencyKeyForUnsafeMethods(),
+        section.budgetPercent(),
+        section.budgetMinRetriesPerSecond(),
+        section.budgetWindowSeconds());
   }
 
   private static RuntimeRateLimit toRuntimeRateLimit(CompiledRateLimitSection section) {

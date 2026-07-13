@@ -11,6 +11,7 @@ import java.util.UUID;
   "methods",
   "authentication",
   "rateLimit",
+  "retry",
   "upstreamPool"
 })
 public record CompiledRouteSection(
@@ -20,4 +21,5 @@ public record CompiledRouteSection(
     List<String> methods,
     CompiledAuthenticationSection authentication,
     CompiledRateLimitSection rateLimit,
+    CompiledRetrySection retry,
     CompiledUpstreamPoolSection upstreamPool) {}

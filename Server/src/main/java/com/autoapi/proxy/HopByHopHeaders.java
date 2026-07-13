@@ -23,12 +23,12 @@ public final class HopByHopHeaders {
 
   private HopByHopHeaders() {}
 
-  static void sanitizeClientRequestHeaders(HttpHeaders headers) {
+  public static void sanitizeClientRequestHeaders(HttpHeaders headers) {
     removeHopByHop(headers);
     SANITIZE_REQUEST.forEach(headers::remove);
   }
 
-  static void sanitizeUpstreamResponseHeaders(HttpHeaders headers) {
+  public static void sanitizeUpstreamResponseHeaders(HttpHeaders headers) {
     removeHopByHop(headers);
   }
 

@@ -1,3 +1,4 @@
 com.autoapi.gateway.config.GatewayRedisRateLimitAutoConfiguration
 com.autoapi.gateway.config.GatewayRateLimitServiceAutoConfiguration
 com.autoapi.gateway.config.GatewayHealthAutoConfiguration
+com.autoapi.gateway.config.GatewayRetryAutoConfiguration
