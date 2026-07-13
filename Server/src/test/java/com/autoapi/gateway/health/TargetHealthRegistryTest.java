@@ -124,6 +124,19 @@ class TargetHealthRegistryTest {
   }
 
   @Test
+  void successOnPeerDoesNotResetOtherTargetFailures() {
+    TargetKey failing = new TargetKey(API_ID, POOL_ID, TARGET_A);
+    TargetKey healthy = new TargetKey(API_ID, POOL_ID, TARGET_B);
+
+    registry.recordFailure(failing, FailureCategory.CONNECTION_REFUSED, policy, 2);
+    assertEquals(1, registry.getState(failing).consecutiveQualifyingFailures());
+
+    registry.recordSuccess(healthy);
+    assertEquals(1, registry.getState(failing).consecutiveQualifyingFailures());
+    assertEquals(0, registry.getState(healthy).consecutiveQualifyingFailures());
+  }
+
+  @Test
   void reconcilePreservesUnchangedFingerprintsAndResetsChangedOnes() {
     TargetKey key = new TargetKey(API_ID, POOL_ID, TARGET_A);
     URI unchangedUrl = URI.create("http://127.0.0.1:8080");

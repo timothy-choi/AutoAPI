@@ -7,6 +7,9 @@ import com.autoapi.config.RouteConfig;
 import com.autoapi.config.RuntimeConfig;
 import com.autoapi.config.UpstreamConfig;
 import com.autoapi.config.UpstreamTargetReference;
+import com.autoapi.gateway.health.TargetHealthRegistry;
+import com.autoapi.gateway.health.TargetHealthState;
+import com.autoapi.gateway.health.TargetKey;
 import com.autoapi.support.ControllableClock;
 import com.autoapi.support.ControllableTestUpstream;
 import java.io.IOException;
@@ -65,11 +68,13 @@ class GatewayPassiveHealthIntegrationTest {
   }
 
   @Autowired private WebTestClient webTestClient;
+  @Autowired private TargetHealthRegistry targetHealthRegistry;
 
   @BeforeEach
   void resetUpstreamsAndClock() throws IOException {
     CLOCK.setInstant(Instant.parse("2026-01-01T00:00:00Z"));
     healthyUpstream.resumeAccepting();
+    healthyUpstream.respondWithStatus(200);
     failingUpstream.resumeAccepting();
     failingUpstream.stopAccepting();
   }
@@ -78,6 +83,86 @@ class GatewayPassiveHealthIntegrationTest {
   static void shutdownUpstreams() {
     healthyUpstream.shutdown();
     failingUpstream.shutdown();
+  }
+
+  @Test
+  void firstTransportFailureIncrementsInternalHealthCount() {
+    expectUpstreamSuccess("/v1/orders/first-fail-1");
+    expectUpstreamFailure("/v1/orders/first-fail-2");
+
+    webTestClient
+        .get()
+        .uri("/internal/v1/upstream-health")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath(
+            "$.pools[0].targets[?(@.targetId=='" + FAILING_TARGET_ID + "')].consecutiveFailures")
+        .isEqualTo(1)
+        .jsonPath("$.pools[0].targets[?(@.targetId=='" + FAILING_TARGET_ID + "')].state")
+        .isEqualTo("HEALTHY")
+        .jsonPath(
+            "$.pools[0].targets[?(@.targetId=='" + FAILING_TARGET_ID + "')].lastFailureCategory")
+        .isEqualTo("CONNECTION_REFUSED");
+  }
+
+  @Test
+  void controlled502DoesNotRecordSuccessForSameAttempt() {
+    TargetKey failingKey = new TargetKey(UUID.fromString(API_ID), POOL_ID, FAILING_TARGET_ID);
+
+    driveUntilFailureCount(failingKey, 1);
+
+    TargetHealthState state = targetHealthRegistry.getState(failingKey);
+    org.junit.jupiter.api.Assertions.assertEquals(1, state.consecutiveQualifyingFailures());
+    org.junit.jupiter.api.Assertions.assertEquals(
+        com.autoapi.gateway.health.FailureCategory.CONNECTION_REFUSED, state.lastFailureCategory());
+  }
+
+  @Test
+  void successOnHealthyPeerDoesNotResetFailingTargetCount() {
+    TargetKey failingKey = new TargetKey(UUID.fromString(API_ID), POOL_ID, FAILING_TARGET_ID);
+
+    driveUntilFailureCount(failingKey, 1);
+    org.junit.jupiter.api.Assertions.assertEquals(
+        1, targetHealthRegistry.getState(failingKey).consecutiveQualifyingFailures());
+
+    expectUpstreamSuccess("/v1/orders/isolation-2");
+    org.junit.jupiter.api.Assertions.assertEquals(
+        1, targetHealthRegistry.getState(failingKey).consecutiveQualifyingFailures());
+  }
+
+  @Test
+  void upstreamHttp500RecordsTransportSuccess() {
+    TargetKey healthyKey = new TargetKey(UUID.fromString(API_ID), POOL_ID, HEALTHY_TARGET_ID);
+    targetHealthRegistry.recordFailure(
+        healthyKey,
+        com.autoapi.gateway.health.FailureCategory.CONNECTION_REFUSED,
+        new com.autoapi.gateway.health.PassiveHealthPolicy(2, java.time.Duration.ofSeconds(60), 50),
+        2);
+    org.junit.jupiter.api.Assertions.assertEquals(
+        1, targetHealthRegistry.getState(healthyKey).consecutiveQualifyingFailures());
+
+    healthyUpstream.respondWithStatus(500);
+    boolean observedHttp500 = false;
+    for (int attempt = 0; attempt < 6; attempt++) {
+      var exchange =
+          webTestClient
+              .get()
+              .uri("/v1/orders/http-500-" + attempt)
+              .header(HttpHeaders.HOST, "api.autoapi.local")
+              .exchange();
+      if (exchange.returnResult(String.class).getStatus() == HttpStatus.INTERNAL_SERVER_ERROR) {
+        observedHttp500 = true;
+        break;
+      }
+    }
+
+    org.junit.jupiter.api.Assertions.assertTrue(observedHttp500);
+    org.junit.jupiter.api.Assertions.assertEquals(
+        0, targetHealthRegistry.getState(healthyKey).consecutiveQualifyingFailures());
+    org.junit.jupiter.api.Assertions.assertTrue(
+        healthyUpstream.lastPath().startsWith("/v1/orders/http-500"));
   }
 
   @Test
@@ -141,6 +226,27 @@ class GatewayPassiveHealthIntegrationTest {
         .jsonPath(
             "$.pools[0].targets[?(@.targetId=='" + FAILING_TARGET_ID + "')].consecutiveFailures")
         .isEqualTo(0);
+  }
+
+  private void driveUntilFailureCount(TargetKey failingKey, int expectedCount) {
+    for (int attempt = 0;
+        attempt < 8
+            && targetHealthRegistry.getState(failingKey).consecutiveQualifyingFailures()
+                < expectedCount;
+        attempt++) {
+      var result =
+          webTestClient
+              .get()
+              .uri("/v1/orders/drive-failure-" + expectedCount + "-" + attempt)
+              .header(HttpHeaders.HOST, "api.autoapi.local")
+              .exchange()
+              .returnResult(String.class);
+      if (result.getStatus() != HttpStatus.BAD_GATEWAY && result.getStatus() != HttpStatus.OK) {
+        org.junit.jupiter.api.Assertions.fail("Unexpected status " + result.getStatus());
+      }
+    }
+    org.junit.jupiter.api.Assertions.assertEquals(
+        expectedCount, targetHealthRegistry.getState(failingKey).consecutiveQualifyingFailures());
   }
 
   private void expectUpstreamSuccess(String path) {

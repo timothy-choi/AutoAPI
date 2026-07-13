@@ -13,6 +13,7 @@ public final class ControllableTestUpstream {
   private HttpServer server;
   private final int port;
   private volatile boolean accepting;
+  private volatile int statusCode = 200;
   private final AtomicReference<String> lastPath = new AtomicReference<>("");
 
   private ControllableTestUpstream(HttpServer server, int port) {
@@ -59,6 +60,11 @@ public final class ControllableTestUpstream {
     replacement.start();
     server = replacement;
     accepting = true;
+    statusCode = 200;
+  }
+
+  public void respondWithStatus(int statusCode) {
+    this.statusCode = statusCode;
   }
 
   public void shutdown() {
@@ -77,7 +83,7 @@ public final class ControllableTestUpstream {
               ("{\"path\":\"" + exchange.getRequestURI().getPath() + "\"}")
                   .getBytes(StandardCharsets.UTF_8);
           exchange.getResponseHeaders().add("Content-Type", "application/json");
-          exchange.sendResponseHeaders(200, body.length);
+          exchange.sendResponseHeaders(statusCode, body.length);
           try (OutputStream os = exchange.getResponseBody()) {
             os.write(body);
           }

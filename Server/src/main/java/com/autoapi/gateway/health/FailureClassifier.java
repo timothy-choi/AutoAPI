@@ -3,10 +3,13 @@ package com.autoapi.gateway.health;
 import io.netty.channel.ConnectTimeoutException;
 import io.netty.handler.timeout.ReadTimeoutException;
 import java.net.ConnectException;
+import java.net.NoRouteToHostException;
+import java.net.PortUnreachableException;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.nio.channels.ClosedChannelException;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
 import org.springframework.http.HttpStatusCode;
@@ -42,6 +45,37 @@ public final class FailureClassifier {
     return Optional.empty();
   }
 
+  /**
+   * Resolves a qualifying passive-health category for upstream transport failures. When a {@link
+   * WebClientRequestException} is not a client cancellation and no specific cause matches, the
+   * failure still qualifies as {@link FailureCategory#CONNECTION_REFUSED} so controlled 502
+   * responses always produce passive-health accounting.
+   */
+  public Optional<FailureCategory> resolveQualifyingCategory(Throwable error) {
+    Optional<FailureCategory> classified = classifyTransportFailure(error);
+    if (classified.isPresent()) {
+      return classified;
+    }
+    if (isUpstreamTransportFailure(error)) {
+      return Optional.of(FailureCategory.CONNECTION_REFUSED);
+    }
+    return Optional.empty();
+  }
+
+  private static boolean isUpstreamTransportFailure(Throwable error) {
+    if (error == null || isClientCancel(error)) {
+      return false;
+    }
+    Throwable current = error;
+    while (current != null) {
+      if (current instanceof WebClientRequestException) {
+        return true;
+      }
+      current = current.getCause();
+    }
+    return false;
+  }
+
   private static boolean isClientCancel(Throwable error) {
     if (Exceptions.isCancel(error)) {
       return true;
@@ -64,11 +98,14 @@ public final class FailureClassifier {
     if (cause instanceof UnknownHostException) {
       return Optional.of(FailureCategory.DNS_FAILURE);
     }
-    if (cause instanceof ConnectException) {
-      return Optional.of(FailureCategory.CONNECTION_REFUSED);
-    }
     if (cause instanceof ConnectTimeoutException) {
       return Optional.of(FailureCategory.CONNECTION_TIMEOUT);
+    }
+    if (cause instanceof ConnectException || cause instanceof NoRouteToHostException) {
+      return Optional.of(FailureCategory.CONNECTION_REFUSED);
+    }
+    if (cause instanceof PortUnreachableException) {
+      return Optional.of(FailureCategory.CONNECTION_REFUSED);
     }
     if (cause instanceof ReadTimeoutException || cause instanceof SocketTimeoutException) {
       return Optional.of(
@@ -84,8 +121,17 @@ public final class FailureClassifier {
     }
     if (cause instanceof SocketException socketException) {
       String message = socketException.getMessage();
-      if (message != null && message.toLowerCase().contains("connection reset")) {
+      if (message == null || message.isBlank()) {
+        return Optional.empty();
+      }
+      String normalized = message.toLowerCase(Locale.ROOT);
+      if (normalized.contains("connection reset")) {
         return Optional.of(FailureCategory.CONNECTION_RESET);
+      }
+      if (normalized.contains("network is unreachable")
+          || normalized.contains("no route to host")
+          || normalized.contains("host is down")) {
+        return Optional.of(FailureCategory.CONNECTION_REFUSED);
       }
     }
     return Optional.empty();
