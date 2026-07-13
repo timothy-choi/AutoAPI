@@ -23,7 +23,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
@@ -106,7 +105,18 @@ public final class UpstreamAttemptExecutor {
         .exchangeToMono(
             response -> {
               recordSuccess(outcome, targetKey, routeId, requestId, healthPolicy, poolTargetCount);
-              return Mono.<AttemptResult>just(AttemptResult.success(response, targetKey));
+              // Buffer the body here: WebClient releases unconsumed response bodies when
+              // exchangeToMono completes, so deferring bodyToFlux to the caller hangs clients.
+              return response
+                  .bodyToFlux(DataBuffer.class)
+                  .collectList()
+                  .<AttemptResult>map(
+                      responseBody ->
+                          AttemptResult.success(
+                              response.statusCode(),
+                              response.headers().asHttpHeaders(),
+                              responseBody,
+                              targetKey));
             })
         .timeout(attemptTimeout)
         .onErrorResume(
@@ -202,8 +212,12 @@ public final class UpstreamAttemptExecutor {
 
   public sealed interface AttemptResult {
 
-    static Success success(ClientResponse response, TargetKey targetKey) {
-      return new Success(response, targetKey);
+    static Success success(
+        org.springframework.http.HttpStatusCode statusCode,
+        HttpHeaders headers,
+        java.util.List<DataBuffer> body,
+        TargetKey targetKey) {
+      return new Success(statusCode, headers, body, targetKey);
     }
 
     static Failure failure(
@@ -220,7 +234,12 @@ public final class UpstreamAttemptExecutor {
 
     TargetKey targetKey();
 
-    record Success(ClientResponse response, TargetKey targetKey) implements AttemptResult {}
+    record Success(
+        org.springframework.http.HttpStatusCode statusCode,
+        HttpHeaders headers,
+        java.util.List<DataBuffer> body,
+        TargetKey targetKey)
+        implements AttemptResult {}
 
     record Failure(
         Throwable error,

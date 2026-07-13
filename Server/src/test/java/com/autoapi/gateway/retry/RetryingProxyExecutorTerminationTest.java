@@ -36,9 +36,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
-import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -84,7 +82,8 @@ class RetryingProxyExecutorTerminationTest {
                         connectFailure(), RetryFailureCategory.CONNECT_FAILURE, false, key));
               }
               return Mono.just(
-                  UpstreamAttemptExecutor.AttemptResult.success(mockClientResponse(), key));
+                  UpstreamAttemptExecutor.AttemptResult.success(
+                      HttpStatus.OK, new HttpHeaders(), List.of(), key));
             });
 
     RetryingProxyExecutor executor = executor(attemptExecutor);
@@ -250,17 +249,6 @@ class RetryingProxyExecutorTerminationTest {
         HttpMethod.GET,
         URI.create("http://upstream-v1:8080/v1/orders"),
         HttpHeaders.EMPTY);
-  }
-
-  private static ClientResponse mockClientResponse() {
-    ClientResponse response = mock(ClientResponse.class);
-    ClientResponse.Headers headers = mock(ClientResponse.Headers.class);
-    when(response.statusCode()).thenReturn(HttpStatus.OK);
-    when(response.headers()).thenReturn(headers);
-    when(headers.asHttpHeaders()).thenReturn(new HttpHeaders());
-    when(response.bodyToFlux(org.springframework.core.io.buffer.DataBuffer.class))
-        .thenReturn(Flux.empty());
-    return response;
   }
 
   private static ActiveRuntimeBundle bundle() {

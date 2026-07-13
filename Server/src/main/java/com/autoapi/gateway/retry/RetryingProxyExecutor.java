@@ -21,7 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
@@ -152,7 +151,7 @@ public class RetryingProxyExecutor {
         .flatMap(
             result -> {
               if (result instanceof UpstreamAttemptExecutor.AttemptResult.Success success) {
-                return writeSuccess(exchange, success.response(), requestId);
+                return writeSuccess(exchange, success, requestId);
               }
               if (result instanceof UpstreamAttemptExecutor.AttemptResult.Cancelled) {
                 return completeCancelled(exchange);
@@ -262,7 +261,7 @@ public class RetryingProxyExecutor {
                   recordRetrySucceeded(route, retryPolicy);
                 }
                 exchange.getAttributes().put(GatewayAttributes.UPSTREAM_ATTEMPTS, attemptNumber);
-                return writeSuccess(exchange, success.response(), requestId);
+                return writeSuccess(exchange, success, requestId);
               }
               if (result instanceof UpstreamAttemptExecutor.AttemptResult.Cancelled) {
                 return completeCancelled(exchange);
@@ -326,15 +325,19 @@ public class RetryingProxyExecutor {
   }
 
   private Mono<Void> writeSuccess(
-      ServerWebExchange exchange, ClientResponse response, String requestId) {
-    exchange.getResponse().setStatusCode(response.statusCode());
+      ServerWebExchange exchange,
+      UpstreamAttemptExecutor.AttemptResult.Success success,
+      String requestId) {
+    exchange.getResponse().setStatusCode(success.statusCode());
     org.springframework.http.HttpHeaders responseHeaders = exchange.getResponse().getHeaders();
-    responseHeaders.addAll(response.headers().asHttpHeaders());
+    responseHeaders.addAll(success.headers());
     HopByHopHeaders.sanitizeUpstreamResponseHeaders(responseHeaders);
     responseHeaders.set(com.autoapi.middleware.RequestIdSupport.HEADER, requestId);
-    return exchange
-        .getResponse()
-        .writeWith(response.bodyToFlux(org.springframework.core.io.buffer.DataBuffer.class));
+    reactor.core.publisher.Flux<org.springframework.core.io.buffer.DataBuffer> bodyFlux =
+        success.body().isEmpty()
+            ? reactor.core.publisher.Flux.empty()
+            : reactor.core.publisher.Flux.fromIterable(success.body());
+    return exchange.getResponse().writeWith(bodyFlux);
   }
 
   private Mono<Void> writeTerminalFailure(
