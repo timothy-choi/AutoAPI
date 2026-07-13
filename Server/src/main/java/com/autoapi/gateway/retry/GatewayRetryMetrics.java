@@ -2,9 +2,7 @@ package com.autoapi.gateway.retry;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
-import org.springframework.stereotype.Component;
 
-@Component
 public class GatewayRetryMetrics {
 
   private final MeterRegistry meterRegistry;

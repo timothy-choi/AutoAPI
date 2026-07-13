@@ -10,6 +10,7 @@ import com.autoapi.gateway.retry.UpstreamAttemptExecutor;
 import com.autoapi.runtime.AutoApiRole;
 import com.autoapi.runtime.ConditionalOnAutoApiRole;
 import com.autoapi.web.ErrorResponseWriter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -62,6 +63,12 @@ public class GatewayRetryAutoConfiguration {
         retryMetricsProvider,
         errorResponseWriter,
         gatewayProperties);
+  }
+
+  @Bean
+  @ConditionalOnMissingBean
+  GatewayRetryMetrics gatewayRetryMetrics(MeterRegistry meterRegistry) {
+    return new GatewayRetryMetrics(meterRegistry);
   }
 
   @Bean

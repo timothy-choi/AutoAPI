@@ -6,13 +6,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
 /** Internal gateway-local retry budget visibility. Unauthenticated; trusted-network only. */
-@Component
 public class GatewayInternalRetryHandler {
 
   private final RetryBudgetRegistry registry;

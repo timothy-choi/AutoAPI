@@ -21,13 +21,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 /** Bounded, idempotency-aware upstream retry orchestration for a single downstream request. */
-@Component
 public class RetryingProxyExecutor {
 
   private static final Logger log = LoggerFactory.getLogger(RetryingProxyExecutor.class);
