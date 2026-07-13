@@ -22,13 +22,7 @@ SMOKE_BODY_FILE=""
 SMOKE_HEALTH_FILE=""
 SMOKE_RETRY_FILE=""
 SMOKE_SNAPSHOT_FILE=""
-
-cleanup() {
-  rm -f "${SMOKE_HEADERS_FILE}" "${SMOKE_BODY_FILE}" "${SMOKE_HEALTH_FILE}" "${SMOKE_RETRY_FILE}" "${SMOKE_SNAPSHOT_FILE}"
-  docker rm -f autoapi-gateway autoapi-control-plane upstream-v1 upstream-v2 autoapi-postgres autoapi-redis >/dev/null 2>&1 || true
-  docker volume rm autoapi-postgres-smoke autoapi-redis-smoke >/dev/null 2>&1 || true
-  docker network rm "${SMOKE_NETWORK}" >/dev/null 2>&1 || true
-}
+CONTAINER_API_ID=""
 
 # shellcheck source=scripts/smoke-phase5-parser-lib.sh
 source "${ROOT}/scripts/smoke-phase5-parser-lib.sh"
@@ -36,6 +30,28 @@ source "${ROOT}/scripts/smoke-phase5-parser-lib.sh"
 source "${ROOT}/scripts/smoke-wait-lib.sh"
 # shellcheck source=scripts/smoke-retry-lib.sh
 source "${ROOT}/scripts/smoke-retry-lib.sh"
+
+cleanup() {
+  rm -f "${SMOKE_HEADERS_FILE}" "${SMOKE_BODY_FILE}" "${SMOKE_HEALTH_FILE}" "${SMOKE_RETRY_FILE}" "${SMOKE_SNAPSHOT_FILE}"
+  set_smoke_step "Starting cleanup"
+  timeout 120 docker rm -f autoapi-gateway autoapi-control-plane upstream-v1 upstream-v2 autoapi-postgres autoapi-redis >/dev/null 2>&1 || true
+  timeout 30 docker volume rm autoapi-postgres-smoke autoapi-redis-smoke >/dev/null 2>&1 || true
+  timeout 30 docker network rm "${SMOKE_NETWORK}" >/dev/null 2>&1 || true
+  log_step "Cleanup completed"
+}
+
+dump_diagnostics() {
+  local exit_code="$?"
+
+  if [[ "${exit_code}" -ne 0 ]]; then
+    log_step "Container smoke failed with exit code ${exit_code} at step: ${SMOKE_CURRENT_STEP}"
+    dump_container_smoke_diagnostics "${GATEWAY_URL}" "${CONTROL_PLANE_URL}" "${CONTAINER_API_ID}"
+    collect_gateway_thread_dump autoapi-gateway
+  fi
+
+  cleanup
+  return "${exit_code}"
+}
 
 json_field() {
   python3 - "$1" "$2" <<'PY'
@@ -57,19 +73,21 @@ PY
 control_plane_mutate() {
   local context="$1"
   shift
-  local status
+  local status curl_exit
   set +e
-  status="$(curl --silent --show-error \
-    -D "${SMOKE_HEADERS_FILE}" \
-    -o "${SMOKE_BODY_FILE}" \
-    -w '%{http_code}' \
-    "$@")"
-  local curl_exit=$?
+  status="$(
+    smoke_curl \
+      -D "${SMOKE_HEADERS_FILE}" \
+      -o "${SMOKE_BODY_FILE}" \
+      -w '%{http_code}' \
+      "$@"
+  )"
+  curl_exit=$?
   set -e
   if [[ ${curl_exit} -ne 0 || "${status}" -lt 200 || "${status}" -ge 300 ]]; then
-    echo "${context}: HTTP ${status:-unknown} (curl exit ${curl_exit})" >&2
-    cat "${SMOKE_HEADERS_FILE}" >&2
-    cat "${SMOKE_BODY_FILE}" >&2
+    report_curl_failure "${context}" "${curl_exit}" "${status}"
+    cat "${SMOKE_HEADERS_FILE}" >&2 || true
+    cat "${SMOKE_BODY_FILE}" >&2 || true
     exit 1
   fi
 }
@@ -81,20 +99,23 @@ control_plane_json() {
   cat "${SMOKE_BODY_FILE}"
 }
 
+convergence_converged() {
+  local api_id="$1"
+  smoke_curl --fail "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/convergence" \
+    | grep -q '"derivedState"[[:space:]]*:[[:space:]]*"CONVERGED"'
+}
+
 wait_convergence() {
   local api_id="$1"
-  wait_until "convergence CONVERGED for API ${api_id}" 30 2 \
-    curl --fail --silent "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/convergence" \
-      | grep -q '"derivedState"[[:space:]]*:[[:space:]]*"CONVERGED"'
+  wait_until "convergence CONVERGED for API ${api_id}" 30 2 convergence_converged "${api_id}"
 }
 
 gateway_get() {
   local path_suffix="${1:-smoke}"
-  local curl_exit=0
-  local status=""
+  local curl_exit status
   set +e
   status="$(
-    curl --silent --show-error \
+    smoke_curl \
       -D "${SMOKE_HEADERS_FILE}" \
       -o "${SMOKE_BODY_FILE}" \
       -w '%{http_code}' \
@@ -104,8 +125,8 @@ gateway_get() {
   curl_exit=$?
   set -e
   if [[ ${curl_exit} -ne 0 ]]; then
-    echo "Gateway GET transport error for /v1/orders/${path_suffix} (curl exit ${curl_exit})" >&2
-    exit 1
+    report_curl_failure "gateway GET /v1/orders/${path_suffix}" "${curl_exit}" "${status}"
+    exit "${curl_exit}"
   fi
   printf '%s' "${status}"
 }
@@ -113,6 +134,7 @@ gateway_get() {
 bootstrap_phase6_config() {
   local project_json api_json pool_json target_v1_json route_json health_json retry_json
 
+  set_smoke_step "Creating project, API, pool, route"
   project_json="$(control_plane_json "create project" \
     -X POST "${CONTROL_PLANE_URL}/api/v1/projects" \
     -H 'Content-Type: application/json' \
@@ -125,6 +147,7 @@ bootstrap_phase6_config() {
     -H 'Content-Type: application/json' \
     -d '{"name":"orders-api","host":"api.autoapi.local","basePath":"/"}')"
   API_ID="$(json_field "${api_json}" id)"
+  CONTAINER_API_ID="${API_ID}"
 
   pool_json="$(control_plane_json "create upstream pool" \
     -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${API_ID}/upstream-pools" \
@@ -149,6 +172,7 @@ bootstrap_phase6_config() {
     -d "{\"name\":\"orders-route\",\"host\":\"api.autoapi.local\",\"pathPrefix\":\"/v1/orders\",\"methods\":[\"GET\",\"POST\"],\"upstreamPoolId\":\"${POOL_ID}\",\"enabled\":true}")"
   ROUTE_ID="$(json_field "${route_json}" id)"
 
+  set_smoke_step "Creating backend health policy"
   health_json="$(control_plane_json "create backend health policy" \
     -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${API_ID}/backend-health-policies" \
     -H 'Content-Type: application/json' \
@@ -161,6 +185,7 @@ bootstrap_phase6_config() {
     -H 'Content-Type: application/json' \
     -d "{\"backendHealthPolicyId\":\"${health_policy_id}\"}"
 
+  set_smoke_step "Creating retry policy"
   retry_json="$(control_plane_json "create retry policy" \
     -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${API_ID}/retry-policies" \
     -H 'Content-Type: application/json' \
@@ -186,6 +211,7 @@ bootstrap_phase6_config() {
     -H 'Content-Type: application/json' \
     -d "{\"retryPolicyId\":\"${RETRY_POLICY_ID}\"}"
 
+  set_smoke_step "Publishing and activating configuration"
   control_plane_mutate "validate configuration" \
     -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${API_ID}/config/validate"
   control_plane_mutate "publish configuration version 1" \
@@ -197,52 +223,52 @@ bootstrap_phase6_config() {
     -H 'Content-Type: application/json' \
     -d '{"expectedDesiredVersion":null}'
 
-  curl --fail --silent "${CONTROL_PLANE_URL}/api/v1/apis/${API_ID}/config/versions/1" >"${SMOKE_SNAPSHOT_FILE}"
+  smoke_curl --fail "${CONTROL_PLANE_URL}/api/v1/apis/${API_ID}/config/versions/1" >"${SMOKE_SNAPSHOT_FILE}"
   assert_published_retry_policy "$(cat "${SMOKE_SNAPSHOT_FILE}")"
 }
 
 assert_pre_failover_setup() {
-  local retry_json
-  retry_json="$(curl --fail --silent "${GATEWAY_URL}/internal/v1/retry-status")"
+  local retry_json status
+  retry_json="$(smoke_curl --fail "${GATEWAY_URL}/internal/v1/retry-status")"
   assert_nonblank_gateway_id "${retry_json}"
 
-  local status
+  set_smoke_step "Priming retry budget with setup GET"
   status="$(gateway_get "container-prime-budget")"
+  log_step "Setup GET completed with HTTP ${status}"
   if [[ "${status}" != "200" ]]; then
     echo "Setup request failed with HTTP ${status}" >&2
-    print_retry_diagnostics "${GATEWAY_URL}" "${CONTROL_PLANE_URL}" "${API_ID}"
     exit 1
   fi
 
-  retry_json="$(curl --fail --silent "${GATEWAY_URL}/internal/v1/retry-status")"
+  retry_json="$(smoke_curl --fail "${GATEWAY_URL}/internal/v1/retry-status")"
   assert_nonblank_gateway_id "${retry_json}"
   assert_retry_budget_entry "${retry_json}" "${API_ID}" "${ROUTE_ID}" "${RETRY_POLICY_ID}"
 }
 
 drive_retry_failover() {
   local attempt status service health_json parsed v1_failures
+  set_smoke_step "Sending failover GET"
   for attempt in $(seq 1 "${RETRY_DRIVE_MAX}"); do
     status="$(gateway_get "container-retry-${attempt}")"
+    log_step "Failover GET attempt ${attempt} completed with HTTP ${status}"
     if [[ "${status}" == "200" ]]; then
       service="$(service_from_body)"
       if [[ "${service}" == "upstream-v2" ]]; then
-        health_json="$(curl --fail --silent "${GATEWAY_URL}/internal/v1/upstream-health")"
+        health_json="$(smoke_curl --fail "${GATEWAY_URL}/internal/v1/upstream-health")"
         parsed="$(read_parsed_target_health "${health_json}" "${TARGET_V1_ID}")"
         IFS=$'\t' read -r _ v1_failures _ _ <<<"${parsed}"
         if [[ "${v1_failures:-0}" -ge 1 ]]; then
-          echo "Retry failover verified: attempt=${attempt} service=${service} v1_failures=${v1_failures}"
+          log_step "Failover GET verified on attempt ${attempt}; service=${service}; v1_failures=${v1_failures}"
           return 0
         fi
       fi
     elif [[ "${status}" != "502" && "${status}" != "504" ]]; then
       echo "Unexpected HTTP ${status} during retry drive (attempt ${attempt})" >&2
-      print_retry_diagnostics "${GATEWAY_URL}" "${CONTROL_PLANE_URL}" "${API_ID}"
       exit 1
     fi
     sleep 1
   done
   echo "Retry failover not demonstrated within ${RETRY_DRIVE_MAX} attempts" >&2
-  print_retry_diagnostics "${GATEWAY_URL}" "${CONTROL_PLANE_URL}" "${API_ID}"
   exit 1
 }
 
@@ -252,7 +278,7 @@ main() {
   SMOKE_HEALTH_FILE="$(mktemp "${TMPDIR:-/tmp}/container-smoke-health.XXXXXX")"
   SMOKE_RETRY_FILE="$(mktemp "${TMPDIR:-/tmp}/container-smoke-retry.XXXXXX")"
   SMOKE_SNAPSHOT_FILE="$(mktemp "${TMPDIR:-/tmp}/container-smoke-snapshot.XXXXXX")"
-  trap cleanup EXIT
+  trap dump_diagnostics EXIT
 
   cleanup
 
@@ -264,6 +290,7 @@ main() {
     docker build -t "${MOCK_UPSTREAM_IMAGE}" tests/mock-upstream
   fi
 
+  set_smoke_step "Starting control-plane stack"
   docker network create "${SMOKE_NETWORK}"
 
   docker run -d --name autoapi-postgres --network "${SMOKE_NETWORK}" \
@@ -305,6 +332,7 @@ main() {
     "${CANDIDATE_IMAGE}"
 
   wait_until "control-plane ready" 30 2 wait_http_ready "${CONTROL_PLANE_URL}"
+  log_step "Control plane ready"
 
   bootstrap_phase6_config
 
@@ -325,33 +353,45 @@ main() {
 
   wait_until "gateway ready" 45 2 wait_http_ready "${GATEWAY_URL}"
   wait_convergence "${API_ID}"
+  log_step "Gateway ready"
 
-  echo "== Verifying baseline proxy =="
-  curl --fail --silent -H 'Host: api.autoapi.local' "${GATEWAY_URL}/v1/orders/baseline" | grep -q path
+  set_smoke_step "Verifying baseline proxy"
+  smoke_curl --fail -H 'Host: api.autoapi.local' "${GATEWAY_URL}/v1/orders/baseline" | grep -q path
 
-  echo "== Verifying retry policy activation =="
+  set_smoke_step "Verifying retry policy activation"
   assert_pre_failover_setup
 
-  echo "== Stopping upstream-v1 =="
+  set_smoke_step "Stopping upstream-v1"
   docker stop upstream-v1
 
-  echo "== Driving GET retry failover =="
   drive_retry_failover
+  log_step "Failover GET completed"
 
-  echo "== POST without Idempotency-Key must not retry (GET-only retry policy) =="
-  post_status="$(curl --silent -o "${SMOKE_BODY_FILE}" -w '%{http_code}' \
-    -H 'Host: api.autoapi.local' \
-    -H 'Content-Type: application/json' \
-    -d '{"smoke":true}' \
-    "${GATEWAY_URL}/v1/orders/container-post-no-key" || true)"
+  set_smoke_step "Testing unsafe POST without idempotency key"
+  local post_status curl_exit
+  set +e
+  post_status="$(
+    smoke_curl \
+      -o "${SMOKE_BODY_FILE}" \
+      -w '%{http_code}' \
+      -H 'Host: api.autoapi.local' \
+      -H 'Content-Type: application/json' \
+      -d '{"smoke":true}' \
+      "${GATEWAY_URL}/v1/orders/container-post-no-key"
+  )"
+  curl_exit=$?
+  set -e
+  if [[ ${curl_exit} -ne 0 ]]; then
+    report_curl_failure "POST without Idempotency-Key" "${curl_exit}" "${post_status}"
+    exit "${curl_exit}"
+  fi
   if [[ "${post_status}" != "502" && "${post_status}" != "504" ]]; then
     echo "Expected POST without Idempotency-Key to fail without retry, got HTTP ${post_status}" >&2
-    print_retry_diagnostics "${GATEWAY_URL}" "${CONTROL_PLANE_URL}" "${API_ID}"
     exit 1
   fi
 
-  curl --fail --silent "${GATEWAY_URL}/internal/v1/upstream-health" | grep -q HEALTHY
-  echo "Container candidate Phase 6 smoke passed"
+  smoke_curl --fail "${GATEWAY_URL}/internal/v1/upstream-health" | grep -q HEALTHY
+  log_step "Container candidate Phase 6 smoke passed"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

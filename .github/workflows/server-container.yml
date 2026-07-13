@@ -121,9 +121,12 @@ jobs:
           docker network rm autoapi-smoke || true
 
       - name: Smoke test built image
+        timeout-minutes: 20
         run: |
-          chmod +x scripts/smoke-container-candidate.sh scripts/smoke-wait-lib.sh scripts/smoke-retry-lib.sh scripts/smoke-phase5-parser-lib.sh
-          CANDIDATE_IMAGE=autoapi-server:ci MOCK_UPSTREAM_IMAGE=mock-upstream:ci ./scripts/smoke-container-candidate.sh
+          chmod +x scripts/smoke-container-candidate.sh scripts/smoke-wait-lib.sh scripts/smoke-retry-lib.sh scripts/smoke-curl-lib.sh scripts/smoke-phase5-parser-lib.sh
+          timeout --signal=TERM --kill-after=15s 15m \
+            env CANDIDATE_IMAGE=autoapi-server:ci MOCK_UPSTREAM_IMAGE=mock-upstream:ci \
+            ./scripts/smoke-container-candidate.sh
 
       - name: Smoke environment cleanup
         if: always()

@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 # Retry-status and snapshot assertions for Phase 6 smoke scripts.
 
+# shellcheck source=scripts/smoke-curl-lib.sh
+if [[ -z "${SMOKE_CURL_LIB_LOADED:-}" ]]; then
+  SMOKE_CURL_LIB_LOADED=1
+  _SMOKE_RETRY_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  # shellcheck source=scripts/smoke-curl-lib.sh
+  source "${_SMOKE_RETRY_LIB_DIR}/smoke-curl-lib.sh"
+fi
+
 assert_nonblank_gateway_id() {
   local retry_json="$1"
   python3 - "${retry_json}" <<'PY'
@@ -71,19 +79,56 @@ if len(targets) < 2:
 PY
 }
 
-print_retry_diagnostics() {
-  local gateway_url="$1"
-  local control_plane_url="$2"
+dump_compose_smoke_diagnostics() {
+  local gateway_url="${1:-http://localhost:8080}"
+  local control_plane_url="${2:-http://localhost:8081}"
   local api_id="${3:-}"
-  echo "== Retry smoke diagnostics ==" >&2
-  curl --silent "${gateway_url}/internal/v1/retry-status" >&2 || true
+
+  log_step "Collecting compose smoke diagnostics"
+  docker compose ps >&2 || true
+  docker compose logs --no-color --tail=200 \
+    gateway-a control-plane upstream-v1 upstream-v2 postgres redis \
+    >&2 || true
+  smoke_curl "${gateway_url}/internal/v1/retry-status" >&2 || true
   echo >&2
-  curl --silent "${gateway_url}/internal/v1/upstream-health" >&2 || true
+  smoke_curl "${gateway_url}/internal/v1/upstream-health" >&2 || true
   echo >&2
   if [[ -n "${api_id}" ]]; then
-    curl --silent "${control_plane_url}/api/v1/apis/${api_id}/convergence" >&2 || true
+    smoke_curl "${control_plane_url}/api/v1/apis/${api_id}/convergence" >&2 || true
     echo >&2
   fi
+}
+
+print_retry_diagnostics() {
+  dump_compose_smoke_diagnostics "$@"
+}
+
+dump_container_smoke_diagnostics() {
+  local gateway_url="${1:-http://localhost:18081}"
+  local control_plane_url="${2:-http://localhost:18080}"
+  local api_id="${3:-}"
+
+  log_step "Collecting container smoke diagnostics"
   docker ps -a --filter "network=${SMOKE_NETWORK:-autoapi-smoke}" >&2 || true
-  docker logs autoapi-gateway --tail 40 >&2 || true
+  docker logs autoapi-gateway --tail=200 >&2 || true
+  docker logs autoapi-control-plane --tail=100 >&2 || true
+  smoke_curl "${gateway_url}/internal/v1/retry-status" >&2 || true
+  echo >&2
+  smoke_curl "${gateway_url}/internal/v1/upstream-health" >&2 || true
+  echo >&2
+  if [[ -n "${api_id}" ]]; then
+    smoke_curl "${control_plane_url}/api/v1/apis/${api_id}/convergence" >&2 || true
+    echo >&2
+  fi
+}
+
+collect_gateway_thread_dump() {
+  local container_name="${1:-autoapi-gateway}"
+  local gateway_pid
+  gateway_pid="$(docker inspect --format '{{.State.Pid}}' "${container_name}" 2>/dev/null || echo 0)"
+  if [[ -n "${gateway_pid}" && "${gateway_pid}" != "0" ]]; then
+    log_step "Sending SIGQUIT to ${container_name} for thread dump"
+    docker kill --signal=QUIT "${container_name}" >/dev/null 2>&1 || true
+    docker logs "${container_name}" --tail=200 >&2 || true
+  fi
 }

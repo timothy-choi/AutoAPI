@@ -11,7 +11,9 @@ import com.autoapi.runtime.AutoApiRole;
 import com.autoapi.runtime.ConditionalOnAutoApiRole;
 import com.autoapi.web.ErrorResponseWriter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.netty.channel.ChannelOption;
 import java.time.Clock;
+import java.time.Duration;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -37,10 +39,14 @@ public class GatewayRetryAutoConfiguration {
       ObjectProvider<com.autoapi.gateway.health.TargetHealthRegistry> healthRegistryProvider,
       ObjectProvider<com.autoapi.gateway.health.GatewayUpstreamHealthMetrics> healthMetricsProvider,
       GatewayProperties gatewayProperties) {
+    Duration connectTimeout =
+        Duration.ofMillis(gatewayProperties.retry().upstreamConnectTimeoutMs());
+    HttpClient httpClient =
+        HttpClient.create()
+            .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) connectTimeout.toMillis())
+            .responseTimeout(Duration.ofSeconds(30));
     WebClient webClient =
-        WebClient.builder()
-            .clientConnector(new ReactorClientHttpConnector(HttpClient.create()))
-            .build();
+        WebClient.builder().clientConnector(new ReactorClientHttpConnector(httpClient)).build();
     String gatewayId =
         gatewayProperties.gatewayId() == null ? "unknown" : gatewayProperties.gatewayId();
     return new UpstreamAttemptExecutor(

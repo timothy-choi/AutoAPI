@@ -155,7 +155,7 @@ public class RetryingProxyExecutor {
                 return writeSuccess(exchange, success.response(), requestId);
               }
               if (result instanceof UpstreamAttemptExecutor.AttemptResult.Cancelled) {
-                return Mono.empty();
+                return completeCancelled(exchange);
               }
               UpstreamAttemptExecutor.AttemptResult.Failure failure =
                   (UpstreamAttemptExecutor.AttemptResult.Failure) result;
@@ -265,7 +265,7 @@ public class RetryingProxyExecutor {
                 return writeSuccess(exchange, success.response(), requestId);
               }
               if (result instanceof UpstreamAttemptExecutor.AttemptResult.Cancelled) {
-                return Mono.empty();
+                return completeCancelled(exchange);
               }
               UpstreamAttemptExecutor.AttemptResult.Failure failure =
                   (UpstreamAttemptExecutor.AttemptResult.Failure) result;
@@ -316,6 +316,13 @@ public class RetryingProxyExecutor {
                   attemptNumber + 1,
                   failure);
             });
+  }
+
+  private Mono<Void> completeCancelled(ServerWebExchange exchange) {
+    if (exchange.getResponse().isCommitted()) {
+      return Mono.empty();
+    }
+    return exchange.getResponse().setComplete();
   }
 
   private Mono<Void> writeSuccess(

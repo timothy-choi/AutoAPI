@@ -1,10 +1,18 @@
 #!/usr/bin/env bash
 # Bounded polling helpers for smoke scripts.
 
+# shellcheck source=scripts/smoke-curl-lib.sh
+if [[ -z "${SMOKE_CURL_LIB_LOADED:-}" ]]; then
+  SMOKE_CURL_LIB_LOADED=1
+  _SMOKE_WAIT_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  # shellcheck source=scripts/smoke-curl-lib.sh
+  source "${_SMOKE_WAIT_LIB_DIR}/smoke-curl-lib.sh"
+fi
+
 wait_until() {
   local description="$1"
   local attempts="$2"
-  local delay="$3"
+  local delay_seconds="$3"
   shift 3
 
   local attempt
@@ -12,7 +20,9 @@ wait_until() {
     if "$@"; then
       return 0
     fi
-    sleep "${delay}"
+
+    log_step "Waiting for ${description} (${attempt}/${attempts})"
+    sleep "${delay_seconds}"
   done
 
   echo "Timed out waiting for ${description} after ${attempts} attempts" >&2
@@ -21,7 +31,7 @@ wait_until() {
 
 wait_http_ready() {
   local url="$1"
-  curl --fail --silent "${url}/readyz" >/dev/null 2>&1
+  smoke_curl --fail "${url}/readyz" >/dev/null 2>&1
 }
 
 wait_container_healthy() {

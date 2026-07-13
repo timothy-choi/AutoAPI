@@ -92,13 +92,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run Phase 4 integration smoke
-        run: ./scripts/smoke-phase4.sh
+        timeout-minutes: 12
+        run: timeout --signal=TERM --kill-after=15s 10m ./scripts/smoke-phase4.sh
 
       - name: Run Phase 5 passive health smoke
-        run: ./scripts/smoke-phase5.sh
+        timeout-minutes: 12
+        run: timeout --signal=TERM --kill-after=15s 10m ./scripts/smoke-phase5.sh
 
       - name: Run Phase 6 retry smoke
-        run: ./scripts/smoke-phase6.sh
+        timeout-minutes: 18
+        run: timeout --signal=TERM --kill-after=15s 15m ./scripts/smoke-phase6.sh
 
       - name: Compose cleanup
         if: always()
