@@ -15,9 +15,10 @@ SMOKE_HEADERS_FILE=""
 SMOKE_BODY_FILE=""
 SMOKE_HEALTH_FILE=""
 SMOKE_RETRY_FILE=""
+SMOKE_SNAPSHOT_FILE=""
 
 cleanup() {
-  rm -f "${SMOKE_HEADERS_FILE}" "${SMOKE_BODY_FILE}" "${SMOKE_HEALTH_FILE}" "${SMOKE_RETRY_FILE}"
+  rm -f "${SMOKE_HEADERS_FILE}" "${SMOKE_BODY_FILE}" "${SMOKE_HEALTH_FILE}" "${SMOKE_RETRY_FILE}" "${SMOKE_SNAPSHOT_FILE}"
   if [[ "${SMOKE_SKIP_UP:-false}" != "true" ]]; then
     docker compose down -v >/dev/null 2>&1 || true
   fi
@@ -25,6 +26,10 @@ cleanup() {
 
 # shellcheck source=scripts/smoke-phase5-parser-lib.sh
 source "${ROOT}/scripts/smoke-phase5-parser-lib.sh"
+# shellcheck source=scripts/smoke-wait-lib.sh
+source "${ROOT}/scripts/smoke-wait-lib.sh"
+# shellcheck source=scripts/smoke-retry-lib.sh
+source "${ROOT}/scripts/smoke-retry-lib.sh"
 
 json_field() {
   python3 - "$1" "$2" <<'PY'
@@ -70,40 +75,54 @@ control_plane_json() {
   cat "${SMOKE_BODY_FILE}"
 }
 
-wait_ready() {
-  local url="$1"
-  local label="$2"
-  local ready=false
-  for _ in $(seq 1 45); do
-    if curl --fail --silent "${url}/readyz" >/dev/null; then
-      ready=true
-      break
-    fi
-    sleep 2
-  done
-  if [[ "${ready}" != "true" ]]; then
-    echo "${label} did not become ready" >&2
-    exit 1
-  fi
-}
-
 wait_convergence() {
   local api_id="$1"
-  local converged=false
-  local response=""
-  for _ in $(seq 1 45); do
-    response="$(curl --fail --silent "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/convergence")"
-    state="$(json_field "${response}" derivedState)"
-    if [[ "${state}" == "CONVERGED" ]]; then
-      converged=true
-      break
-    fi
-    sleep 2
-  done
-  if [[ "${converged}" != "true" ]]; then
-    echo "Convergence did not reach CONVERGED: ${response}" >&2
+  wait_until "convergence CONVERGED for API ${api_id}" 45 2 \
+    curl --fail --silent "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/convergence" \
+      | grep -q '"derivedState"[[:space:]]*:[[:space:]]*"CONVERGED"'
+}
+
+assert_pre_failover_setup() {
+  local api_id="$1"
+  local route_id="$2"
+  local retry_policy_id="$3"
+  local retry_json snapshot_json
+
+  retry_json="$(fetch_retry_status)"
+  assert_nonblank_gateway_id "${retry_json}"
+
+  snapshot_json="$(curl --fail --silent "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/versions/1")"
+  assert_published_retry_policy "${snapshot_json}"
+
+  status="$(gateway_get "phase6-prime-budget")"
+  if [[ "${status}" != "200" ]]; then
+    echo "Setup request failed with HTTP ${status}" >&2
+    print_retry_diagnostics "${GATEWAY_A_URL}" "${CONTROL_PLANE_URL}" "${api_id}"
     exit 1
   fi
+
+  retry_json="$(fetch_retry_status)"
+  assert_nonblank_gateway_id "${retry_json}"
+  assert_retry_budget_entry "${retry_json}" "${api_id}" "${route_id}" "${retry_policy_id}"
+}
+
+assert_budget_exhausted() {
+  local retry_json="$1"
+  python3 - "${retry_json}" <<'PY'
+import json
+import sys
+
+payload = json.loads(sys.argv[1])
+budgets = payload.get("budgets") or []
+if not budgets:
+    raise SystemExit("retry budget entry missing after exhaustion drive")
+for entry in budgets:
+    used = int(entry.get("retriesUsed") or 0)
+    capacity = int(entry.get("retryCapacity") or 0)
+    if capacity >= 1 and used >= capacity:
+        raise SystemExit(0)
+raise SystemExit(f"retry budget not exhausted: used={used} capacity={capacity}")
+PY
 }
 
 fetch_upstream_health() {
@@ -171,13 +190,14 @@ main() {
   SMOKE_BODY_FILE="$(mktemp "${TMPDIR:-/tmp}/smoke-phase6-body.XXXXXX")"
   SMOKE_HEALTH_FILE="$(mktemp "${TMPDIR:-/tmp}/smoke-phase6-health.XXXXXX")"
   SMOKE_RETRY_FILE="$(mktemp "${TMPDIR:-/tmp}/smoke-phase6-retry.XXXXXX")"
+  SMOKE_SNAPSHOT_FILE="$(mktemp "${TMPDIR:-/tmp}/smoke-phase6-snapshot.XXXXXX")"
   trap cleanup EXIT
 
   if [[ "${SMOKE_SKIP_UP}" != "true" ]]; then
     docker compose down -v >/dev/null 2>&1 || true
     echo "== Starting Phase 6 stack =="
     docker compose up --build -d postgres redis upstream-v1 upstream-v2 control-plane
-    wait_ready "${CONTROL_PLANE_URL}" "Control plane"
+    wait_until "Control plane ready" 45 2 wait_http_ready "${CONTROL_PLANE_URL}"
   fi
 
   echo "== Creating project, API, pool, route =="
@@ -270,7 +290,7 @@ main() {
   if [[ "${SMOKE_SKIP_UP}" != "true" ]]; then
     docker compose up --build -d gateway-a
   fi
-  wait_ready "${GATEWAY_A_URL}" "Gateway A"
+  wait_until "Gateway A ready" 45 2 wait_http_ready "${GATEWAY_A_URL}"
   wait_convergence "${api_id}"
 
   echo "== Verifying normal requests succeed =="
@@ -281,6 +301,9 @@ main() {
       exit 1
     fi
   done
+
+  echo "== Verifying retry policy activation before failover =="
+  assert_pre_failover_setup "${api_id}" "${route_id}" "${retry_policy_id}"
 
   echo "== Stopping upstream-v1 =="
   docker compose stop upstream-v1
@@ -308,8 +331,7 @@ main() {
   done
   if [[ "${retry_success}" != "true" ]]; then
     echo "GET retry failover did not succeed within ${RETRY_DRIVE_MAX} attempts" >&2
-    fetch_upstream_health >&2 || true
-    fetch_retry_status >&2 || true
+    print_retry_diagnostics "${GATEWAY_A_URL}" "${CONTROL_PLANE_URL}" "${api_id}"
     exit 1
   fi
 
@@ -345,17 +367,31 @@ main() {
     exit 1
   fi
 
-  echo "== Exhausting retry budget =="
-  budget_denied=false
+  echo "== Restarting upstream-v1 before budget exhaustion =="
+  docker compose start upstream-v1
+  wait_until "upstream-v1 running after restart" 15 2 \
+    docker compose ps --status running upstream-v1 | grep -q upstream-v1
+
+  echo "== Building retry budget capacity =="
+  for i in $(seq 1 20); do
+    status="$(gateway_get "phase6-budget-prime-${i}")"
+    if [[ "${status}" != "200" ]]; then
+      echo "Budget prime request ${i} failed with HTTP ${status}" >&2
+      exit 1
+    fi
+  done
+
+  echo "== Driving retries to exhaust budget =="
+  docker compose stop upstream-v1
   for i in $(seq 1 "${BUDGET_EXHAUST_REQUESTS}"); do
     gateway_get "phase6-budget-${i}" >/dev/null || true
   done
   retry_status="$(fetch_retry_status)"
-  echo "${retry_status}" | grep -q '"retriesUsed"' || {
-    echo "retry-status missing retriesUsed" >&2
-    exit 1
-  }
+  assert_budget_exhausted "${retry_status}"
 
+  echo "== Stopping remaining upstream to prove budget denial =="
+  docker compose stop upstream-v2
+  budget_denied=false
   for attempt in $(seq 1 15); do
     status="$(gateway_get "phase6-budget-check-${attempt}")"
     if [[ "${status}" == "502" || "${status}" == "504" ]]; then
@@ -364,15 +400,15 @@ main() {
     fi
   done
   if [[ "${budget_denied}" != "true" ]]; then
-    echo "Expected terminal 502/504 when budget exhausted or v1 still down" >&2
-    fetch_retry_status >&2
+    echo "Expected terminal 502/504 when both upstreams are down and budget exhausted" >&2
+    print_retry_diagnostics "${GATEWAY_A_URL}" "${CONTROL_PLANE_URL}" "${api_id}"
     exit 1
   fi
 
   curl --fail --silent "${GATEWAY_A_URL}/readyz" >/dev/null
 
-  echo "== Restarting upstream-v1 =="
-  docker compose start upstream-v1
+  echo "== Restarting upstreams for recovery =="
+  docker compose start upstream-v1 upstream-v2
   recovered=false
   for attempt in $(seq 1 30); do
     status="$(gateway_get "phase6-recovery-${attempt}")"

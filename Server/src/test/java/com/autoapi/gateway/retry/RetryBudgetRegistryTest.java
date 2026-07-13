@@ -59,4 +59,12 @@ class RetryBudgetRegistryTest {
     }
     assertTrue(registry.tryConsumeRetry(key, policy));
   }
+
+  @Test
+  void activeBudgetViewsEmptyUntilMatchingRequest() {
+    assertTrue(registry.activeBudgetViews().isEmpty());
+    registry.recordOriginalRequest(key, policy);
+    assertEquals(1, registry.activeBudgetViews().size());
+    assertEquals(1, registry.activeBudgetViews().getFirst().originalRequests());
+  }
 }

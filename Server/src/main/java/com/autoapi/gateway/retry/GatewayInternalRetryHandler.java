@@ -37,11 +37,11 @@ public class GatewayInternalRetryHandler {
     }
     return ServerResponse.ok()
         .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue(
-            Map.of(
-                "gatewayId",
-                gatewayProperties.gatewayId() == null ? "unknown" : gatewayProperties.gatewayId(),
-                "budgets",
-                budgets));
+        .bodyValue(Map.of("gatewayId", configuredGatewayId(gatewayProperties), "budgets", budgets));
+  }
+
+  private static String configuredGatewayId(GatewayProperties properties) {
+    String gatewayId = properties.gatewayId();
+    return gatewayId == null || gatewayId.isBlank() ? "unknown" : gatewayId;
   }
 }
