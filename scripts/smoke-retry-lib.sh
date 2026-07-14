@@ -329,6 +329,70 @@ raise SystemExit(f"retry budget entry not found for route={route_id} policy={pol
 PY
 }
 
+# Assert one budget counter changed by expected_delta between absolute values.
+# Args: field_name before_value after_value expected_delta
+assert_retry_budget_counter_delta() {
+  local field="$1"
+  local before_value="$2"
+  local after_value="$3"
+  local expected_delta="$4"
+  local actual_delta=$((after_value - before_value))
+
+  if [[ "${actual_delta}" -ne "${expected_delta}" ]]; then
+    echo "${field} delta expected ${expected_delta}, got ${actual_delta} (before=${before_value} after=${after_value})" >&2
+    return 1
+  fi
+  return 0
+}
+
+# Print counter deltas as:
+# originalRequests|retriesUsed|retryAttempts|retrySuccesses|budgetDenials
+compute_retry_budget_deltas() {
+  local before="$1"
+  local after="$2"
+  local api_id="$3"
+  local route_id="$4"
+  local policy_id="$5"
+  python3 - "${before}" "${after}" \
+    "${api_id}" "${route_id}" "${policy_id}" <<'PY'
+import json
+import sys
+
+before = json.loads(sys.argv[1])
+after = json.loads(sys.argv[2])
+api_id, route_id, policy_id = sys.argv[3:6]
+
+def counters(payload):
+    for entry in payload.get("budgets") or []:
+        if (
+            entry.get("apiId") == api_id
+            and entry.get("routeId") == route_id
+            and entry.get("policyId") == policy_id
+        ):
+            return {
+                "originalRequests": int(entry.get("originalRequests") or 0),
+                "retriesUsed": int(entry.get("retriesUsed") or 0),
+                "retryAttempts": int(entry.get("retryAttempts") or 0),
+                "retrySuccesses": int(entry.get("retrySuccesses") or 0),
+                "budgetDenials": int(entry.get("budgetDenials") or 0),
+            }
+    raise SystemExit(f"retry budget entry not found for route={route_id} policy={policy_id}")
+
+before_counts = counters(before)
+after_counts = counters(after)
+fields = (
+    "originalRequests",
+    "retriesUsed",
+    "retryAttempts",
+    "retrySuccesses",
+    "budgetDenials",
+)
+print("|".join(str(after_counts[field] - before_counts[field]) for field in fields))
+PY
+}
+
+# Allowed retry invariant: retriesUsed, retryAttempts, and retrySuccesses each +1;
+# budgetDenials unchanged. originalRequests is not asserted when expect_original_delta=-1.
 assert_retry_budget_field_deltas() {
   local before="$1"
   local after="$2"
@@ -421,6 +485,8 @@ for field, expected_delta in checks:
 PY
 }
 
+# Allowed retry invariant: per-request deltas of +1 for retriesUsed, retryAttempts, retrySuccesses.
+# Args: before_json after_json api_id route_id policy_id
 assert_retry_budget_allowed_retry_deltas() {
   local before="$1"
   local after="$2"
@@ -433,6 +499,8 @@ assert_retry_budget_allowed_retry_deltas() {
     -1 1 1 1 0
 }
 
+# Denied retry invariant: retry counters unchanged; budgetDenials +1.
+# Args: before_json after_json api_id route_id policy_id
 assert_retry_budget_denied_retry_deltas() {
   local before="$1"
   local after="$2"

@@ -184,4 +184,38 @@ if ! grep -q "Budget prime unexpectedly retried" /tmp/smoke-retry-lib-dirty-prim
 fi
 echo "PASS budget prime retry-counter increase rejected"
 
+assert_retry_budget_counter_delta "retriesUsed" 0 1 1
+echo "PASS counter delta before=0 after=1 expected=1"
+
+assert_retry_budget_counter_delta "retriesUsed" 1 2 1
+echo "PASS counter delta before=1 after=2 expected=1"
+
+assert_retry_budget_counter_delta "retriesUsed" 5 5 0
+echo "PASS counter delta before=5 after=5 expected=0"
+
+set +e
+assert_retry_budget_counter_delta "retriesUsed" 1 2 0 >/dev/null 2>&1
+wrong_delta_status=$?
+set -e
+if [[ ${wrong_delta_status} -eq 0 ]]; then
+  echo "FAIL counter delta before=1 after=2 expected=0 accepted" >&2
+  exit 1
+fi
+echo "PASS counter delta before=1 after=2 expected=0 rejected"
+
+for retry_number in 1 2 3 4 5; do
+  before_used=$((retry_number - 1))
+  after_used="${retry_number}"
+  assert_retry_budget_counter_delta "retriesUsed" "${before_used}" "${after_used}" 1
+done
+echo "PASS retry numbers 1 through 5 all use delta 1"
+
+deny_before='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":5,"retriesUsed":5,"retryCapacity":5,"retryAttempts":5,"retrySuccesses":5,"budgetDenials":0}]}'
+deny_after='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":5,"retriesUsed":5,"retryCapacity":5,"retryAttempts":5,"retrySuccesses":5,"budgetDenials":1}]}'
+delta_line="$(compute_retry_budget_deltas "${deny_before}" "${deny_after}" "${API_A}" "budget-route" "${POLICY_A}")"
+IFS='|' read -r _orig_delta used_delta attempts_delta successes_delta denials_delta <<<"${delta_line}"
+assert_eq "denied retriesUsed delta" "0" "${used_delta}"
+assert_eq "denied budgetDenials delta" "1" "${denials_delta}"
+echo "PASS denied request uses retry delta 0 and budgetDenials delta 1"
+
 echo "All retry-status helper self-tests passed"

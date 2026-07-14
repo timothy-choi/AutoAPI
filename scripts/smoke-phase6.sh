@@ -280,7 +280,10 @@ position_budget_for_v1_first_stopped() {
   local api_id="$1"
   local route_id="$2"
   local policy_id="$3"
+  local expected_used="${4:-}"
   local attempt retry_before retry_after metrics status service elapsed_sec elapsed_ms
+  local delta_line originals_delta retries_used_delta retry_attempts_delta retry_successes_delta budget_denials_delta
+  local before_used after_used
 
   for attempt in $(seq 1 "${POSITION_MAX}"); do
     retry_before="$(fetch_retry_status)"
@@ -295,12 +298,30 @@ PY
     retry_after="$(fetch_retry_status)"
 
     if [[ "${status}" == "200" && "${service}" == "upstream-v2" ]]; then
-      assert_retry_budget_field_deltas \
+      delta_line="$(compute_retry_budget_deltas \
         "${retry_before}" "${retry_after}" \
-        "${api_id}" "${route_id}" "${policy_id}" \
-        -1 0 0 0 0
-      log_step "Budget positioned for upstream-v1-first while v1 stopped (attempt ${attempt}, elapsedMs=${elapsed_ms})"
-      return 0
+        "${api_id}" "${route_id}" "${policy_id}")"
+      IFS='|' read -r originals_delta retries_used_delta retry_attempts_delta retry_successes_delta budget_denials_delta <<<"${delta_line}"
+      if [[ "${retries_used_delta}" -eq 0 && "${retry_attempts_delta}" -eq 0 && "${retry_successes_delta}" -eq 0 ]]; then
+        log_step "Budget positioned for upstream-v1-first while v1 stopped (attempt ${attempt}, elapsedMs=${elapsed_ms})"
+        return 0
+      fi
+      if [[ -n "${expected_used}" ]]; then
+        mapfile -t _before_used_line < <(
+          read_retry_budget_counters "${retry_before}" "${api_id}" "${route_id}" "${policy_id}"
+        )
+        before_used="${_before_used_line[1]}"
+        mapfile -t _after_used_line < <(
+          read_retry_budget_counters "${retry_after}" "${api_id}" "${route_id}" "${policy_id}"
+        )
+        after_used="${_after_used_line[1]}"
+        if [[ "${after_used}" -gt "${expected_used}" ]]; then
+          echo "Budget positioning consumed retry budget before denied request (used ${before_used} -> ${after_used}, expected max ${expected_used})" >&2
+          exit 1
+        fi
+      fi
+      log_step "Budget positioning attempt ${attempt}: terminal upstream-v2 with retriesUsed delta=${retries_used_delta}; continuing"
+      continue
     fi
     log_step "Budget positioning attempt ${attempt}: HTTP ${status} service=${service} (not direct v2)"
   done
@@ -309,51 +330,105 @@ PY
   exit 1
 }
 
-run_budget_allowed_retry() {
+# Allowed budget retry contract:
+#   request_number: cumulative retriesUsed expected after success (1..capacity)
+#   path_suffix: gateway proof path label
+#   expected_capacity: fixed retryCapacity for the dedicated budget policy
+# Sends one or more requests while upstream-v1 is stopped. Direct upstream-v2 hits
+# with zero retry-counter delta reposition round robin only. The qualifying allowed
+# retry must increase retriesUsed, retryAttempts, and retrySuccesses by exactly 1.
+verify_allowed_budget_retry() {
   local api_id="$1"
   local route_id="$2"
   local policy_id="$3"
-  local label="$4"
+  local request_number="$4"
   local path_suffix="$5"
   local expected_capacity="$6"
-  local retry_before retry_after metrics status service elapsed_sec elapsed_ms
+  local expected_cumulative_retries_used="${request_number}"
+  local attempt retry_before retry_after metrics status service elapsed_sec elapsed_ms
+  local delta_line originals_delta retries_used_delta retry_attempts_delta retry_successes_delta budget_denials_delta
+  local after_used after_attempts after_successes after_capacity
 
-  retry_before="$(fetch_retry_status)"
-  assert_budget_capacity_unchanged \
-    "${retry_before}" "${api_id}" "${route_id}" "${policy_id}" "${expected_capacity}"
+  for attempt in $(seq 1 "${POSITION_MAX}"); do
+    retry_before="$(fetch_retry_status)"
+    assert_budget_capacity_unchanged \
+      "${retry_before}" "${api_id}" "${route_id}" "${policy_id}" "${expected_capacity}"
 
-  metrics="$(gateway_get_budget_timed "${path_suffix}")"
-  IFS='|' read -r status elapsed_sec <<<"${metrics}"
-  service="$(service_from_body)"
-  elapsed_ms="$(python3 - "${elapsed_sec}" <<'PY'
+    metrics="$(gateway_get_budget_timed "${path_suffix}-attempt-${attempt}")"
+    IFS='|' read -r status elapsed_sec <<<"${metrics}"
+    service="$(service_from_body)"
+    elapsed_ms="$(python3 - "${elapsed_sec}" <<'PY'
 import sys
 print(int(float(sys.argv[1]) * 1000))
 PY
 )"
-  retry_after="$(fetch_retry_status)"
+    retry_after="$(fetch_retry_status)"
 
-  log_budget_retry_diagnostics \
-    "${label}" "${status}" "${service}" "${elapsed_ms}" \
-    "${retry_before}" "${retry_after}" \
-    "${api_id}" "${route_id}" "${policy_id}"
+    if [[ "${status}" != "200" || "${service}" != "upstream-v2" ]]; then
+      log_budget_retry_diagnostics \
+        "${request_number} attempt ${attempt}" "${status}" "${service}" "${elapsed_ms}" \
+        "${retry_before}" "${retry_after}" \
+        "${api_id}" "${route_id}" "${policy_id}"
+      echo "Expected allowed budget retry ${request_number} attempt ${attempt} HTTP 200 on upstream-v2, got HTTP ${status} service=${service}" >&2
+      exit 1
+    fi
 
-  if [[ "${status}" != "200" ]]; then
-    echo "Expected budget retry ${label} HTTP 200, got ${status}" >&2
-    exit 1
-  fi
-  if [[ "${service}" != "upstream-v2" ]]; then
-    echo "Expected budget retry ${label} terminal service upstream-v2, got ${service}" >&2
-    exit 1
-  fi
-  assert_retry_budget_allowed_retry_deltas \
-    "${retry_before}" "${retry_after}" \
-    "${api_id}" "${route_id}" "${policy_id}"
-  assert_budget_capacity_unchanged \
-    "${retry_after}" "${api_id}" "${route_id}" "${policy_id}" "${expected_capacity}"
-  log_step "budget test: retry ${label} allowed"
+    delta_line="$(compute_retry_budget_deltas \
+      "${retry_before}" "${retry_after}" \
+      "${api_id}" "${route_id}" "${policy_id}")"
+    IFS='|' read -r originals_delta retries_used_delta retry_attempts_delta retry_successes_delta budget_denials_delta <<<"${delta_line}"
+
+    if [[ "${retries_used_delta}" -eq 0 && "${retry_attempts_delta}" -eq 0 && "${retry_successes_delta}" -eq 0 ]]; then
+      log_step "Allowed budget retry ${request_number} positioning attempt ${attempt}: direct upstream-v2 without consuming budget"
+      continue
+    fi
+
+    log_budget_retry_diagnostics \
+      "${request_number}" "${status}" "${service}" "${elapsed_ms}" \
+      "${retry_before}" "${retry_after}" \
+      "${api_id}" "${route_id}" "${policy_id}"
+
+    assert_retry_budget_allowed_retry_deltas \
+      "${retry_before}" "${retry_after}" \
+      "${api_id}" "${route_id}" "${policy_id}"
+    assert_budget_capacity_unchanged \
+      "${retry_after}" "${api_id}" "${route_id}" "${policy_id}" "${expected_capacity}"
+
+    mapfile -t _after_counters < <(
+      read_retry_budget_counters "${retry_after}" "${api_id}" "${route_id}" "${policy_id}"
+    )
+    after_used="${_after_counters[1]}"
+    after_attempts="${_after_counters[3]}"
+    after_successes="${_after_counters[4]}"
+    after_capacity="${_after_counters[2]}"
+
+    if [[ "${after_used}" -ne "${expected_cumulative_retries_used}" ]]; then
+      echo "Allowed budget retry ${request_number}: expected cumulative retriesUsed=${expected_cumulative_retries_used}, got ${after_used}" >&2
+      exit 1
+    fi
+    if [[ "${after_attempts}" -ne "${expected_cumulative_retries_used}" || "${after_successes}" -ne "${expected_cumulative_retries_used}" ]]; then
+      echo "Allowed budget retry ${request_number}: expected cumulative retryAttempts/retrySuccesses=${expected_cumulative_retries_used}" >&2
+      exit 1
+    fi
+    if [[ "${after_capacity}" -ne "${expected_capacity}" ]]; then
+      echo "Allowed budget retry ${request_number}: retryCapacity changed to ${after_capacity}" >&2
+      exit 1
+    fi
+
+    log_step "budget test: retry ${request_number} allowed -> used ${request_number}"
+    return 0
+  done
+
+  echo "Allowed budget retry ${request_number} did not consume exactly one budget token within ${POSITION_MAX} attempts" >&2
+  exit 1
 }
 
-run_budget_denied_retry() {
+# Denied budget retry contract:
+#   request_label: diagnostic label
+#   path_suffix: gateway proof path label
+#   expected_capacity: fixed retryCapacity
+#   expected_used: cumulative retriesUsed before denial (must equal capacity)
+verify_denied_budget_retry() {
   local api_id="$1"
   local route_id="$2"
   local policy_id="$3"
@@ -574,11 +649,7 @@ demonstrate_budget_exhaustion() {
 
   for i in $(seq 1 "${BUDGET_INITIAL_CAPACITY}"); do
     set_smoke_step "Executing allowed budget retry ${i}"
-    if [[ "${i}" -gt 1 ]]; then
-      position_budget_for_v1_first_stopped \
-        "${api_id}" "${budget_route_id}" "${budget_policy_id}"
-    fi
-    run_budget_allowed_retry \
+    verify_allowed_budget_retry \
       "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
       "${i}" "phase6-budget-retry-${i}" \
       "${BUDGET_INITIAL_CAPACITY}"
@@ -586,15 +657,15 @@ demonstrate_budget_exhaustion() {
     assert_retry_budget_capacity \
       "${retry_json}" "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
       "${BUDGET_INITIAL_CAPACITY}" "${i}"
-    log_step "budget test: retry ${i} allowed -> used ${i}"
   done
 
   set_smoke_step "Positioning dedicated budget selector before denied retry"
   position_budget_for_v1_first_stopped \
-    "${api_id}" "${budget_route_id}" "${budget_policy_id}"
+    "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
+    "${BUDGET_INITIAL_CAPACITY}"
 
   set_smoke_step "Executing denied budget retry"
-  run_budget_denied_retry \
+  verify_denied_budget_retry \
     "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
     "$((BUDGET_INITIAL_CAPACITY + 1))" "phase6-budget-retry-denied" \
     "${BUDGET_INITIAL_CAPACITY}" "${BUDGET_INITIAL_CAPACITY}"
