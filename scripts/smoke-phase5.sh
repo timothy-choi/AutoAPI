@@ -84,7 +84,7 @@ print_ejection_diagnostics() {
     if ! parsed="$(read_parsed_target_health "${health_json}" "${target_id}")"; then
       return 1
     fi
-    IFS=$'\t' read -r state failures ejected_until category <<<"${parsed}"
+    IFS='|' read -r state failures ejected_until category <<<"${parsed}"
     echo "  target state=${state:-unknown} consecutiveFailures=${failures:-unknown}" >&2
     echo "  ejectedUntil=${ejected_until:-null} lastFailureCategory=${category:-null}" >&2
     echo "  internal health response:" >&2
@@ -349,7 +349,7 @@ for attempt in $(seq 1 "${EJECTION_DRIVE_MAX_ATTEMPTS}"); do
   if ! parsed_health="$(read_parsed_target_health "${health_json}" "${target_v1_id}")"; then
     exit 1
   fi
-  IFS=$'\t' read -r state failures ejected_until category <<<"${parsed_health}"
+  IFS='|' read -r state failures ejected_until category <<<"${parsed_health}"
   last_category="${category}"
 
   echo "  attempt=${attempt} status=${status} observed_502=${observed_502} target_state=${state} consecutiveFailures=${failures} lastFailureCategory=${category} ejectedUntil=${ejected_until:-null}"
@@ -372,7 +372,7 @@ if [[ "${observed_502}" -lt "${HEALTH_THRESHOLD}" ]]; then
   exit 1
 fi
 
-IFS=$'\t' read -r state failures ejected_until category <<<"$(read_parsed_target_health "${health_json}" "${target_v1_id}")"
+IFS='|' read -r state failures ejected_until category <<<"$(read_parsed_target_health "${health_json}" "${target_v1_id}")"
 if [[ "${state}" != "EJECTED" ]]; then
   echo "Expected EJECTED state after loop, got ${state}" >&2
   print_ejection_diagnostics "${attempt}" "${count_200}" "${observed_502}" "${target_v1_id}" "${health_json}"
@@ -383,8 +383,11 @@ if [[ -z "${ejected_until}" ]]; then
   print_ejection_diagnostics "${attempt}" "${count_200}" "${observed_502}" "${target_v1_id}" "${health_json}"
   exit 1
 fi
-if [[ "${category}" != "CONNECTION_REFUSED" && "${last_category}" != "CONNECTION_REFUSED" ]]; then
-  echo "Expected lastFailureCategory CONNECTION_REFUSED, got ${category}" >&2
+if ! is_qualifying_stopped_upstream_transport_category "${category}" \
+  && ! is_qualifying_stopped_upstream_transport_category "${last_category}"; then
+  echo \
+    "Expected a qualifying stopped-upstream transport category, got ${category:-<empty>} (last observed: ${last_category:-<empty>})" \
+    >&2
   print_ejection_diagnostics "${attempt}" "${count_200}" "${observed_502}" "${target_v1_id}" "${health_json}"
   exit 1
 fi
@@ -439,7 +442,7 @@ if [[ "${recovered}" != "true" ]]; then
 fi
 
 health_json="$(fetch_upstream_health)"
-IFS=$'\t' read -r state failures ejected_until category <<<"$(read_parsed_target_health "${health_json}" "${target_v1_id}")"
+IFS='|' read -r state failures ejected_until category <<<"$(read_parsed_target_health "${health_json}" "${target_v1_id}")"
 if [[ "${state}" != "HEALTHY" ]]; then
   echo "Expected upstream-v1 HEALTHY after recovery, got ${state}" >&2
   echo "${health_json}" >&2

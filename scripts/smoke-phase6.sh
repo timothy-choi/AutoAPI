@@ -375,7 +375,7 @@ main() {
       if [[ "${service}" == "upstream-v2" ]]; then
         health_json="$(fetch_upstream_health)"
         parsed="$(read_parsed_target_health "${health_json}" "${target_v1_id}")"
-        IFS=$'\t' read -r v1_state v1_failures _ _ <<<"${parsed}"
+        IFS='|' read -r v1_state v1_failures _ _ <<<"${parsed}"
         if [[ "${v1_failures:-0}" -ge 1 ]]; then
           retry_success=true
           log_step "Failover GET verified on attempt ${attempt}; upstream-v2 served; v1 failures=${v1_failures}"

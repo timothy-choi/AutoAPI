@@ -256,7 +256,7 @@ drive_retry_failover() {
       if [[ "${service}" == "upstream-v2" ]]; then
         health_json="$(smoke_curl --fail "${GATEWAY_URL}/internal/v1/upstream-health")"
         parsed="$(read_parsed_target_health "${health_json}" "${TARGET_V1_ID}")"
-        IFS=$'\t' read -r _ v1_failures _ _ <<<"${parsed}"
+        IFS='|' read -r _ v1_failures _ _ <<<"${parsed}"
         if [[ "${v1_failures:-0}" -ge 1 ]]; then
           log_step "Failover GET verified on attempt ${attempt}; service=${service}; v1_failures=${v1_failures}"
           return 0
