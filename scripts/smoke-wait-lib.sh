@@ -36,31 +36,7 @@ wait_http_ready() {
 
 resolve_compose_container_id() {
   local service="$1"
-  docker compose ps -q "${service}" 2>/dev/null
-}
-
-compose_service_health_status() {
-  local container_id="$1"
-  docker inspect \
-    --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' \
-    "${container_id}" 2>/dev/null
-}
-
-compose_service_running() {
-  local container_id="$1"
-  [[ "$(docker inspect -f '{{.State.Running}}' "${container_id}" 2>/dev/null || echo false)" == "true" ]]
-}
-
-compose_health_status_is_ready() {
-  local running="$1"
-  local health_status="$2"
-  if [[ "${running}" != "true" ]]; then
-    return 1
-  fi
-  case "${health_status}" in
-    healthy | running) return 0 ;;
-    *) return 1 ;;
-  esac
+  docker compose ps -q "${service}" 2>/dev/null | head -n1 | tr -d '\r\n[:space:]'
 }
 
 resolve_container_id() {
@@ -79,14 +55,75 @@ resolve_container_id() {
   return 1
 }
 
-compose_service_is_healthy() {
-  local service="$1"
-  local container_id health_status running
+compose_service_inspect_status() {
+  local container_id="$1"
+  docker inspect \
+    --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' \
+    "${container_id}" \
+    2>/dev/null |
+    tr -d '\r\n[:space:]'
+}
 
-  container_id="$(resolve_container_id "${service}")" || return 1
-  running="$(compose_service_running "${container_id}")"
-  health_status="$(compose_service_health_status "${container_id}")"
-  compose_health_status_is_ready "${running}" "${health_status}"
+compose_readiness_status_is_ready() {
+  local status="$1"
+  status="$(printf '%s' "${status}" | tr -d '\r\n[:space:]')"
+  case "${status}" in
+    healthy) return 0 ;;
+    running)
+      # Containers without a Docker health check expose State.Status=running when up.
+      return 0
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+# Returns observed status on stdout; exit 0 when the status string was read.
+compose_service_readiness_status() {
+  local service_name="$1"
+  local container_id status
+
+  container_id="$(resolve_container_id "${service_name}" 2>/dev/null || true)"
+  if [[ -z "${container_id}" ]]; then
+    printf 'missing'
+    return 1
+  fi
+
+  status="$(compose_service_inspect_status "${container_id}")"
+  if [[ -z "${status}" ]]; then
+    printf 'unknown'
+    return 1
+  fi
+
+  printf '%s' "${status}"
+  return 0
+}
+
+compose_service_observed_status() {
+  local service="$1"
+  local status=""
+
+  status="$(compose_service_readiness_status "${service}" 2>/dev/null || true)"
+  if [[ -z "${status}" ]]; then
+    printf 'missing'
+    return 1
+  fi
+  printf '%s' "${status}"
+  return 0
+}
+
+compose_service_is_healthy() {
+  local service_name="$1"
+  local status
+
+  if ! status="$(compose_service_readiness_status "${service_name}")"; then
+    return 1
+  fi
+
+  if compose_readiness_status_is_ready "${status}"; then
+    return 0
+  fi
+
+  return 1
 }
 
 dump_compose_service_diagnostics() {
@@ -102,7 +139,7 @@ dump_compose_service_diagnostics() {
   fi
 
   state="$(docker inspect -f '{{.State.Status}}' "${container_id}" 2>/dev/null || echo unknown)"
-  health="$(compose_service_health_status "${container_id}")"
+  health="$(compose_service_inspect_status "${container_id}")"
   echo "  container id: ${container_id}" >&2
   echo "  state: ${state}" >&2
   echo "  health: ${health}" >&2
@@ -116,11 +153,18 @@ wait_compose_service_healthy() {
   local description="${2:-${service} healthy}"
   local attempts="${3:-30}"
   local delay_seconds="${4:-1}"
+  local attempt observed
 
-  if wait_until "${description}" "${attempts}" "${delay_seconds}" compose_service_is_healthy "${service}"; then
-    return 0
-  fi
+  for attempt in $(seq 1 "${attempts}"); do
+    if compose_service_is_healthy "${service}"; then
+      return 0
+    fi
+    observed="$(compose_service_observed_status "${service}")"
+    log_step "Waiting for ${description} (${attempt}/${attempts}, observed=${observed})"
+    sleep "${delay_seconds}"
+  done
 
+  echo "Timed out waiting for ${description} after ${attempts} attempts" >&2
   dump_compose_service_diagnostics "${service}"
   return 1
 }
@@ -140,9 +184,13 @@ restart_compose_services_and_wait_healthy() {
   done
 }
 
-# Backward-compatible helper for compose services with Docker health checks.
+# Backward-compatible helper for compose services and named docker-run containers.
 wait_container_healthy() {
   local service="$1"
   local label="${2:-${service}}"
-  wait_compose_service_healthy "${service}" "${label} healthy" 30 1
+  if wait_compose_service_healthy "${service}" "${label} healthy" 30 1; then
+    log_step "${label} healthy"
+    return 0
+  fi
+  return 1
 }

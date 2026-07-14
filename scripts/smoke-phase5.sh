@@ -384,9 +384,11 @@ for i in $(seq 1 "${POST_EJECTION_REQUESTS}"); do
 done
 
 echo "== Restarting upstream-v1 and waiting for ejection expiry =="
+log_step "Restarting upstream-v1"
 docker compose start upstream-v1
 wait_container_healthy "upstream-v1" "upstream-v1"
 
+log_step "Waiting for ejection expiry"
 recovered=false
 recovery_attempts=$((EJECTION_SECONDS + 20))
 for attempt in $(seq 1 "${recovery_attempts}"); do
@@ -414,6 +416,8 @@ if [[ "${recovered}" != "true" ]]; then
   exit 1
 fi
 
+log_step "upstream-v1 selected again"
+
 health_json="$(fetch_upstream_health)"
 IFS='|' read -r state failures ejected_until category <<<"$(read_parsed_target_health "${health_json}" "${target_v1_id}")"
 if [[ "${state}" != "HEALTHY" ]]; then
@@ -421,6 +425,8 @@ if [[ "${state}" != "HEALTHY" ]]; then
   echo "${health_json}" >&2
   exit 1
 fi
+
+log_step "target state returned to HEALTHY"
 
 echo "Phase 5 passive health smoke passed"
 }
