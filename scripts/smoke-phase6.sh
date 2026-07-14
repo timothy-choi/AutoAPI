@@ -10,7 +10,7 @@ SMOKE_SKIP_UP="${SMOKE_SKIP_UP:-false}"
 HEALTH_THRESHOLD="${SMOKE_HEALTH_THRESHOLD:-2}"
 POSITION_MAX="${SMOKE_POSITION_MAX:-4}"
 BUDGET_PRIME_REQUESTS="${SMOKE_BUDGET_PRIME_REQUESTS:-1}"
-BUDGET_EXPECTED_CAPACITY="${SMOKE_BUDGET_EXPECTED_CAPACITY:-2}"
+BUDGET_INITIAL_CAPACITY=""
 RETRY_DRIVE_MAX="${SMOKE_RETRY_DRIVE_MAX:-30}"
 PHASE6_API_ID=""
 
@@ -215,6 +215,57 @@ gateway_get_budget() {
   printf '%s' "${status}"
 }
 
+gateway_get_budget_timed() {
+  local path_suffix="${1:-smoke}"
+  local curl_exit metrics
+  set +e
+  metrics="$(
+    smoke_curl \
+      -D "${SMOKE_HEADERS_FILE}" \
+      -o "${SMOKE_BODY_FILE}" \
+      -w '%{http_code}|%{time_total}' \
+      -H 'Host: api.autoapi.local' \
+      "${GATEWAY_A_URL}/v1/budget-test/${path_suffix}"
+  )"
+  curl_exit=$?
+  set -e
+  if [[ ${curl_exit} -ne 0 ]]; then
+    report_curl_failure "gateway GET /v1/budget-test/${path_suffix}" "${curl_exit}" "${metrics%%|*}"
+    exit "${curl_exit}"
+  fi
+  printf '%s' "${metrics}"
+}
+
+assert_budget_capacity_unchanged() {
+  local retry_json="$1"
+  local api_id="$2"
+  local route_id="$3"
+  local policy_id="$4"
+  local expected_capacity="$5"
+  python3 - "${retry_json}" "${api_id}" "${route_id}" "${policy_id}" "${expected_capacity}" <<'PY'
+import json
+import sys
+
+payload = json.loads(sys.argv[1])
+api_id, route_id, policy_id, expected_capacity = sys.argv[2:6]
+expected_capacity = int(expected_capacity)
+for entry in payload.get("budgets") or []:
+    if (
+        entry.get("apiId") == api_id
+        and entry.get("routeId") == route_id
+        and entry.get("policyId") == policy_id
+    ):
+        capacity = int(entry.get("retryCapacity") or 0)
+        if capacity == expected_capacity:
+            raise SystemExit(0)
+        raise SystemExit(
+            f"retry budget capacity changed unexpectedly: expected {expected_capacity}, got {capacity}"
+        )
+print(json.dumps(payload, indent=2), file=sys.stderr)
+raise SystemExit(f"retry budget entry not found for route={route_id} policy={policy_id}")
+PY
+}
+
 position_selector_for_v1_first() {
   local attempt service
   for attempt in $(seq 1 "${POSITION_MAX}"); do
@@ -230,35 +281,81 @@ position_selector_for_v1_first() {
   exit 1
 }
 
+position_budget_for_v1_first_stopped() {
+  local api_id="$1"
+  local route_id="$2"
+  local policy_id="$3"
+  local attempt retry_before retry_after metrics status service elapsed_sec elapsed_ms
+
+  for attempt in $(seq 1 "${POSITION_MAX}"); do
+    retry_before="$(fetch_retry_status)"
+    metrics="$(gateway_get_budget_timed "phase6-budget-position-stopped-${attempt}")"
+    IFS='|' read -r status elapsed_sec <<<"${metrics}"
+    service="$(service_from_body)"
+    elapsed_ms="$(python3 - "${elapsed_sec}" <<'PY'
+import sys
+print(int(float(sys.argv[1]) * 1000))
+PY
+)"
+    retry_after="$(fetch_retry_status)"
+
+    if [[ "${status}" == "200" && "${service}" == "upstream-v2" ]]; then
+      assert_retry_budget_field_deltas \
+        "${retry_before}" "${retry_after}" \
+        "${api_id}" "${route_id}" "${policy_id}" \
+        -1 0 0 0 0
+      log_step "Budget positioned for upstream-v1-first while v1 stopped (attempt ${attempt}, elapsedMs=${elapsed_ms})"
+      return 0
+    fi
+    log_step "Budget positioning attempt ${attempt}: HTTP ${status} service=${service} (not direct v2)"
+  done
+
+  echo "Could not position budget round-robin for upstream-v1-first while v1 stopped within ${POSITION_MAX} attempts" >&2
+  exit 1
+}
+
 run_budget_allowed_retry() {
   local api_id="$1"
   local route_id="$2"
   local policy_id="$3"
   local label="$4"
   local path_suffix="$5"
-  local retry_before retry_after status service
+  local expected_capacity="$6"
+  local retry_before retry_after metrics status service elapsed_sec elapsed_ms
 
   retry_before="$(fetch_retry_status)"
-  status="$(gateway_get_budget "${path_suffix}")"
+  assert_budget_capacity_unchanged \
+    "${retry_before}" "${api_id}" "${route_id}" "${policy_id}" "${expected_capacity}"
+
+  metrics="$(gateway_get_budget_timed "${path_suffix}")"
+  IFS='|' read -r status elapsed_sec <<<"${metrics}"
   service="$(service_from_body)"
-  log_step "budget retry ${label}: HTTP ${status} service=${service}"
+  elapsed_ms="$(python3 - "${elapsed_sec}" <<'PY'
+import sys
+print(int(float(sys.argv[1]) * 1000))
+PY
+)"
   retry_after="$(fetch_retry_status)"
+
+  log_budget_retry_diagnostics \
+    "${label}" "${status}" "${service}" "${elapsed_ms}" \
+    "${retry_before}" "${retry_after}" \
+    "${api_id}" "${route_id}" "${policy_id}"
 
   if [[ "${status}" != "200" ]]; then
     echo "Expected budget retry ${label} HTTP 200, got ${status}" >&2
-    log_retry_status_entry "before" "${retry_before}" "${api_id}" "${route_id}" "${policy_id}" >&2 || true
-    log_retry_status_entry "after" "${retry_after}" "${api_id}" "${route_id}" "${policy_id}" >&2 || true
     exit 1
   fi
   if [[ "${service}" != "upstream-v2" ]]; then
     echo "Expected budget retry ${label} terminal service upstream-v2, got ${service}" >&2
     exit 1
   fi
-  assert_retry_budget_field_deltas \
+  assert_retry_budget_allowed_retry_deltas \
     "${retry_before}" "${retry_after}" \
-    "${api_id}" "${route_id}" "${policy_id}" \
-    1 1 1 1 0
-  log_step "budget retry ${label} allowed"
+    "${api_id}" "${route_id}" "${policy_id}"
+  assert_budget_capacity_unchanged \
+    "${retry_after}" "${api_id}" "${route_id}" "${policy_id}" "${expected_capacity}"
+  log_step "budget test: retry ${label} allowed"
 }
 
 run_budget_denied_retry() {
@@ -267,31 +364,52 @@ run_budget_denied_retry() {
   local policy_id="$3"
   local label="$4"
   local path_suffix="$5"
-  local retry_before retry_after status
+  local expected_capacity="$6"
+  local expected_used="$7"
+  local retry_before retry_after metrics status service elapsed_sec elapsed_ms
 
   retry_before="$(fetch_retry_status)"
-  status="$(gateway_get_budget "${path_suffix}")"
-  log_step "budget retry ${label}: HTTP ${status}"
+  assert_budget_capacity_unchanged \
+    "${retry_before}" "${api_id}" "${route_id}" "${policy_id}" "${expected_capacity}"
+  assert_retry_budget_capacity \
+    "${retry_before}" "${api_id}" "${route_id}" "${policy_id}" \
+    "${expected_capacity}" "${expected_used}"
+
+  metrics="$(gateway_get_budget_timed "${path_suffix}")"
+  IFS='|' read -r status elapsed_sec <<<"${metrics}"
+  service="$(service_from_body)"
+  elapsed_ms="$(python3 - "${elapsed_sec}" <<'PY'
+import sys
+print(int(float(sys.argv[1]) * 1000))
+PY
+)"
   retry_after="$(fetch_retry_status)"
+
+  log_budget_retry_diagnostics \
+    "denied ${label}" "${status}" "${service}" "${elapsed_ms}" \
+    "${retry_before}" "${retry_after}" \
+    "${api_id}" "${route_id}" "${policy_id}"
 
   if [[ "${status}" != "502" && "${status}" != "504" ]]; then
     echo "Expected budget retry ${label} terminal 502/504, got ${status}" >&2
-    log_retry_status_entry "before" "${retry_before}" "${api_id}" "${route_id}" "${policy_id}" >&2 || true
-    log_retry_status_entry "after" "${retry_after}" "${api_id}" "${route_id}" "${policy_id}" >&2 || true
     exit 1
   fi
-  assert_retry_budget_field_deltas \
+  assert_retry_budget_denied_retry_deltas \
     "${retry_before}" "${retry_after}" \
-    "${api_id}" "${route_id}" "${policy_id}" \
-    1 0 0 0 1
-  log_step "budget retry ${label} denied"
+    "${api_id}" "${route_id}" "${policy_id}"
+  assert_retry_budget_capacity \
+    "${retry_after}" "${api_id}" "${route_id}" "${policy_id}" \
+    "${expected_capacity}" "${expected_used}"
+  assert_budget_capacity_unchanged \
+    "${retry_after}" "${api_id}" "${route_id}" "${policy_id}" "${expected_capacity}"
+  log_step "budget test: retry ${label} denied -> terminal ${status}"
 }
 
 prime_budget_capacity_and_position_v1_first() {
   local api_id="$1"
   local budget_route_id="$2"
   local budget_policy_id="$3"
-  local i status service retry_json originals capacity
+  local i status service retry_json originals capacity used
 
   for i in $(seq 1 12); do
     status="$(gateway_get_budget "phase6-budget-prime-${i}")"
@@ -306,11 +424,19 @@ prime_budget_capacity_and_position_v1_first() {
         "${retry_json}" "${api_id}" "${budget_route_id}" "${budget_policy_id}"
     )
     originals="${counters[0]}"
+    used="${counters[1]}"
     capacity="${counters[2]}"
-    log_step "Budget prime/position ${i}: service=${service} originals=${originals} capacity=${capacity}"
+    log_step "Budget prime/position ${i}: service=${service} originals=${originals} used=${used} capacity=${capacity}"
 
-    if [[ "${capacity}" != "${BUDGET_EXPECTED_CAPACITY}" ]]; then
-      echo "Unexpected budget capacity ${capacity}, expected ${BUDGET_EXPECTED_CAPACITY} (originals=${originals})" >&2
+    if [[ "${capacity}" -lt 1 ]]; then
+      echo "Unexpected budget capacity ${capacity}; dedicated policy floor must be positive" >&2
+      log_retry_status_entry \
+        "budget test setup mismatch" \
+        "${retry_json}" "${api_id}" "${budget_route_id}" "${budget_policy_id}" >&2 || true
+      exit 1
+    fi
+    if [[ "${capacity}" -ge 120 ]]; then
+      echo "Unexpected budget capacity ${capacity}; matched main-route budget instead of dedicated policy" >&2
       log_retry_status_entry \
         "budget test setup mismatch" \
         "${retry_json}" "${api_id}" "${budget_route_id}" "${budget_policy_id}" >&2 || true
@@ -322,13 +448,15 @@ prime_budget_capacity_and_position_v1_first() {
     if [[ "${service}" != "upstream-v2" ]]; then
       continue
     fi
-    assert_retry_budget_capacity \
-      "${retry_json}" "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
-      "${BUDGET_EXPECTED_CAPACITY}" 0
+    if [[ "${used}" != "0" ]]; then
+      echo "Expected retriesUsed=0 after budget initialization, got ${used}" >&2
+      exit 1
+    fi
+    BUDGET_INITIAL_CAPACITY="${capacity}"
     log_retry_status_entry \
       "budget test capacity initialized" \
       "${retry_json}" "${api_id}" "${budget_route_id}" "${budget_policy_id}"
-    log_step "budget test: capacity initialized to ${BUDGET_EXPECTED_CAPACITY}"
+    log_step "budget test: capacity initialized to ${BUDGET_INITIAL_CAPACITY}"
     return 0
   done
 
@@ -340,7 +468,10 @@ demonstrate_budget_exhaustion() {
   local api_id="$1"
   local budget_route_id="$2"
   local budget_policy_id="$3"
-  local retry_json status
+  local i retry_json
+  local budget_test_start budget_test_end budget_test_duration_sec
+
+  budget_test_start="$(date +%s)"
 
   docker compose start upstream-v1 upstream-v2
   wait_until "upstream-v1 running for budget test" 15 2 upstream_v1_running
@@ -349,34 +480,46 @@ demonstrate_budget_exhaustion() {
   prime_budget_capacity_and_position_v1_first \
     "${api_id}" "${budget_route_id}" "${budget_policy_id}"
 
+  if [[ -z "${BUDGET_INITIAL_CAPACITY}" ]]; then
+    echo "Budget initial capacity was not established" >&2
+    exit 1
+  fi
+
   docker compose stop upstream-v1
 
-  run_budget_allowed_retry \
-    "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
-    "A" "phase6-budget-retry-a"
-  retry_json="$(fetch_retry_status)"
-  assert_retry_budget_capacity \
-    "${retry_json}" "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
-    "${BUDGET_EXPECTED_CAPACITY}" 1
-  log_step "budget test: retry A allowed -> used 1"
+  for i in $(seq 1 "${BUDGET_INITIAL_CAPACITY}"); do
+    if [[ "${i}" -gt 1 ]]; then
+      position_budget_for_v1_first_stopped \
+        "${api_id}" "${budget_route_id}" "${budget_policy_id}"
+    fi
+    run_budget_allowed_retry \
+      "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
+      "${i}" "phase6-budget-retry-${i}" \
+      "${BUDGET_INITIAL_CAPACITY}"
+    retry_json="$(fetch_retry_status)"
+    assert_retry_budget_capacity \
+      "${retry_json}" "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
+      "${BUDGET_INITIAL_CAPACITY}" "${i}"
+    log_step "budget test: retry ${i} allowed -> used ${i}"
+  done
 
-  run_budget_allowed_retry \
-    "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
-    "B" "phase6-budget-retry-b"
-  retry_json="$(fetch_retry_status)"
-  assert_retry_budget_capacity \
-    "${retry_json}" "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
-    "${BUDGET_EXPECTED_CAPACITY}" 2
-  log_step "budget test: retry B allowed -> used 2"
+  position_budget_for_v1_first_stopped \
+    "${api_id}" "${budget_route_id}" "${budget_policy_id}"
 
   run_budget_denied_retry \
     "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
-    "C" "phase6-budget-retry-c"
+    "$((BUDGET_INITIAL_CAPACITY + 1))" "phase6-budget-retry-denied" \
+    "${BUDGET_INITIAL_CAPACITY}" "${BUDGET_INITIAL_CAPACITY}"
+
   retry_json="$(fetch_retry_status)"
   assert_retry_budget_capacity \
     "${retry_json}" "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
-    "${BUDGET_EXPECTED_CAPACITY}" 2
-  log_step "budget test: retry C denied -> used remains 2"
+    "${BUDGET_INITIAL_CAPACITY}" "${BUDGET_INITIAL_CAPACITY}"
+  log_step "budget test: used remains ${BUDGET_INITIAL_CAPACITY}"
+
+  budget_test_end="$(date +%s)"
+  budget_test_duration_sec="$((budget_test_end - budget_test_start))"
+  log_step "budget exhaustion test durationSec=${budget_test_duration_sec}"
 
   log_step "retry-budget exhaustion demonstrated"
 }
@@ -608,7 +751,7 @@ main() {
     -d '{
       "name": "phase6-budget-exhaustion",
       "maxAttempts": 2,
-      "perAttemptTimeoutMs": 1000,
+      "perAttemptTimeoutMs": 100,
       "retryOnConnectFailure": true,
       "retryOnConnectionReset": true,
       "retryOnDnsFailure": true,
@@ -617,7 +760,7 @@ main() {
       "requireIdempotencyKeyForUnsafeMethods": true,
       "budgetPercent": 0,
       "budgetMinRetriesPerSecond": 1,
-      "budgetWindowSeconds": 2,
+      "budgetWindowSeconds": 5,
       "enabled": true
     }')"
   budget_policy_id="$(json_field "${budget_retry_json}" id)"

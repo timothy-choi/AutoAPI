@@ -67,7 +67,8 @@ public final class RetryBudgetRegistry {
   public RetryBudgetWindow.RetryBudgetSnapshot snapshot(
       RetryBudgetKey key, RuntimeRetryPolicyConfig policy) {
     if (key == null || policy == null) {
-      return new RetryBudgetWindow.RetryBudgetSnapshot(0, 0, 0, 0, 0, 0, 0, 0);
+      return new RetryBudgetWindow.RetryBudgetSnapshot(
+          0, 0, 0, 0, 0, 0, 0, 0, java.time.Instant.EPOCH, java.time.Instant.EPOCH);
     }
     return entryFor(key, policy).window.snapshot(clock);
   }
@@ -90,7 +91,9 @@ public final class RetryBudgetRegistry {
                   snapshot.retryAttempts(),
                   snapshot.retrySuccesses(),
                   snapshot.retryFailures(),
-                  snapshot.budgetDenials());
+                  snapshot.budgetDenials(),
+                  snapshot.windowStartedAt(),
+                  snapshot.windowEndsAt());
             })
         .toList();
   }
@@ -150,5 +153,7 @@ public final class RetryBudgetRegistry {
       long retryAttempts,
       long retrySuccesses,
       long retryFailures,
-      long budgetDenials) {}
+      long budgetDenials,
+      java.time.Instant windowStartedAt,
+      java.time.Instant windowEndsAt) {}
 }

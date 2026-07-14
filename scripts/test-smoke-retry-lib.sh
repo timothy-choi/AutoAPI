@@ -136,4 +136,29 @@ if [[ ${missing_capacity_status} -eq 0 ]]; then
 fi
 echo "PASS missing policy rejected for capacity assertion"
 
+allowed_before='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":1,"retriesUsed":0,"retryCapacity":5,"retryAttempts":0,"retrySuccesses":0,"windowStartedAt":"2026-01-01T00:00:00Z","windowEndsAt":"2026-01-01T00:00:06Z"}]}'
+allowed_after='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":1,"retriesUsed":1,"retryCapacity":5,"retryAttempts":1,"retrySuccesses":1,"windowStartedAt":"2026-01-01T00:00:00Z","windowEndsAt":"2026-01-01T00:00:06Z"}]}'
+assert_retry_budget_allowed_retry_deltas \
+  "${allowed_before}" "${allowed_after}" "${API_A}" "budget-route" "${POLICY_A}"
+echo "PASS allowed retry deltas without originalRequests"
+
+rollover_before='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":1,"retriesUsed":1,"retryCapacity":5,"retryAttempts":1,"retrySuccesses":1,"windowStartedAt":"2026-01-01T00:00:00Z","windowEndsAt":"2026-01-01T00:00:06Z"}]}'
+rollover_after='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":0,"retriesUsed":0,"retryCapacity":5,"retryAttempts":0,"retrySuccesses":0,"windowStartedAt":"2026-01-01T00:00:10Z","windowEndsAt":"2026-01-01T00:00:16Z"}]}'
+set +e
+assert_retry_budget_allowed_retry_deltas \
+  "${rollover_before}" "${rollover_after}" "${API_A}" "budget-route" "${POLICY_A}" >/dev/null 2> /tmp/smoke-retry-lib-rollover.err
+rollover_status=$?
+set -e
+if [[ ${rollover_status} -eq 0 ]]; then
+  echo "FAIL window rollover accepted" >&2
+  exit 1
+fi
+echo "PASS window rollover rejected"
+
+denied_before='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":5,"retriesUsed":5,"retryCapacity":5,"retryAttempts":5,"retrySuccesses":5,"budgetDenials":0,"windowStartedAt":"2026-01-01T00:00:00Z","windowEndsAt":"2026-01-01T00:00:06Z"}]}'
+denied_after='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":5,"retriesUsed":5,"retryCapacity":5,"retryAttempts":5,"retrySuccesses":5,"budgetDenials":1,"windowStartedAt":"2026-01-01T00:00:00Z","windowEndsAt":"2026-01-01T00:00:06Z"}]}'
+assert_retry_budget_denied_retry_deltas \
+  "${denied_before}" "${denied_after}" "${API_A}" "budget-route" "${POLICY_A}"
+echo "PASS denied retry deltas"
+
 echo "All retry-status helper self-tests passed"

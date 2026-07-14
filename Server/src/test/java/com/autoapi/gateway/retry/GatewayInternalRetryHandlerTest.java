@@ -83,7 +83,11 @@ class GatewayInternalRetryHandlerTest {
         .jsonPath("$.budgets[0].retryFailures")
         .isEqualTo(0)
         .jsonPath("$.budgets[0].budgetDenials")
-        .isEqualTo(0);
+        .isEqualTo(0)
+        .jsonPath("$.budgets[0].windowStartedAt")
+        .isEqualTo("2025-12-31T23:59:51Z")
+        .jsonPath("$.budgets[0].windowEndsAt")
+        .isEqualTo("2026-01-01T00:00:01Z");
   }
 
   @Test

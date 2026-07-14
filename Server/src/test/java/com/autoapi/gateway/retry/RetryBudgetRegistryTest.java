@@ -138,4 +138,46 @@ class RetryBudgetRegistryTest {
     assertEquals(0, registry.snapshot(key, fixedFloor).retriesUsed());
     assertTrue(registry.tryConsumeRetry(key, fixedFloor));
   }
+
+  @Test
+  void zeroPercentKeepsCapacityFixedAsOriginalRequestsIncrease() {
+    RuntimeRetryPolicyConfig fixedFloor =
+        new RuntimeRetryPolicyConfig(
+            POLICY_ID, 2, 1000, true, true, true, true, List.of("GET"), true, 0, 1, 5);
+    for (int i = 0; i < 10; i++) {
+      registry.recordOriginalRequest(key, fixedFloor);
+    }
+    assertEquals(5, registry.snapshot(key, fixedFloor).retryCapacity());
+  }
+
+  @Test
+  void snapshotReportsCurrentWindowBounds() {
+    RuntimeRetryPolicyConfig fixedFloor =
+        new RuntimeRetryPolicyConfig(
+            POLICY_ID, 2, 1000, true, true, true, true, List.of("GET"), true, 0, 1, 5);
+    registry.recordOriginalRequest(key, fixedFloor);
+    long nowSecond = clock.instant().getEpochSecond();
+    var snapshot = registry.snapshot(key, fixedFloor);
+    assertEquals(Instant.ofEpochSecond(nowSecond - 4), snapshot.windowStartedAt());
+    assertEquals(Instant.ofEpochSecond(nowSecond + 1), snapshot.windowEndsAt());
+    clock.advance(java.time.Duration.ofSeconds(2));
+    nowSecond = clock.instant().getEpochSecond();
+    snapshot = registry.snapshot(key, fixedFloor);
+    assertEquals(Instant.ofEpochSecond(nowSecond - 4), snapshot.windowStartedAt());
+    assertEquals(Instant.ofEpochSecond(nowSecond + 1), snapshot.windowEndsAt());
+  }
+
+  @Test
+  void fixedFloorCapacityFiveAllowsFiveRetriesThenDeniesSixth() {
+    RuntimeRetryPolicyConfig fixedFloor =
+        new RuntimeRetryPolicyConfig(
+            POLICY_ID, 2, 1000, true, true, true, true, List.of("GET"), true, 0, 1, 5);
+    registry.recordOriginalRequest(key, fixedFloor);
+    assertEquals(5, registry.snapshot(key, fixedFloor).retryCapacity());
+    for (int i = 0; i < 5; i++) {
+      assertTrue(registry.tryConsumeRetry(key, fixedFloor));
+    }
+    assertFalse(registry.tryConsumeRetry(key, fixedFloor));
+    assertEquals(5, registry.snapshot(key, fixedFloor).retriesUsed());
+  }
 }

@@ -65,6 +65,9 @@ final class RetryBudgetWindow {
 
   RetryBudgetSnapshot snapshot(Clock clock) {
     roll(clock);
+    long nowSecond = clock.instant().getEpochSecond();
+    Instant windowStartedAt = Instant.ofEpochSecond(nowSecond - windowSeconds + 1);
+    Instant windowEndsAt = Instant.ofEpochSecond(nowSecond + 1);
     return new RetryBudgetSnapshot(
         windowSeconds,
         sum(originalRequests),
@@ -73,7 +76,9 @@ final class RetryBudgetWindow {
         retryAttempts.get(),
         retrySuccesses.get(),
         retryFailures.get(),
-        budgetDenials.get());
+        budgetDenials.get(),
+        windowStartedAt,
+        windowEndsAt);
   }
 
   long retryCapacity() {
@@ -129,5 +134,7 @@ final class RetryBudgetWindow {
       long retryAttempts,
       long retrySuccesses,
       long retryFailures,
-      long budgetDenials) {}
+      long budgetDenials,
+      java.time.Instant windowStartedAt,
+      java.time.Instant windowEndsAt) {}
 }

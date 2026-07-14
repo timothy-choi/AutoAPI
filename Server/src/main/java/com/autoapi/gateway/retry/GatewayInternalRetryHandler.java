@@ -37,6 +37,8 @@ public class GatewayInternalRetryHandler {
       entry.put("retrySuccesses", view.retrySuccesses());
       entry.put("retryFailures", view.retryFailures());
       entry.put("budgetDenials", view.budgetDenials());
+      entry.put("windowStartedAt", view.windowStartedAt().toString());
+      entry.put("windowEndsAt", view.windowEndsAt().toString());
       budgets.add(entry);
     }
     return ServerResponse.ok()

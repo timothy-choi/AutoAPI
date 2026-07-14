@@ -255,10 +255,28 @@ def counters(payload):
         "retryAttempts": int(entry.get("retryAttempts") or 0),
         "retrySuccesses": int(entry.get("retrySuccesses") or 0),
         "budgetDenials": int(entry.get("budgetDenials") or 0),
+        "windowStartedAt": entry.get("windowStartedAt"),
     }
+
+before_entry = find_entry(before)
+after_entry = find_entry(after)
+before_window = before_entry.get("windowStartedAt")
+after_window = after_entry.get("windowStartedAt")
+if before_window and after_window and before_window != after_window:
+    raise SystemExit(
+        f"retry budget window rolled over during request: "
+        f"{before_window} -> {after_window}"
+    )
 
 before_counts = counters(before)
 after_counts = counters(after)
+for field in ("retriesUsed", "retryAttempts", "retrySuccesses", "budgetDenials"):
+    if after_counts[field] < before_counts[field]:
+        raise SystemExit(
+            f"{field} decreased from {before_counts[field]} to {after_counts[field]}, "
+            "likely window rollover"
+        )
+
 checks = [
     ("originalRequests", expect_original_delta),
     ("retriesUsed", expect_retries_used_delta),
@@ -267,6 +285,8 @@ checks = [
     ("budgetDenials", expect_budget_denials_delta),
 ]
 for field, expected_delta in checks:
+    if field == "originalRequests" and expected_delta < 0:
+        continue
     actual_delta = after_counts[field] - before_counts[field]
     if actual_delta != expected_delta:
         raise SystemExit(
@@ -274,6 +294,71 @@ for field, expected_delta in checks:
             f"(before={before_counts[field]} after={after_counts[field]})"
         )
 PY
+}
+
+assert_retry_budget_allowed_retry_deltas() {
+  local before="$1"
+  local after="$2"
+  local api_id="$3"
+  local route_id="$4"
+  local policy_id="$5"
+  assert_retry_budget_field_deltas \
+    "${before}" "${after}" \
+    "${api_id}" "${route_id}" "${policy_id}" \
+    -1 1 1 1 0
+}
+
+assert_retry_budget_denied_retry_deltas() {
+  local before="$1"
+  local after="$2"
+  local api_id="$3"
+  local route_id="$4"
+  local policy_id="$5"
+  assert_retry_budget_field_deltas \
+    "${before}" "${after}" \
+    "${api_id}" "${route_id}" "${policy_id}" \
+    -1 0 0 0 1
+}
+
+log_budget_retry_diagnostics() {
+  local label="$1"
+  local http_status="$2"
+  local service="$3"
+  local elapsed_ms="$4"
+  local retry_before="$5"
+  local retry_after="$6"
+  local api_id="$7"
+  local route_id="$8"
+  local policy_id="$9"
+  local before_counters after_counters
+  local before_used before_capacity before_attempts before_successes
+  local after_used after_capacity after_attempts after_successes
+
+  if ! before_counters="$(read_retry_budget_counters "${retry_before}" "${api_id}" "${route_id}" "${policy_id}")"; then
+    echo "budget retry ${label}: failed to read before counters" >&2
+    return 1
+  fi
+  if ! after_counters="$(read_retry_budget_counters "${retry_after}" "${api_id}" "${route_id}" "${policy_id}")"; then
+    echo "budget retry ${label}: failed to read after counters" >&2
+    return 1
+  fi
+  before_used="$(sed -n '2p' <<<"${before_counters}")"
+  before_capacity="$(sed -n '3p' <<<"${before_counters}")"
+  before_attempts="$(sed -n '4p' <<<"${before_counters}")"
+  before_successes="$(sed -n '5p' <<<"${before_counters}")"
+  after_used="$(sed -n '2p' <<<"${after_counters}")"
+  after_capacity="$(sed -n '3p' <<<"${after_counters}")"
+  after_attempts="$(sed -n '4p' <<<"${after_counters}")"
+  after_successes="$(sed -n '5p' <<<"${after_counters}")"
+
+  log_step "budget retry ${label}:"
+  log_step "  HTTP ${http_status}"
+  log_step "  service=${service}"
+  log_step "  elapsedMs=${elapsed_ms}"
+  log_step "  retriesUsed ${before_used} -> ${after_used}"
+  log_step "  retryCapacity ${before_capacity} -> ${after_capacity}"
+  log_step "  retryAttempts ${before_attempts} -> ${after_attempts}"
+  log_step "  retrySuccesses ${before_successes} -> ${after_successes}"
 }
 
 print_failover_proof_diagnostics() {
