@@ -202,7 +202,7 @@ bootstrap_phase6_config() {
       "requireIdempotencyKeyForUnsafeMethods": true,
       "budgetPercent": 100,
       "budgetMinRetriesPerSecond": 10,
-      "budgetWindowSeconds": 10,
+      "budgetWindowSeconds": 60,
       "enabled": true
     }')"
   RETRY_POLICY_ID="$(json_field "${retry_json}" id)"
@@ -290,7 +290,7 @@ drive_retry_failover() {
   set_smoke_step "Capturing retry status before failover request"
   retry_before="$(smoke_curl --fail "${GATEWAY_URL}/internal/v1/retry-status")"
   assert_retry_budget_entry "${retry_before}" "${API_ID}" "${ROUTE_ID}" "${RETRY_POLICY_ID}"
-  log_step "Retry status before captured"
+  log_retry_status_entry "retry status before" "${retry_before}" "${API_ID}" "${ROUTE_ID}" "${RETRY_POLICY_ID}"
 
   set_smoke_step "Sending deterministic failover GET"
   set +e
@@ -325,13 +325,21 @@ drive_retry_failover() {
   fi
 
   retry_after="$(smoke_curl --fail "${GATEWAY_URL}/internal/v1/retry-status")"
-  assert_retry_counter_deltas \
+  log_retry_status_entry "retry status after" "${retry_after}" "${API_ID}" "${ROUTE_ID}" "${RETRY_POLICY_ID}"
+  if ! assert_retry_failover_budget_proof \
     "${retry_before}" \
     "${retry_after}" \
     "${API_ID}" \
     "${ROUTE_ID}" \
-    "${RETRY_POLICY_ID}" \
-    1 1 1 1
+    "${RETRY_POLICY_ID}"; then
+    print_failover_proof_diagnostics \
+      "${API_ID}" "${ROUTE_ID}" "${RETRY_POLICY_ID}" \
+      "${retry_before}" "${retry_after}" \
+      "${status}" "${service}" "${duration_ms}" \
+      "container-retry-failover" "autoapi-gateway"
+    echo "Retry budget counter deltas did not prove failover" >&2
+    exit 1
+  fi
   log_step "Retry counter deltas verified (originalRequests+1 retriesUsed+1 retryAttempts+1 retrySuccesses+1)"
 
   health_json="$(smoke_curl --fail "${GATEWAY_URL}/internal/v1/upstream-health")"

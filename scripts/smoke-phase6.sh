@@ -8,8 +8,9 @@ CONTROL_PLANE_URL="${CONTROL_PLANE_URL:-http://localhost:8081}"
 GATEWAY_A_URL="${GATEWAY_A_URL:-http://localhost:8080}"
 SMOKE_SKIP_UP="${SMOKE_SKIP_UP:-false}"
 HEALTH_THRESHOLD="${SMOKE_HEALTH_THRESHOLD:-2}"
-RETRY_DRIVE_MAX="${SMOKE_RETRY_DRIVE_MAX:-30}"
+POSITION_MAX="${SMOKE_POSITION_MAX:-4}"
 BUDGET_EXHAUST_REQUESTS="${SMOKE_BUDGET_EXHAUST_REQUESTS:-40}"
+RETRY_DRIVE_MAX="${SMOKE_RETRY_DRIVE_MAX:-30}"
 PHASE6_API_ID=""
 
 SMOKE_HEADERS_FILE=""
@@ -211,6 +212,100 @@ gateway_get() {
   printf '%s' "${status}"
 }
 
+position_selector_for_v1_first() {
+  local attempt service
+  for attempt in $(seq 1 "${POSITION_MAX}"); do
+    gateway_get "phase6-position-${attempt}" >/dev/null
+    service="$(service_from_body)"
+    log_step "Positioning request ${attempt} completed on ${service}"
+    if [[ "${service}" == "upstream-v2" ]]; then
+      log_step "Round-robin positioned: next selection should target upstream-v1 first"
+      return 0
+    fi
+  done
+  echo "Could not position round-robin for upstream-v1-first within ${POSITION_MAX} attempts" >&2
+  exit 1
+}
+
+demonstrate_get_retry_failover() {
+  local api_id="$1"
+  local route_id="$2"
+  local policy_id="$3"
+  local run_id="$4"
+  local proof_path="phase6-failover-proof-${run_id}"
+  local retry_before retry_after status service metrics duration_sec duration_ms curl_exit
+
+  retry_before="$(fetch_retry_status)"
+  assert_retry_budget_entry "${retry_before}" "${api_id}" "${route_id}" "${policy_id}"
+  log_retry_status_entry "retry status before" "${retry_before}" "${api_id}" "${route_id}" "${policy_id}"
+
+  set_smoke_step "Sending failover proof GET"
+  set +e
+  metrics="$(
+    smoke_curl \
+      -D "${SMOKE_HEADERS_FILE}" \
+      -o "${SMOKE_BODY_FILE}" \
+      -w '%{http_code}|%{time_total}' \
+      -H 'Host: api.autoapi.local' \
+      "${GATEWAY_A_URL}/v1/orders/${proof_path}"
+  )"
+  curl_exit=$?
+  set -e
+  if [[ ${curl_exit} -ne 0 ]]; then
+    report_curl_failure "failover GET /v1/orders/${proof_path}" "${curl_exit}" "${metrics%%|*}"
+    exit "${curl_exit}"
+  fi
+  IFS='|' read -r status duration_sec <<<"${metrics}"
+  service="$(service_from_body)"
+  duration_ms="$(python3 - "${duration_sec}" <<'PY'
+import sys
+print(int(float(sys.argv[1]) * 1000))
+PY
+)"
+
+  log_step "failover proof request: HTTP ${status} service=${service} elapsedMs=${duration_ms}"
+
+  retry_after="$(fetch_retry_status)"
+  log_retry_status_entry "retry status after" "${retry_after}" "${api_id}" "${route_id}" "${policy_id}"
+
+  if [[ "${status}" != "200" ]]; then
+    print_failover_proof_diagnostics \
+      "${api_id}" "${route_id}" "${policy_id}" \
+      "${retry_before}" "${retry_after}" \
+      "${status}" "${service}" "${duration_ms}" \
+      "${proof_path}" "gateway-a"
+    echo "Expected failover proof HTTP 200, got ${status}" >&2
+    exit 1
+  fi
+  if [[ "${service}" != "upstream-v2" ]]; then
+    print_failover_proof_diagnostics \
+      "${api_id}" "${route_id}" "${policy_id}" \
+      "${retry_before}" "${retry_after}" \
+      "${status}" "${service}" "${duration_ms}" \
+      "${proof_path}" "gateway-a"
+    echo "Expected terminal service upstream-v2, got ${service}" >&2
+    exit 1
+  fi
+
+  if ! assert_retry_failover_budget_proof \
+    "${retry_before}" "${retry_after}" \
+    "${api_id}" "${route_id}" "${policy_id}"; then
+    print_failover_proof_diagnostics \
+      "${api_id}" "${route_id}" "${policy_id}" \
+      "${retry_before}" "${retry_after}" \
+      "${status}" "${service}" "${duration_ms}" \
+      "${proof_path}" "gateway-a"
+    echo "Retry budget counter deltas did not prove failover" >&2
+    exit 1
+  fi
+
+  if [[ "${duration_ms}" -ge 750 ]]; then
+    log_step "Failover duration ${duration_ms}ms supports retry-after-timeout pattern"
+  fi
+
+  log_step "GET retry failover demonstrated"
+}
+
 gateway_post() {
   local path_suffix="$1"
   local idempotency_key="${2:-}"
@@ -320,7 +415,7 @@ main() {
       "requireIdempotencyKeyForUnsafeMethods": true,
       "budgetPercent": 50,
       "budgetMinRetriesPerSecond": 2,
-      "budgetWindowSeconds": 10,
+      "budgetWindowSeconds": 60,
       "enabled": true
     }')"
   retry_policy_id="$(json_field "${retry_json}" id)"
@@ -362,36 +457,13 @@ main() {
   set_smoke_step "Verifying retry policy activation before failover"
   assert_pre_failover_setup "${api_id}" "${route_id}" "${retry_policy_id}"
 
+  set_smoke_step "Positioning round-robin selector"
+  position_selector_for_v1_first
+
   set_smoke_step "Stopping upstream-v1"
   docker compose stop upstream-v1
 
-  set_smoke_step "Sending failover GET"
-  retry_success=false
-  for attempt in $(seq 1 "${RETRY_DRIVE_MAX}"); do
-    status="$(gateway_get "phase6-retry-get-${attempt}")"
-    log_step "Failover GET attempt ${attempt} completed with HTTP ${status}"
-    if [[ "${status}" == "200" ]]; then
-      service="$(service_from_body)"
-      if [[ "${service}" == "upstream-v2" ]]; then
-        health_json="$(fetch_upstream_health)"
-        parsed="$(read_parsed_target_health "${health_json}" "${target_v1_id}")"
-        IFS='|' read -r v1_state v1_failures _ _ <<<"${parsed}"
-        if [[ "${v1_failures:-0}" -ge 1 ]]; then
-          retry_success=true
-          log_step "Failover GET verified on attempt ${attempt}; upstream-v2 served; v1 failures=${v1_failures}"
-          break
-        fi
-      fi
-    elif [[ "${status}" != "502" && "${status}" != "504" ]]; then
-      echo "Unexpected HTTP ${status} during GET retry drive" >&2
-      exit 1
-    fi
-  done
-  if [[ "${retry_success}" != "true" ]]; then
-    echo "GET retry failover did not succeed within ${RETRY_DRIVE_MAX} attempts" >&2
-    exit 1
-  fi
-  log_step "Failover GET completed"
+  demonstrate_get_retry_failover "${api_id}" "${route_id}" "${retry_policy_id}" "$(date +%s)"
 
   set_smoke_step "Testing unsafe POST without idempotency key"
   post_no_key_502=false

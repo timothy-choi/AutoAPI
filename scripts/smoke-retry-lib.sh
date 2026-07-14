@@ -80,8 +80,16 @@ for entry in payload.get("budgets") or []:
         ]
         print("|".join(str(value) for value in fields))
         raise SystemExit(0)
-raise SystemExit("retry budget entry not found for counter extraction")
+raise SystemExit(2)
 PY
+}
+
+parse_retry_status_entry() {
+  local json="$1"
+  local api_id="$2"
+  local route_id="$3"
+  local policy_id="$4"
+  extract_retry_budget_counters "${json}" "${api_id}" "${route_id}" "${policy_id}"
 }
 
 read_retry_budget_counters() {
@@ -90,8 +98,18 @@ read_retry_budget_counters() {
   local route_id="$3"
   local policy_id="$4"
   local parsed=""
-  if ! parsed="$(extract_retry_budget_counters "${retry_json}" "${api_id}" "${route_id}" "${policy_id}")"; then
-    echo "Failed to extract retry budget counters" >&2
+  local parse_status=0
+  set +e
+  parsed="$(parse_retry_status_entry "${retry_json}" "${api_id}" "${route_id}" "${policy_id}")"
+  parse_status=$?
+  set -e
+  if [[ ${parse_status} -eq 2 ]]; then
+    echo "retry budget entry not found for route=${route_id} policy=${policy_id}" >&2
+    printf '%s\n' "${retry_json}" >&2
+    return 1
+  fi
+  if [[ ${parse_status} -ne 0 ]]; then
+    echo "Failed to parse retry budget counters" >&2
     printf '%s\n' "${retry_json}" >&2
     return 1
   fi
@@ -112,6 +130,77 @@ read_retry_budget_counters() {
     "${retry_successes}" \
     "${retry_failures}" \
     "${budget_denials}"
+}
+
+log_retry_status_entry() {
+  local label="$1"
+  local retry_json="$2"
+  local api_id="$3"
+  local route_id="$4"
+  local policy_id="$5"
+  local counters=""
+  if ! counters="$(read_retry_budget_counters "${retry_json}" "${api_id}" "${route_id}" "${policy_id}")"; then
+    echo "${label}: failed to read retry-status entry" >&2
+    return 1
+  fi
+  local original_requests retries_used retry_capacity retry_attempts retry_successes retry_failures budget_denials
+  original_requests="$(sed -n '1p' <<<"${counters}")"
+  retries_used="$(sed -n '2p' <<<"${counters}")"
+  retry_capacity="$(sed -n '3p' <<<"${counters}")"
+  retry_attempts="$(sed -n '4p' <<<"${counters}")"
+  retry_successes="$(sed -n '5p' <<<"${counters}")"
+  retry_failures="$(sed -n '6p' <<<"${counters}")"
+  budget_denials="$(sed -n '7p' <<<"${counters}")"
+  log_step "${label}: originalRequests=${original_requests} retriesUsed=${retries_used} retryCapacity=${retry_capacity} retryAttempts=${retry_attempts} retrySuccesses=${retry_successes}"
+}
+
+assert_retry_failover_budget_proof() {
+  local before="$1"
+  local after="$2"
+  local api_id="$3"
+  local route_id="$4"
+  local policy_id="$5"
+  assert_retry_counter_deltas \
+    "${before}" \
+    "${after}" \
+    "${api_id}" \
+    "${route_id}" \
+    "${policy_id}" \
+    1 1 1 1
+}
+
+print_failover_proof_diagnostics() {
+  local api_id="$1"
+  local route_id="$2"
+  local policy_id="$3"
+  local retry_before="$4"
+  local retry_after="$5"
+  local http_status="$6"
+  local service="$7"
+  local duration_ms="$8"
+  local proof_path="$9"
+  local gateway_container="${10:-gateway-a}"
+
+  echo "Failover proof diagnostics:" >&2
+  echo "  routeId=${route_id}" >&2
+  echo "  policyId=${policy_id}" >&2
+  echo "  proofPath=${proof_path}" >&2
+  echo "  httpStatus=${http_status}" >&2
+  echo "  service=${service}" >&2
+  echo "  elapsedMs=${duration_ms}" >&2
+  echo "  retry-status before:" >&2
+  printf '%s\n' "${retry_before}" >&2
+  echo "  retry-status after:" >&2
+  printf '%s\n' "${retry_after}" >&2
+  log_retry_status_entry "before extracted" "${retry_before}" "${api_id}" "${route_id}" "${policy_id}" >&2 || true
+  log_retry_status_entry "after extracted" "${retry_after}" "${api_id}" "${route_id}" "${policy_id}" >&2 || true
+  if [[ -n "${proof_path}" ]]; then
+    echo "  matching attempt logs:" >&2
+    docker compose logs gateway-a --no-color --tail=300 2>/dev/null \
+      | grep -F "${proof_path}" >&2 || true
+    docker logs "${gateway_container}" --tail=300 2>/dev/null \
+      | grep -F "${proof_path}" >&2 || true
+  fi
 }
 
 assert_retry_counter_deltas() {
