@@ -9,7 +9,6 @@ GATEWAY_A_URL="${GATEWAY_A_URL:-http://localhost:8080}"
 SMOKE_SKIP_UP="${SMOKE_SKIP_UP:-false}"
 HEALTH_THRESHOLD="${SMOKE_HEALTH_THRESHOLD:-2}"
 POSITION_MAX="${SMOKE_POSITION_MAX:-4}"
-BUDGET_PRIME_REQUESTS="${SMOKE_BUDGET_PRIME_REQUESTS:-1}"
 BUDGET_INITIAL_CAPACITY=""
 RETRY_DRIVE_MAX="${SMOKE_RETRY_DRIVE_MAX:-30}"
 PHASE6_API_ID=""
@@ -106,10 +105,6 @@ convergence_converged() {
 wait_convergence() {
   local api_id="$1"
   wait_until "convergence CONVERGED for API ${api_id}" 45 2 convergence_converged "${api_id}"
-}
-
-upstream_v1_running() {
-  docker compose ps --status running upstream-v1 | grep -q upstream-v1
 }
 
 assert_pre_failover_setup() {
@@ -409,58 +404,139 @@ prime_budget_capacity_and_position_v1_first() {
   local api_id="$1"
   local budget_route_id="$2"
   local budget_policy_id="$3"
-  local i status service retry_json originals capacity used
 
-  for i in $(seq 1 12); do
-    status="$(gateway_get_budget "phase6-budget-prime-${i}")"
-    if [[ "${status}" != "200" ]]; then
-      echo "Budget prime/position request ${i} failed with HTTP ${status}" >&2
-      exit 1
-    fi
+  initialize_budget_entry "${api_id}" "${budget_route_id}" "${budget_policy_id}"
+  position_budget_selector_for_v1_first \
+    "${api_id}" "${budget_route_id}" "${budget_policy_id}"
+}
+
+initialize_budget_entry() {
+  local api_id="$1"
+  local budget_route_id="$2"
+  local budget_policy_id="$3"
+  local retry_before retry_after status service health_json
+  local before_originals before_used before_attempts before_successes before_capacity
+  local after_originals after_used after_attempts after_successes after_capacity
+
+  set_smoke_step "Initializing dedicated budget"
+  retry_before="$(fetch_retry_status)"
+  mapfile -t _budget_before < <(
+    read_retry_budget_counters_or_zero \
+      "${retry_before}" "${api_id}" "${budget_route_id}" "${budget_policy_id}"
+  )
+  before_originals="${_budget_before[0]}"
+  before_used="${_budget_before[1]}"
+  before_capacity="${_budget_before[2]}"
+  before_attempts="${_budget_before[3]}"
+  before_successes="${_budget_before[4]}"
+
+  status="$(gateway_get_budget "phase6-budget-init")"
+  service="$(service_from_body)"
+  retry_after="$(fetch_retry_status)"
+
+  if [[ "${status}" != "200" ]]; then
+    health_json="$(fetch_upstream_health 2>/dev/null || true)"
+    print_budget_setup_failure_diagnostics \
+      "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
+      "${retry_before}" "${retry_after}" "${status}" "${service}" "${health_json}"
+    echo "Budget initialization request failed with HTTP ${status}" >&2
+    exit 1
+  fi
+
+  set +e
+  assert_budget_direct_request_no_retry \
+    "${retry_before}" "${retry_after}" \
+    "${api_id}" "${budget_route_id}" "${budget_policy_id}"
+  local prime_status=$?
+  set -e
+  if [[ ${prime_status} -ne 0 ]]; then
+    health_json="$(fetch_upstream_health 2>/dev/null || true)"
+    print_budget_setup_failure_diagnostics \
+      "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
+      "${retry_before}" "${retry_after}" "${status}" "${service}" "${health_json}"
+    echo "Budget prime unexpectedly retried; upstream readiness or selector setup is invalid" >&2
+    exit 1
+  fi
+
+  mapfile -t _budget_after < <(
+    read_retry_budget_counters \
+      "${retry_after}" "${api_id}" "${budget_route_id}" "${budget_policy_id}"
+  )
+  after_originals="${_budget_after[0]}"
+  after_used="${_budget_after[1]}"
+  after_capacity="${_budget_after[2]}"
+  after_attempts="${_budget_after[3]}"
+  after_successes="${_budget_after[4]}"
+
+  if [[ "${after_capacity}" -lt 1 ]]; then
+    echo "Unexpected budget capacity ${after_capacity}; dedicated policy floor must be positive" >&2
+    exit 1
+  fi
+  if [[ "${after_capacity}" -ge 120 ]]; then
+    echo "Unexpected budget capacity ${after_capacity}; matched main-route budget instead of dedicated policy" >&2
+    exit 1
+  fi
+
+  BUDGET_INITIAL_CAPACITY="${after_capacity}"
+  log_step "budget initialization:"
+  log_step "  HTTP ${status}"
+  log_step "  service=${service}"
+  log_step "  originalRequests ${before_originals} -> ${after_originals}"
+  log_step "  retriesUsed ${before_used} -> ${after_used}"
+  log_step "  retryAttempts ${before_attempts} -> ${after_attempts}"
+  log_step "  retrySuccesses ${before_successes} -> ${after_successes}"
+  log_retry_status_entry \
+    "budget test capacity initialized" \
+    "${retry_after}" "${api_id}" "${budget_route_id}" "${budget_policy_id}"
+  log_step "budget test: capacity initialized to ${BUDGET_INITIAL_CAPACITY}"
+}
+
+position_budget_selector_for_v1_first() {
+  local api_id="$1"
+  local budget_route_id="$2"
+  local budget_policy_id="$3"
+  local attempt retry_before retry_after status service metrics health_json
+
+  set_smoke_step "Positioning dedicated budget selector"
+  for attempt in $(seq 1 "${POSITION_MAX}"); do
+    retry_before="$(fetch_retry_status)"
+    metrics="$(gateway_get_budget_timed "phase6-budget-position-${attempt}")"
+    IFS='|' read -r status _elapsed <<<"${metrics}"
     service="$(service_from_body)"
-    retry_json="$(fetch_retry_status)"
-    mapfile -t counters < <(
-      read_retry_budget_counters \
-        "${retry_json}" "${api_id}" "${budget_route_id}" "${budget_policy_id}"
-    )
-    originals="${counters[0]}"
-    used="${counters[1]}"
-    capacity="${counters[2]}"
-    log_step "Budget prime/position ${i}: service=${service} originals=${originals} used=${used} capacity=${capacity}"
+    retry_after="$(fetch_retry_status)"
 
-    if [[ "${capacity}" -lt 1 ]]; then
-      echo "Unexpected budget capacity ${capacity}; dedicated policy floor must be positive" >&2
-      log_retry_status_entry \
-        "budget test setup mismatch" \
-        "${retry_json}" "${api_id}" "${budget_route_id}" "${budget_policy_id}" >&2 || true
+    if [[ "${status}" != "200" ]]; then
+      health_json="$(fetch_upstream_health 2>/dev/null || true)"
+      print_budget_setup_failure_diagnostics \
+        "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
+        "${retry_before}" "${retry_after}" "${status}" "${service}" "${health_json}"
+      echo "Budget positioning request ${attempt} failed with HTTP ${status}" >&2
       exit 1
     fi
-    if [[ "${capacity}" -ge 120 ]]; then
-      echo "Unexpected budget capacity ${capacity}; matched main-route budget instead of dedicated policy" >&2
-      log_retry_status_entry \
-        "budget test setup mismatch" \
-        "${retry_json}" "${api_id}" "${budget_route_id}" "${budget_policy_id}" >&2 || true
+
+    set +e
+    assert_budget_direct_request_no_retry \
+      "${retry_before}" "${retry_after}" \
+      "${api_id}" "${budget_route_id}" "${budget_policy_id}"
+    local position_status=$?
+    set -e
+    if [[ ${position_status} -ne 0 ]]; then
+      health_json="$(fetch_upstream_health 2>/dev/null || true)"
+      print_budget_setup_failure_diagnostics \
+        "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
+        "${retry_before}" "${retry_after}" "${status}" "${service}" "${health_json}"
+      echo "Budget positioning request ${attempt} unexpectedly retried" >&2
       exit 1
     fi
-    if [[ "${originals}" -lt "${BUDGET_PRIME_REQUESTS}" ]]; then
-      continue
+
+    log_step "Budget positioning request ${attempt} completed on ${service}"
+    if [[ "${service}" == "upstream-v2" ]]; then
+      log_step "Budget round-robin positioned: next selection should target upstream-v1 first"
+      return 0
     fi
-    if [[ "${service}" != "upstream-v2" ]]; then
-      continue
-    fi
-    if [[ "${used}" != "0" ]]; then
-      echo "Expected retriesUsed=0 after budget initialization, got ${used}" >&2
-      exit 1
-    fi
-    BUDGET_INITIAL_CAPACITY="${capacity}"
-    log_retry_status_entry \
-      "budget test capacity initialized" \
-      "${retry_json}" "${api_id}" "${budget_route_id}" "${budget_policy_id}"
-    log_step "budget test: capacity initialized to ${BUDGET_INITIAL_CAPACITY}"
-    return 0
   done
 
-  echo "Failed to prime ${BUDGET_PRIME_REQUESTS} originals and position for upstream-v1-first within 12 attempts" >&2
+  echo "Could not position budget round-robin for upstream-v1-first within ${POSITION_MAX} attempts" >&2
   exit 1
 }
 
@@ -473,10 +549,18 @@ demonstrate_budget_exhaustion() {
 
   budget_test_start="$(date +%s)"
 
+  set_smoke_step "Restarting upstream-v1 for budget initialization"
   docker compose start upstream-v1 upstream-v2
-  wait_until "upstream-v1 running for budget test" 15 2 upstream_v1_running
 
-  set_smoke_step "Priming dedicated budget-test capacity"
+  set_smoke_step "Waiting for upstream-v1 health"
+  if ! wait_compose_service_healthy "upstream-v1" "upstream-v1 healthy after restart" 30 1; then
+    exit 1
+  fi
+  if ! wait_compose_service_healthy "upstream-v2" "upstream-v2 healthy for budget initialization" 30 1; then
+    exit 1
+  fi
+  log_step "upstream-v1 restarted and healthy"
+
   prime_budget_capacity_and_position_v1_first \
     "${api_id}" "${budget_route_id}" "${budget_policy_id}"
 
@@ -485,9 +569,11 @@ demonstrate_budget_exhaustion() {
     exit 1
   fi
 
+  set_smoke_step "Stopping upstream-v1 for budget exhaustion"
   docker compose stop upstream-v1
 
   for i in $(seq 1 "${BUDGET_INITIAL_CAPACITY}"); do
+    set_smoke_step "Executing allowed budget retry ${i}"
     if [[ "${i}" -gt 1 ]]; then
       position_budget_for_v1_first_stopped \
         "${api_id}" "${budget_route_id}" "${budget_policy_id}"
@@ -503,9 +589,11 @@ demonstrate_budget_exhaustion() {
     log_step "budget test: retry ${i} allowed -> used ${i}"
   done
 
+  set_smoke_step "Positioning dedicated budget selector before denied retry"
   position_budget_for_v1_first_stopped \
     "${api_id}" "${budget_route_id}" "${budget_policy_id}"
 
+  set_smoke_step "Executing denied budget retry"
   run_budget_denied_retry \
     "${api_id}" "${budget_route_id}" "${budget_policy_id}" \
     "$((BUDGET_INITIAL_CAPACITY + 1))" "phase6-budget-retry-denied" \
@@ -850,6 +938,8 @@ main() {
 
   set_smoke_step "Restarting upstreams for recovery"
   docker compose start upstream-v1 upstream-v2
+  wait_compose_service_healthy "upstream-v1" "upstream-v1 healthy after recovery restart" 30 1
+  wait_compose_service_healthy "upstream-v2" "upstream-v2 healthy after recovery restart" 30 1
   recovered=false
   for attempt in $(seq 1 30); do
     status="$(gateway_get "phase6-recovery-${attempt}")"

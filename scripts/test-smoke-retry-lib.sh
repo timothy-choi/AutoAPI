@@ -161,4 +161,27 @@ assert_retry_budget_denied_retry_deltas \
   "${denied_before}" "${denied_after}" "${API_A}" "budget-route" "${POLICY_A}"
 echo "PASS denied retry deltas"
 
+clean_before='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":0,"retriesUsed":0,"retryCapacity":5,"retryAttempts":0,"retrySuccesses":0}]}'
+clean_after='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":1,"retriesUsed":0,"retryCapacity":5,"retryAttempts":0,"retrySuccesses":0}]}'
+assert_budget_direct_request_no_retry \
+  "${clean_before}" "${clean_after}" "${API_A}" "budget-route" "${POLICY_A}"
+echo "PASS clean budget prime with no retry"
+
+dirty_after='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":1,"retriesUsed":1,"retryCapacity":5,"retryAttempts":1,"retrySuccesses":1}]}'
+set +e
+assert_budget_direct_request_no_retry \
+  "${clean_before}" "${dirty_after}" "${API_A}" "budget-route" "${POLICY_A}" >/dev/null 2> /tmp/smoke-retry-lib-dirty-prime.err
+dirty_prime_status=$?
+set -e
+if [[ ${dirty_prime_status} -eq 0 ]]; then
+  echo "FAIL dirty budget prime accepted" >&2
+  exit 1
+fi
+if ! grep -q "Budget prime unexpectedly retried" /tmp/smoke-retry-lib-dirty-prime.err; then
+  echo "FAIL dirty budget prime missing retry message" >&2
+  cat /tmp/smoke-retry-lib-dirty-prime.err >&2
+  exit 1
+fi
+echo "PASS budget prime retry-counter increase rejected"
+
 echo "All retry-status helper self-tests passed"

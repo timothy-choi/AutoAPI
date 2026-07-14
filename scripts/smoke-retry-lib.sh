@@ -132,6 +132,131 @@ read_retry_budget_counters() {
     "${budget_denials}"
 }
 
+read_retry_budget_counters_or_zero() {
+  local retry_json="$1"
+  local api_id="$2"
+  local route_id="$3"
+  local policy_id="$4"
+  local parsed=""
+  local parse_status=0
+
+  set +e
+  parsed="$(parse_retry_status_entry "${retry_json}" "${api_id}" "${route_id}" "${policy_id}")"
+  parse_status=$?
+  set -e
+  if [[ ${parse_status} -eq 2 ]]; then
+    printf '%s\n' 0 0 0 0 0 0 0
+    return 0
+  fi
+  if [[ ${parse_status} -ne 0 ]]; then
+    echo "Failed to parse retry budget counters" >&2
+    printf '%s\n' "${retry_json}" >&2
+    return 1
+  fi
+  IFS='|' read -r \
+    original_requests \
+    retries_used \
+    retry_capacity \
+    retry_attempts \
+    retry_successes \
+    retry_failures \
+    budget_denials \
+    <<<"${parsed}"
+  printf '%s\n' \
+    "${original_requests}" \
+    "${retries_used}" \
+    "${retry_capacity}" \
+    "${retry_attempts}" \
+    "${retry_successes}" \
+    "${retry_failures}" \
+    "${budget_denials}"
+}
+
+assert_budget_direct_request_no_retry() {
+  local before="$1"
+  local after="$2"
+  local api_id="$3"
+  local route_id="$4"
+  local policy_id="$5"
+  python3 - "${before}" "${after}" \
+    "${api_id}" "${route_id}" "${policy_id}" <<'PY'
+import json
+import sys
+
+before = json.loads(sys.argv[1])
+after = json.loads(sys.argv[2])
+api_id, route_id, policy_id = sys.argv[3:6]
+
+def counters(payload):
+    for entry in payload.get("budgets") or []:
+        if (
+            entry.get("apiId") == api_id
+            and entry.get("routeId") == route_id
+            and entry.get("policyId") == policy_id
+        ):
+            return {
+                "originalRequests": int(entry.get("originalRequests") or 0),
+                "retriesUsed": int(entry.get("retriesUsed") or 0),
+                "retryCapacity": int(entry.get("retryCapacity") or 0),
+                "retryAttempts": int(entry.get("retryAttempts") or 0),
+                "retrySuccesses": int(entry.get("retrySuccesses") or 0),
+            }
+    return {
+        "originalRequests": 0,
+        "retriesUsed": 0,
+        "retryCapacity": 0,
+        "retryAttempts": 0,
+        "retrySuccesses": 0,
+    }
+
+before_counts = counters(before)
+after_counts = counters(after)
+checks = [
+    ("originalRequests", 1),
+    ("retriesUsed", 0),
+    ("retryAttempts", 0),
+    ("retrySuccesses", 0),
+]
+for field, expected_delta in checks:
+    actual_delta = after_counts[field] - before_counts[field]
+    if actual_delta != expected_delta:
+        if field != "originalRequests" and actual_delta > 0:
+            raise SystemExit(
+                "Budget prime unexpectedly retried; upstream readiness or selector setup is invalid "
+                f"({field} delta expected {expected_delta}, got {actual_delta}; "
+                f"before={before_counts[field]} after={after_counts[field]})"
+            )
+        raise SystemExit(
+            f"{field} delta expected {expected_delta}, got {actual_delta} "
+            f"(before={before_counts[field]} after={after_counts[field]})"
+        )
+PY
+}
+
+print_budget_setup_failure_diagnostics() {
+  local api_id="$1"
+  local route_id="$2"
+  local policy_id="$3"
+  local retry_before="$4"
+  local retry_after="$5"
+  local http_status="$6"
+  local service="$7"
+  local health_json="${8:-}"
+
+  echo "Budget setup failure diagnostics:" >&2
+  echo "  httpStatus=${http_status}" >&2
+  echo "  service=${service}" >&2
+  log_retry_status_entry "before" "${retry_before}" "${api_id}" "${route_id}" "${policy_id}" >&2 || true
+  log_retry_status_entry "after" "${retry_after}" "${api_id}" "${route_id}" "${policy_id}" >&2 || true
+  if [[ -n "${health_json}" ]]; then
+    echo "  upstream-health:" >&2
+    printf '%s\n' "${health_json}" >&2
+  fi
+  echo "  matching attempt logs:" >&2
+  docker compose logs gateway-a --no-color --tail=120 2>/dev/null \
+    | grep -E 'phase6-budget-(init|position|prime)' >&2 || true
+}
+
 log_retry_status_entry() {
   local label="$1"
   local retry_json="$2"

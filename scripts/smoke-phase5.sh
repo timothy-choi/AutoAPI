@@ -29,6 +29,8 @@ source "${ROOT}/scripts/smoke-phase5-parser-lib.sh"
 source "${ROOT}/scripts/smoke-curl-lib.sh"
 # shellcheck source=scripts/smoke-compose-lib.sh
 source "${ROOT}/scripts/smoke-compose-lib.sh"
+# shellcheck source=scripts/smoke-wait-lib.sh
+source "${ROOT}/scripts/smoke-wait-lib.sh"
 
 json_field() {
   python3 - "$1" "$2" <<'PY'
@@ -159,35 +161,6 @@ wait_convergence() {
   fi
 }
 
-wait_container_healthy() {
-  local service="$1"
-  local label="$2"
-  local healthy=false
-  local cid=""
-  for _ in $(seq 1 30); do
-    cid="$(docker compose ps -q "${service}" 2>/dev/null || true)"
-    if [[ -z "${cid}" ]]; then
-      sleep 1
-      continue
-    fi
-    local health_status
-    health_status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "${cid}" 2>/dev/null || echo none)"
-    if [[ "${health_status}" == "healthy" || "${health_status}" == "none" ]]; then
-      if [[ "$(docker inspect -f '{{.State.Running}}' "${cid}" 2>/dev/null || echo false)" == "true" ]]; then
-        healthy=true
-        break
-      fi
-    fi
-    sleep 1
-  done
-  if [[ "${healthy}" != "true" ]]; then
-    echo "${label} did not become healthy after restart" >&2
-    docker compose logs "${service}" --tail 40 >&2 || true
-    exit 1
-  fi
-}
-
-# Capture HTTP status without aborting on 502. Never use curl --fail here.
 gateway_request() {
   local path_suffix="${1:-smoke}"
   local curl_exit=0
