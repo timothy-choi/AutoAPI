@@ -122,4 +122,18 @@ if [[ "${parent_flag}" != "true" ]]; then
 fi
 echo "PASS subshell flag scope behaves as expected"
 
+sample_budget='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":2,"retriesUsed":0,"retryCapacity":2}]}'
+assert_retry_budget_capacity "${sample_budget}" "${API_A}" "budget-route" "${POLICY_A}" 2 0
+echo "PASS budget capacity assertion"
+
+set +e
+assert_retry_budget_capacity "${sample_budget}" "${API_A}" "budget-route" "missing" 2 0 >/dev/null 2>&1
+missing_capacity_status=$?
+set -e
+if [[ ${missing_capacity_status} -eq 0 ]]; then
+  echo "FAIL missing policy accepted for capacity assertion" >&2
+  exit 1
+fi
+echo "PASS missing policy rejected for capacity assertion"
+
 echo "All retry-status helper self-tests passed"

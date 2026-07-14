@@ -169,6 +169,113 @@ assert_retry_failover_budget_proof() {
     1 1 1 1
 }
 
+assert_retry_budget_capacity() {
+  local retry_json="$1"
+  local api_id="$2"
+  local route_id="$3"
+  local policy_id="$4"
+  local expected_capacity="$5"
+  local expected_used="$6"
+  python3 - "${retry_json}" "${api_id}" "${route_id}" "${policy_id}" \
+    "${expected_capacity}" "${expected_used}" <<'PY'
+import json
+import sys
+
+payload = json.loads(sys.argv[1])
+api_id, route_id, policy_id = sys.argv[2:5]
+expected_capacity = int(sys.argv[5])
+expected_used = int(sys.argv[6])
+for entry in payload.get("budgets") or []:
+    if (
+        entry.get("apiId") == api_id
+        and entry.get("routeId") == route_id
+        and entry.get("policyId") == policy_id
+    ):
+        capacity = int(entry.get("retryCapacity") or 0)
+        used = int(entry.get("retriesUsed") or 0)
+        if capacity == expected_capacity and used == expected_used:
+            raise SystemExit(0)
+        raise SystemExit(
+            f"retry budget capacity mismatch: expected capacity={expected_capacity} used={expected_used}, "
+            f"got capacity={capacity} used={used}"
+        )
+print(json.dumps(payload, indent=2), file=sys.stderr)
+raise SystemExit(f"retry budget entry not found for route={route_id} policy={policy_id}")
+PY
+}
+
+assert_retry_budget_field_deltas() {
+  local before="$1"
+  local after="$2"
+  local api_id="$3"
+  local route_id="$4"
+  local policy_id="$5"
+  local expect_original_delta="$6"
+  local expect_retries_used_delta="$7"
+  local expect_retry_attempts_delta="$8"
+  local expect_retry_successes_delta="$9"
+  local expect_budget_denials_delta="${10:-0}"
+  python3 - "${before}" "${after}" \
+    "${api_id}" "${route_id}" "${policy_id}" \
+    "${expect_original_delta}" \
+    "${expect_retries_used_delta}" \
+    "${expect_retry_attempts_delta}" \
+    "${expect_retry_successes_delta}" \
+    "${expect_budget_denials_delta}" <<'PY'
+import json
+import sys
+
+before = json.loads(sys.argv[1])
+after = json.loads(sys.argv[2])
+api_id, route_id, policy_id = sys.argv[3:6]
+(
+    expect_original_delta,
+    expect_retries_used_delta,
+    expect_retry_attempts_delta,
+    expect_retry_successes_delta,
+    expect_budget_denials_delta,
+) = map(int, sys.argv[6:11])
+
+def find_entry(payload):
+    for entry in payload.get("budgets") or []:
+        if (
+            entry.get("apiId") == api_id
+            and entry.get("routeId") == route_id
+            and entry.get("policyId") == policy_id
+        ):
+            return entry
+    print(json.dumps(payload, indent=2), file=sys.stderr)
+    raise SystemExit(f"retry budget entry not found for route={route_id} policy={policy_id}")
+
+def counters(payload):
+    entry = find_entry(payload)
+    return {
+        "originalRequests": int(entry.get("originalRequests") or 0),
+        "retriesUsed": int(entry.get("retriesUsed") or 0),
+        "retryAttempts": int(entry.get("retryAttempts") or 0),
+        "retrySuccesses": int(entry.get("retrySuccesses") or 0),
+        "budgetDenials": int(entry.get("budgetDenials") or 0),
+    }
+
+before_counts = counters(before)
+after_counts = counters(after)
+checks = [
+    ("originalRequests", expect_original_delta),
+    ("retriesUsed", expect_retries_used_delta),
+    ("retryAttempts", expect_retry_attempts_delta),
+    ("retrySuccesses", expect_retry_successes_delta),
+    ("budgetDenials", expect_budget_denials_delta),
+]
+for field, expected_delta in checks:
+    actual_delta = after_counts[field] - before_counts[field]
+    if actual_delta != expected_delta:
+        raise SystemExit(
+            f"{field} delta expected {expected_delta}, got {actual_delta} "
+            f"(before={before_counts[field]} after={after_counts[field]})"
+        )
+PY
+}
+
 print_failover_proof_diagnostics() {
   local api_id="$1"
   local route_id="$2"
