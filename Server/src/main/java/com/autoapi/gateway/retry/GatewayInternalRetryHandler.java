@@ -33,6 +33,10 @@ public class GatewayInternalRetryHandler {
       entry.put("originalRequests", view.originalRequests());
       entry.put("retriesUsed", view.retriesUsed());
       entry.put("retryCapacity", view.retryCapacity());
+      entry.put("retryAttempts", view.retryAttempts());
+      entry.put("retrySuccesses", view.retrySuccesses());
+      entry.put("retryFailures", view.retryFailures());
+      entry.put("budgetDenials", view.budgetDenials());
       budgets.add(entry);
     }
     return ServerResponse.ok()

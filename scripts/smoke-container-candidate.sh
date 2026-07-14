@@ -13,6 +13,7 @@ GATEWAY_ID="${GATEWAY_ID:-container-smoke-gateway}"
 PEPPER="${AUTOAPI_API_KEY_PEPPER:-development-only-change-me-not-for-production-use}"
 RETRY_DRIVE_MAX="${SMOKE_RETRY_DRIVE_MAX:-25}"
 HEALTH_THRESHOLD="${SMOKE_HEALTH_THRESHOLD:-2}"
+POSITION_MAX="${SMOKE_POSITION_MAX:-4}"
 
 CONTROL_PLANE_URL="http://localhost:${CONTROL_PLANE_PORT}"
 GATEWAY_URL="http://localhost:${GATEWAY_PORT}"
@@ -245,31 +246,107 @@ assert_pre_failover_setup() {
   assert_retry_budget_entry "${retry_json}" "${API_ID}" "${ROUTE_ID}" "${RETRY_POLICY_ID}"
 }
 
-drive_retry_failover() {
-  local attempt status service health_json parsed v1_failures
-  set_smoke_step "Sending failover GET"
-  for attempt in $(seq 1 "${RETRY_DRIVE_MAX}"); do
-    status="$(gateway_get "container-retry-${attempt}")"
-    log_step "Failover GET attempt ${attempt} completed with HTTP ${status}"
-    if [[ "${status}" == "200" ]]; then
-      service="$(service_from_body)"
-      if [[ "${service}" == "upstream-v2" ]]; then
-        health_json="$(smoke_curl --fail "${GATEWAY_URL}/internal/v1/upstream-health")"
-        parsed="$(read_parsed_target_health "${health_json}" "${TARGET_V1_ID}")"
-        IFS='|' read -r _ v1_failures _ _ <<<"${parsed}"
-        if [[ "${v1_failures:-0}" -ge 1 ]]; then
-          log_step "Failover GET verified on attempt ${attempt}; service=${service}; v1_failures=${v1_failures}"
-          return 0
-        fi
-      fi
-    elif [[ "${status}" != "502" && "${status}" != "504" ]]; then
-      echo "Unexpected HTTP ${status} during retry drive (attempt ${attempt})" >&2
-      exit 1
+position_selector_for_v1_first() {
+  local attempt service
+  for attempt in $(seq 1 "${POSITION_MAX}"); do
+    gateway_get "container-position-${attempt}" >/dev/null
+    service="$(service_from_body)"
+    log_step "Positioning request ${attempt} completed on ${service}"
+    if [[ "${service}" == "upstream-v2" ]]; then
+      log_step "Round-robin positioned: next selection should target upstream-v1 first"
+      return 0
     fi
-    sleep 1
   done
-  echo "Retry failover not demonstrated within ${RETRY_DRIVE_MAX} attempts" >&2
+  echo "Could not position round-robin for upstream-v1-first within ${POSITION_MAX} attempts" >&2
   exit 1
+}
+
+assert_failed_target_health_recorded() {
+  local health_json="$1"
+  local target_id="$2"
+  local parsed state failures ejected_until category
+
+  parsed="$(read_parsed_target_health "${health_json}" "${target_id}")"
+  IFS='|' read -r state failures ejected_until category <<<"${parsed}"
+  if [[ "${state}" == "EJECTED" ]]; then
+    echo "upstream-v1 became EJECTED before retry proof was captured" >&2
+    echo "${health_json}" >&2
+    exit 1
+  fi
+  if is_qualifying_stopped_upstream_transport_category "${category}"; then
+    return 0
+  fi
+  if [[ "${failures:-0}" -ge 1 ]]; then
+    return 0
+  fi
+  echo "Expected qualifying transport failure recorded for stopped upstream-v1" >&2
+  echo "  state=${state} consecutiveFailures=${failures} lastFailureCategory=${category:-<empty>}" >&2
+  exit 1
+}
+
+drive_retry_failover() {
+  local retry_before retry_after status service health_json duration_sec duration_ms metrics
+
+  set_smoke_step "Capturing retry status before failover request"
+  retry_before="$(smoke_curl --fail "${GATEWAY_URL}/internal/v1/retry-status")"
+  assert_retry_budget_entry "${retry_before}" "${API_ID}" "${ROUTE_ID}" "${RETRY_POLICY_ID}"
+  log_step "Retry status before captured"
+
+  set_smoke_step "Sending deterministic failover GET"
+  set +e
+  metrics="$(
+    smoke_curl \
+      -D "${SMOKE_HEADERS_FILE}" \
+      -o "${SMOKE_BODY_FILE}" \
+      -w '%{http_code}|%{time_total}' \
+      -H 'Host: api.autoapi.local' \
+      "${GATEWAY_URL}/v1/orders/container-retry-failover"
+  )"
+  local curl_exit=$?
+  set -e
+  if [[ ${curl_exit} -ne 0 ]]; then
+    report_curl_failure "failover GET /v1/orders/container-retry-failover" "${curl_exit}" "${metrics%%|*}"
+    exit "${curl_exit}"
+  fi
+  IFS='|' read -r status duration_sec <<<"${metrics}"
+  log_step "Failover GET completed with HTTP ${status} duration=${duration_sec}s"
+
+  if [[ "${status}" != "200" ]]; then
+    echo "Expected failover GET HTTP 200, got ${status}" >&2
+    cat "${SMOKE_BODY_FILE}" >&2
+    exit 1
+  fi
+
+  service="$(service_from_body)"
+  if [[ "${service}" != "upstream-v2" ]]; then
+    echo "Expected terminal service upstream-v2, got ${service}" >&2
+    cat "${SMOKE_BODY_FILE}" >&2
+    exit 1
+  fi
+
+  retry_after="$(smoke_curl --fail "${GATEWAY_URL}/internal/v1/retry-status")"
+  assert_retry_counter_deltas \
+    "${retry_before}" \
+    "${retry_after}" \
+    "${API_ID}" \
+    "${ROUTE_ID}" \
+    "${RETRY_POLICY_ID}" \
+    1 1 1 1
+  log_step "Retry counter deltas verified (originalRequests+1 retriesUsed+1 retryAttempts+1 retrySuccesses+1)"
+
+  health_json="$(smoke_curl --fail "${GATEWAY_URL}/internal/v1/upstream-health")"
+  assert_failed_target_health_recorded "${health_json}" "${TARGET_V1_ID}"
+
+  duration_ms="$(python3 - "${duration_sec}" <<'PY'
+import sys
+print(int(float(sys.argv[1]) * 1000))
+PY
+)"
+  if [[ "${duration_ms}" -lt 750 ]]; then
+    log_step "Failover request duration ${duration_ms}ms (<750ms); counter proof is authoritative"
+  else
+    log_step "Failover request duration ${duration_ms}ms supports retry-after-timeout pattern"
+  fi
 }
 
 main() {
@@ -361,11 +438,14 @@ main() {
   set_smoke_step "Verifying retry policy activation"
   assert_pre_failover_setup
 
+  set_smoke_step "Positioning round-robin selector"
+  position_selector_for_v1_first
+
   set_smoke_step "Stopping upstream-v1"
   docker stop upstream-v1
 
   drive_retry_failover
-  log_step "Failover GET completed"
+  log_step "Candidate retry smoke passed"
 
   set_smoke_step "Testing unsafe POST without idempotency key"
   local post_status curl_exit

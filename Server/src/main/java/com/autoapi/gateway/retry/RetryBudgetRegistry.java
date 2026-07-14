@@ -36,10 +36,38 @@ public final class RetryBudgetRegistry {
     return entryFor(key, policy).window.tryConsumeRetry(clock);
   }
 
+  public void recordRetryAttempt(RetryBudgetKey key, RuntimeRetryPolicyConfig policy) {
+    if (key == null || policy == null) {
+      return;
+    }
+    entryFor(key, policy).window.recordRetryAttempt();
+  }
+
+  public void recordRetrySuccess(RetryBudgetKey key, RuntimeRetryPolicyConfig policy) {
+    if (key == null || policy == null) {
+      return;
+    }
+    entryFor(key, policy).window.recordRetrySuccess();
+  }
+
+  public void recordRetryFailure(RetryBudgetKey key, RuntimeRetryPolicyConfig policy) {
+    if (key == null || policy == null) {
+      return;
+    }
+    entryFor(key, policy).window.recordRetryFailure();
+  }
+
+  public void recordBudgetDenial(RetryBudgetKey key, RuntimeRetryPolicyConfig policy) {
+    if (key == null || policy == null) {
+      return;
+    }
+    entryFor(key, policy).window.recordBudgetDenial();
+  }
+
   public RetryBudgetWindow.RetryBudgetSnapshot snapshot(
       RetryBudgetKey key, RuntimeRetryPolicyConfig policy) {
     if (key == null || policy == null) {
-      return new RetryBudgetWindow.RetryBudgetSnapshot(0, 0, 0, 0);
+      return new RetryBudgetWindow.RetryBudgetSnapshot(0, 0, 0, 0, 0, 0, 0, 0);
     }
     return entryFor(key, policy).window.snapshot(clock);
   }
@@ -58,7 +86,11 @@ public final class RetryBudgetRegistry {
                   snapshot.windowSeconds(),
                   snapshot.originalRequests(),
                   snapshot.retriesUsed(),
-                  snapshot.retryCapacity());
+                  snapshot.retryCapacity(),
+                  snapshot.retryAttempts(),
+                  snapshot.retrySuccesses(),
+                  snapshot.retryFailures(),
+                  snapshot.budgetDenials());
             })
         .toList();
   }
@@ -114,5 +146,9 @@ public final class RetryBudgetRegistry {
       int windowSeconds,
       long originalRequests,
       long retriesUsed,
-      long retryCapacity) {}
+      long retryCapacity,
+      long retryAttempts,
+      long retrySuccesses,
+      long retryFailures,
+      long budgetDenials) {}
 }

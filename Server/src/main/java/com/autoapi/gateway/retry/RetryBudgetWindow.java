@@ -14,6 +14,14 @@ final class RetryBudgetWindow {
   private final int budgetMinRetriesPerSecond;
   private final AtomicLongArray originalRequests;
   private final AtomicLongArray retriesUsed;
+  private final java.util.concurrent.atomic.AtomicLong retryAttempts =
+      new java.util.concurrent.atomic.AtomicLong();
+  private final java.util.concurrent.atomic.AtomicLong retrySuccesses =
+      new java.util.concurrent.atomic.AtomicLong();
+  private final java.util.concurrent.atomic.AtomicLong retryFailures =
+      new java.util.concurrent.atomic.AtomicLong();
+  private final java.util.concurrent.atomic.AtomicLong budgetDenials =
+      new java.util.concurrent.atomic.AtomicLong();
   private final AtomicReference<Long> lastSecond = new AtomicReference<>(0L);
 
   RetryBudgetWindow(RuntimeRetryPolicyConfig policy) {
@@ -39,10 +47,33 @@ final class RetryBudgetWindow {
     return true;
   }
 
+  void recordRetryAttempt() {
+    retryAttempts.incrementAndGet();
+  }
+
+  void recordRetrySuccess() {
+    retrySuccesses.incrementAndGet();
+  }
+
+  void recordRetryFailure() {
+    retryFailures.incrementAndGet();
+  }
+
+  void recordBudgetDenial() {
+    budgetDenials.incrementAndGet();
+  }
+
   RetryBudgetSnapshot snapshot(Clock clock) {
     roll(clock);
     return new RetryBudgetSnapshot(
-        windowSeconds, sum(originalRequests), sum(retriesUsed), retryCapacity());
+        windowSeconds,
+        sum(originalRequests),
+        sum(retriesUsed),
+        retryCapacity(),
+        retryAttempts.get(),
+        retrySuccesses.get(),
+        retryFailures.get(),
+        budgetDenials.get());
   }
 
   long retryCapacity() {
@@ -91,5 +122,12 @@ final class RetryBudgetWindow {
   }
 
   record RetryBudgetSnapshot(
-      int windowSeconds, long originalRequests, long retriesUsed, long retryCapacity) {}
+      int windowSeconds,
+      long originalRequests,
+      long retriesUsed,
+      long retryCapacity,
+      long retryAttempts,
+      long retrySuccesses,
+      long retryFailures,
+      long budgetDenials) {}
 }

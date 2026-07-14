@@ -258,8 +258,14 @@ public class RetryingProxyExecutor {
             result -> {
               if (result instanceof UpstreamAttemptExecutor.AttemptResult.Success success) {
                 if (attemptNumber > 1) {
-                  recordRetrySucceeded(route, retryPolicy);
+                  recordRetrySucceeded(route, retryPolicy, budgetKey);
                 }
+                log.info(
+                    "upstream attempt succeeded requestId={} routeId={} attempt={} targetId={}",
+                    requestId,
+                    route.id(),
+                    attemptNumber,
+                    success.targetKey().targetId());
                 exchange.getAttributes().put(GatewayAttributes.UPSTREAM_ATTEMPTS, attemptNumber);
                 return writeSuccess(exchange, success, requestId);
               }
@@ -269,7 +275,7 @@ public class RetryingProxyExecutor {
               UpstreamAttemptExecutor.AttemptResult.Failure failure =
                   (UpstreamAttemptExecutor.AttemptResult.Failure) result;
               if (attemptNumber >= retryPolicy.maxAttempts()) {
-                recordRetryExhausted(route, retryPolicy, failure);
+                recordRetryExhausted(route, retryPolicy, budgetKey, failure);
                 exchange.getAttributes().put(GatewayAttributes.UPSTREAM_ATTEMPTS, attemptNumber);
                 return writeTerminalFailure(exchange, failure);
               }
@@ -286,17 +292,18 @@ public class RetryingProxyExecutor {
                 return writeTerminalFailure(exchange, failure);
               }
               if (!retryBudgetRegistry.tryConsumeRetry(budgetKey, retryPolicy)) {
-                recordBudgetDenied(route, retryPolicy, failure);
+                recordBudgetDenied(route, retryPolicy, budgetKey, failure);
                 exchange.getAttributes().put(GatewayAttributes.UPSTREAM_ATTEMPTS, attemptNumber);
                 return writeTerminalFailure(exchange, failure);
               }
-              recordRetryAttempted(route, retryPolicy, failure);
-              log.debug(
-                  "requestId={} routeId={} attempt={} retry permitted category={}",
+              log.info(
+                  "upstream attempt failed requestId={} routeId={} attempt={} targetId={} category={} retryDecision=RETRY",
                   requestId,
                   route.id(),
                   attemptNumber,
-                  failure.category());
+                  failure.targetKey().targetId(),
+                  failure.category() == null ? "unknown" : failure.category().name());
+              recordRetryAttempted(route, retryPolicy, budgetKey, failure);
               return attemptLoop(
                   exchange,
                   bundle,
@@ -367,7 +374,9 @@ public class RetryingProxyExecutor {
   private void recordRetryAttempted(
       RouteConfig route,
       RuntimeRetryPolicyConfig policy,
+      RetryBudgetKey budgetKey,
       UpstreamAttemptExecutor.AttemptResult.Failure failure) {
+    retryBudgetRegistry.recordRetryAttempt(budgetKey, policy);
     GatewayRetryMetrics metrics = retryMetricsProvider.getIfAvailable();
     if (metrics != null) {
       metrics.recordRetryAttempted(
@@ -377,7 +386,9 @@ public class RetryingProxyExecutor {
     }
   }
 
-  private void recordRetrySucceeded(RouteConfig route, RuntimeRetryPolicyConfig policy) {
+  private void recordRetrySucceeded(
+      RouteConfig route, RuntimeRetryPolicyConfig policy, RetryBudgetKey budgetKey) {
+    retryBudgetRegistry.recordRetrySuccess(budgetKey, policy);
     GatewayRetryMetrics metrics = retryMetricsProvider.getIfAvailable();
     if (metrics != null) {
       metrics.recordRetrySucceeded(route.id(), policy.policyId().toString());
@@ -387,7 +398,9 @@ public class RetryingProxyExecutor {
   private void recordRetryExhausted(
       RouteConfig route,
       RuntimeRetryPolicyConfig policy,
+      RetryBudgetKey budgetKey,
       UpstreamAttemptExecutor.AttemptResult.Failure failure) {
+    retryBudgetRegistry.recordRetryFailure(budgetKey, policy);
     GatewayRetryMetrics metrics = retryMetricsProvider.getIfAvailable();
     if (metrics != null) {
       metrics.recordRetryExhausted(
@@ -400,7 +413,9 @@ public class RetryingProxyExecutor {
   private void recordBudgetDenied(
       RouteConfig route,
       RuntimeRetryPolicyConfig policy,
+      RetryBudgetKey budgetKey,
       UpstreamAttemptExecutor.AttemptResult.Failure failure) {
+    retryBudgetRegistry.recordBudgetDenial(budgetKey, policy);
     GatewayRetryMetrics metrics = retryMetricsProvider.getIfAvailable();
     if (metrics != null) {
       metrics.recordBudgetDenied(route.id(), policy.policyId().toString());

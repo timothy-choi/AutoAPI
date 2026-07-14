@@ -41,13 +41,142 @@ for entry in budgets:
         and entry.get("policyId") == policy_id
     ):
         originals = int(entry.get("originalRequests") or 0)
+        used = int(entry.get("retriesUsed") or 0)
         capacity = int(entry.get("retryCapacity") or 0)
-        if originals >= 1 and capacity >= 1:
+        if originals >= 1 and capacity > used:
             raise SystemExit(0)
         raise SystemExit(
-            f"retry budget entry found but under-initialized: originals={originals} capacity={capacity}"
+            f"retry budget entry found but unavailable: originals={originals} used={used} capacity={capacity}"
         )
 raise SystemExit("retry budget entry not found for active route/policy")
+PY
+}
+
+extract_retry_budget_counters() {
+  local retry_json="$1"
+  local api_id="$2"
+  local route_id="$3"
+  local policy_id="$4"
+  python3 - "${retry_json}" "${api_id}" "${route_id}" "${policy_id}" <<'PY'
+import json
+import sys
+
+payload = json.loads(sys.argv[1])
+api_id, route_id, policy_id = sys.argv[2:5]
+for entry in payload.get("budgets") or []:
+    if (
+        entry.get("apiId") == api_id
+        and entry.get("routeId") == route_id
+        and entry.get("policyId") == policy_id
+    ):
+        fields = [
+            int(entry.get("originalRequests") or 0),
+            int(entry.get("retriesUsed") or 0),
+            int(entry.get("retryCapacity") or 0),
+            int(entry.get("retryAttempts") or 0),
+            int(entry.get("retrySuccesses") or 0),
+            int(entry.get("retryFailures") or 0),
+            int(entry.get("budgetDenials") or 0),
+        ]
+        print("|".join(str(value) for value in fields))
+        raise SystemExit(0)
+raise SystemExit("retry budget entry not found for counter extraction")
+PY
+}
+
+read_retry_budget_counters() {
+  local retry_json="$1"
+  local api_id="$2"
+  local route_id="$3"
+  local policy_id="$4"
+  local parsed=""
+  if ! parsed="$(extract_retry_budget_counters "${retry_json}" "${api_id}" "${route_id}" "${policy_id}")"; then
+    echo "Failed to extract retry budget counters" >&2
+    printf '%s\n' "${retry_json}" >&2
+    return 1
+  fi
+  IFS='|' read -r \
+    original_requests \
+    retries_used \
+    retry_capacity \
+    retry_attempts \
+    retry_successes \
+    retry_failures \
+    budget_denials \
+    <<<"${parsed}"
+  printf '%s\n' \
+    "${original_requests}" \
+    "${retries_used}" \
+    "${retry_capacity}" \
+    "${retry_attempts}" \
+    "${retry_successes}" \
+    "${retry_failures}" \
+    "${budget_denials}"
+}
+
+assert_retry_counter_deltas() {
+  local before="$1"
+  local after="$2"
+  local api_id="$3"
+  local route_id="$4"
+  local policy_id="$5"
+  local expect_original_delta="$6"
+  local expect_retries_used_delta="$7"
+  local expect_retry_attempts_delta="$8"
+  local expect_retry_successes_delta="$9"
+  python3 - "${before}" "${after}" \
+    "${api_id}" "${route_id}" "${policy_id}" \
+    "${expect_original_delta}" \
+    "${expect_retries_used_delta}" \
+    "${expect_retry_attempts_delta}" \
+    "${expect_retry_successes_delta}" <<'PY'
+import json
+import sys
+
+before = json.loads(sys.argv[1])
+after = json.loads(sys.argv[2])
+api_id, route_id, policy_id = sys.argv[3:6]
+(
+    expect_original_delta,
+    expect_retries_used_delta,
+    expect_retry_attempts_delta,
+    expect_retry_successes_delta,
+) = map(int, sys.argv[6:10])
+
+def find_entry(payload):
+    for entry in payload.get("budgets") or []:
+        if (
+            entry.get("apiId") == api_id
+            and entry.get("routeId") == route_id
+            and entry.get("policyId") == policy_id
+        ):
+            return entry
+    raise SystemExit("retry budget entry not found for counter delta assertion")
+
+def counters(payload):
+    entry = find_entry(payload)
+    return {
+        "originalRequests": int(entry.get("originalRequests") or 0),
+        "retriesUsed": int(entry.get("retriesUsed") or 0),
+        "retryAttempts": int(entry.get("retryAttempts") or 0),
+        "retrySuccesses": int(entry.get("retrySuccesses") or 0),
+    }
+
+before_counts = counters(before)
+after_counts = counters(after)
+checks = [
+    ("originalRequests", expect_original_delta),
+    ("retriesUsed", expect_retries_used_delta),
+    ("retryAttempts", expect_retry_attempts_delta),
+    ("retrySuccesses", expect_retry_successes_delta),
+]
+for field, expected_delta in checks:
+    actual_delta = after_counts[field] - before_counts[field]
+    if actual_delta != expected_delta:
+        raise SystemExit(
+            f"{field} delta expected {expected_delta}, got {actual_delta} "
+            f"(before={before_counts[field]} after={after_counts[field]})"
+        )
 PY
 }
 
