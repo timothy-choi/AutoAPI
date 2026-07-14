@@ -10,7 +10,9 @@ import com.autoapi.config.RuntimeConfig;
 import com.autoapi.config.RuntimeRetryPolicyConfig;
 import com.autoapi.config.UpstreamConfig;
 import com.autoapi.config.UpstreamTargetReference;
+import com.autoapi.gateway.health.FailureCategory;
 import com.autoapi.gateway.health.TargetHealthRegistry;
+import com.autoapi.gateway.health.TargetHealthState;
 import com.autoapi.gateway.health.TargetKey;
 import com.autoapi.support.ControllableClock;
 import com.autoapi.support.ControllableTestUpstream;
@@ -73,7 +75,11 @@ class GatewayRetryIntegrationTest {
   @BeforeEach
   void resetUpstreams() throws IOException {
     healthyUpstream.resumeAccepting();
+    healthyUpstream.resumeResponses();
+    healthyUpstream.respondWithStatus(200);
     failingUpstream.resumeAccepting();
+    failingUpstream.resumeResponses();
+    failingUpstream.respondWithStatus(200);
     failingUpstream.stopAccepting();
   }
 
@@ -96,7 +102,118 @@ class GatewayRetryIntegrationTest {
         .expectStatus()
         .isOk();
 
+    TargetHealthState failingState = targetHealthRegistry.getState(failingKey);
+    assertEquals(1, failingState.consecutiveQualifyingFailures());
+    assertEquals(FailureCategory.CONNECTION_REFUSED, failingState.lastFailureCategory());
+    assertEquals(0, targetHealthRegistry.getState(healthyKey).consecutiveQualifyingFailures());
+  }
+
+  @Test
+  void retrySuccessDoesNotResetFailedTarget() {
+    TargetKey failingKey = new TargetKey(UUID.fromString(API_ID), POOL_ID, FAILING_TARGET_ID);
+    TargetKey healthyKey = new TargetKey(UUID.fromString(API_ID), POOL_ID, HEALTHY_TARGET_ID);
+
+    webTestClient
+        .get()
+        .uri("/v1/orders/retry-isolation-seed")
+        .header(HttpHeaders.HOST, "api.autoapi.local")
+        .exchange()
+        .expectStatus()
+        .isOk();
     assertEquals(1, targetHealthRegistry.getState(failingKey).consecutiveQualifyingFailures());
+
+    targetHealthRegistry.recordSuccess(healthyKey);
+    assertEquals(1, targetHealthRegistry.getState(failingKey).consecutiveQualifyingFailures());
+    assertEquals(0, targetHealthRegistry.getState(healthyKey).consecutiveQualifyingFailures());
+  }
+
+  @Test
+  void responseTimeoutOnFirstAttemptRecordsHealthBeforeRetrySuccess() throws IOException {
+    TargetKey failingKey = new TargetKey(UUID.fromString(API_ID), POOL_ID, FAILING_TARGET_ID);
+    TargetKey healthyKey = new TargetKey(UUID.fromString(API_ID), POOL_ID, HEALTHY_TARGET_ID);
+
+    failingUpstream.resumeAccepting();
+    failingUpstream.hangOnRequests();
+
+    webTestClient
+        .get()
+        .uri("/v1/orders/retry-timeout-failover")
+        .header(HttpHeaders.HOST, "api.autoapi.local")
+        .exchange()
+        .expectStatus()
+        .isOk();
+
+    TargetHealthState failingState = targetHealthRegistry.getState(failingKey);
+    assertEquals(1, failingState.consecutiveQualifyingFailures());
+    assertEquals(FailureCategory.RESPONSE_TIMEOUT, failingState.lastFailureCategory());
+    assertEquals(0, targetHealthRegistry.getState(healthyKey).consecutiveQualifyingFailures());
+  }
+
+  @Test
+  void internalHealthEndpointReportsFailedTargetAfterRetryFailover() throws IOException {
+    failingUpstream.resumeAccepting();
+    failingUpstream.hangOnRequests();
+
+    webTestClient
+        .get()
+        .uri("/v1/orders/retry-health-endpoint")
+        .header(HttpHeaders.HOST, "api.autoapi.local")
+        .exchange()
+        .expectStatus()
+        .isOk();
+
+    webTestClient
+        .get()
+        .uri("/internal/v1/upstream-health")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.pools[0].targets[?(@.targetId=='" + FAILING_TARGET_ID + "')].state")
+        .isEqualTo("HEALTHY")
+        .jsonPath(
+            "$.pools[0].targets[?(@.targetId=='" + FAILING_TARGET_ID + "')].consecutiveFailures")
+        .isEqualTo(1)
+        .jsonPath(
+            "$.pools[0].targets[?(@.targetId=='" + FAILING_TARGET_ID + "')].lastFailureCategory")
+        .isEqualTo("RESPONSE_TIMEOUT");
+  }
+
+  @Test
+  void terminalFirstAttemptFailureRecordsHealthWhenRetryDenied() {
+    TargetKey failingKey = new TargetKey(UUID.fromString(API_ID), POOL_ID, FAILING_TARGET_ID);
+
+    webTestClient
+        .post()
+        .uri("/v1/orders/retry-terminal-post")
+        .header(HttpHeaders.HOST, "api.autoapi.local")
+        .bodyValue("{\"x\":1}")
+        .exchange()
+        .expectStatus()
+        .isEqualTo(HttpStatus.BAD_GATEWAY);
+
+    assertEquals(1, targetHealthRegistry.getState(failingKey).consecutiveQualifyingFailures());
+  }
+
+  @Test
+  void upstreamHttp500RecordsTransportSuccessWithRetryEnabled() {
+    TargetKey healthyKey = new TargetKey(UUID.fromString(API_ID), POOL_ID, HEALTHY_TARGET_ID);
+    targetHealthRegistry.recordFailure(
+        healthyKey,
+        FailureCategory.CONNECTION_REFUSED,
+        new com.autoapi.gateway.health.PassiveHealthPolicy(2, java.time.Duration.ofSeconds(60), 50),
+        2);
+    assertEquals(1, targetHealthRegistry.getState(healthyKey).consecutiveQualifyingFailures());
+
+    healthyUpstream.respondWithStatus(500);
+    webTestClient
+        .get()
+        .uri("/v1/orders/retry-http-500")
+        .header(HttpHeaders.HOST, "api.autoapi.local")
+        .exchange()
+        .expectStatus()
+        .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+
     assertEquals(0, targetHealthRegistry.getState(healthyKey).consecutiveQualifyingFailures());
   }
 

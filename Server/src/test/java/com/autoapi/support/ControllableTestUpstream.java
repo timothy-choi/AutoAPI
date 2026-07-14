@@ -13,6 +13,7 @@ public final class ControllableTestUpstream {
   private HttpServer server;
   private final int port;
   private volatile boolean accepting;
+  private volatile boolean hangResponses;
   private volatile int statusCode = 200;
   private final AtomicReference<String> lastPath = new AtomicReference<>("");
 
@@ -61,6 +62,16 @@ public final class ControllableTestUpstream {
     server = replacement;
     accepting = true;
     statusCode = 200;
+    hangResponses = false;
+  }
+
+  /** Accepts TCP connections but never completes the HTTP response (client-side timeout). */
+  public void hangOnRequests() {
+    hangResponses = true;
+  }
+
+  public void resumeResponses() {
+    hangResponses = false;
   }
 
   public void respondWithStatus(int statusCode) {
@@ -79,6 +90,9 @@ public final class ControllableTestUpstream {
         "/",
         exchange -> {
           lastPath.set(exchange.getRequestURI().getPath());
+          if (hangResponses) {
+            return;
+          }
           byte[] body =
               ("{\"path\":\"" + exchange.getRequestURI().getPath() + "\"}")
                   .getBytes(StandardCharsets.UTF_8);

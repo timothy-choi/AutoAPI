@@ -49,6 +49,13 @@ class FailureClassifierTest {
         FailureCategory.RESPONSE_TIMEOUT,
         classifier.classifyTransportFailure(new ReadTimeoutException()).orElseThrow());
     assertEquals(
+        FailureCategory.RESPONSE_TIMEOUT,
+        classifier
+            .classifyTransportFailure(
+                new java.util.concurrent.TimeoutException(
+                    "Did not observe any item or terminal signal within 1000ms"))
+            .orElseThrow());
+    assertEquals(
         FailureCategory.PREMATURE_UPSTREAM_CLOSE,
         classifier
             .classifyTransportFailure(Mockito.mock(PrematureCloseException.class))
