@@ -49,6 +49,19 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Bootstrap Gradle wrapper
+        run: |
+          attempt=1
+          until ./gradlew --no-daemon --version; do
+            if [[ "${attempt}" -ge 3 ]]; then
+              echo "Gradle wrapper bootstrap failed after ${attempt} attempts" >&2
+              exit 1
+            fi
+            echo "Gradle wrapper download failed (attempt ${attempt}); retrying in 15s..." >&2
+            attempt=$((attempt + 1))
+            sleep 15
+          done
+
       - name: Verify Java build
         run: |
           ./gradlew --no-daemon spotlessCheck
