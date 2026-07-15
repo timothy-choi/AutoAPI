@@ -113,6 +113,9 @@ public final class FailureClassifier {
               ? FailureCategory.RESPONSE_TIMEOUT
               : FailureCategory.CONNECTION_TIMEOUT);
     }
+    if (cause instanceof java.util.concurrent.TimeoutException) {
+      return Optional.of(FailureCategory.RESPONSE_TIMEOUT);
+    }
     if (cause instanceof PrematureCloseException) {
       return Optional.of(FailureCategory.PREMATURE_UPSTREAM_CLOSE);
     }

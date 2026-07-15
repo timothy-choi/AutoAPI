@@ -11,10 +11,12 @@ import com.autoapi.controlplane.persistence.ApiEntity;
 import com.autoapi.controlplane.persistence.ApiKeyEntity;
 import com.autoapi.controlplane.persistence.BackendHealthPolicyEntity;
 import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
+import com.autoapi.controlplane.persistence.RetryPolicyEntity;
 import com.autoapi.controlplane.persistence.RouteEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
 import com.autoapi.controlplane.persistence.UpstreamPoolEntity;
 import com.autoapi.controlplane.persistence.UpstreamTargetEntity;
+import com.autoapi.controlplane.retry.RetryPolicyService;
 import com.autoapi.security.ApiKeyDigestService;
 import com.autoapi.validation.UpstreamUriValidator;
 import java.net.URI;
@@ -46,6 +48,7 @@ public final class DraftGraphValidator {
         graph.apiKeys(),
         graph.rateLimitPolicies(),
         graph.backendHealthPolicies(),
+        graph.retryPolicies(),
         graph.routePolicyBindings(),
         graph.gatewayDefaults());
   }
@@ -58,6 +61,7 @@ public final class DraftGraphValidator {
       List<ApiKeyEntity> apiKeys,
       List<RateLimitPolicyEntity> rateLimitPolicies,
       List<BackendHealthPolicyEntity> backendHealthPolicies,
+      List<RetryPolicyEntity> retryPolicies,
       List<RoutePolicyBindingEntity> routePolicyBindings,
       CompiledGatewaySection gatewayDefaults) {
     List<ValidationError> errors = new ArrayList<>();
@@ -80,6 +84,8 @@ public final class DraftGraphValidator {
     Map<UUID, BackendHealthPolicyEntity> healthPolicyById =
         backendHealthPolicies.stream()
             .collect(Collectors.toMap(BackendHealthPolicyEntity::id, p -> p));
+    Map<UUID, RetryPolicyEntity> retryPolicyById =
+        retryPolicies.stream().collect(Collectors.toMap(RetryPolicyEntity::id, p -> p));
     Map<UUID, RoutePolicyBindingEntity> bindingByRouteId =
         routePolicyBindings.stream()
             .collect(Collectors.toMap(RoutePolicyBindingEntity::routeId, b -> b));
@@ -100,6 +106,7 @@ public final class DraftGraphValidator {
     for (RouteEntity route : enabledRoutes) {
       validateRoute(route, api.id(), poolById, errors);
       validateRoutePolicyBinding(route, api.id(), bindingByRouteId, policyById, errors);
+      validateRetryPolicyBinding(route, api.id(), bindingByRouteId, retryPolicyById, errors);
     }
 
     validateRouteAmbiguity(enabledRoutes, errors);
@@ -134,6 +141,7 @@ public final class DraftGraphValidator {
             bindingByRouteId,
             policyById,
             healthPolicyById,
+            retryPolicyById,
             apiKeys,
             publishInstant);
     validateCompiledPayload(payload, errors);
@@ -159,7 +167,16 @@ public final class DraftGraphValidator {
       List<UpstreamTargetEntity> targets,
       CompiledGatewaySection gatewayDefaults) {
     return validate(
-        api, routes, pools, targets, List.of(), List.of(), List.of(), List.of(), gatewayDefaults);
+        api,
+        routes,
+        pools,
+        targets,
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
+        gatewayDefaults);
   }
 
   private static void validateCompiledPayload(
@@ -237,6 +254,51 @@ public final class DraftGraphValidator {
               "Disabled rate limit policy cannot be bound"));
     }
     validateRateLimitPolicyFields(policy, errors);
+  }
+
+  private static void validateRetryPolicyBinding(
+      RouteEntity route,
+      UUID apiId,
+      Map<UUID, RoutePolicyBindingEntity> bindingByRouteId,
+      Map<UUID, RetryPolicyEntity> retryPolicyById,
+      List<ValidationError> errors) {
+    RoutePolicyBindingEntity binding = bindingByRouteId.get(route.id());
+    if (binding == null || binding.retryPolicyId() == null) {
+      return;
+    }
+    RetryPolicyEntity policy = retryPolicyById.get(binding.retryPolicyId());
+    if (policy == null) {
+      errors.add(
+          new ValidationError(
+              "RETRY_POLICY_NOT_FOUND", route.id(), "Route references missing retry policy"));
+      return;
+    }
+    if (!policy.apiId().equals(apiId)) {
+      errors.add(
+          new ValidationError(
+              "RETRY_POLICY_WRONG_API", route.id(), "Retry policy belongs to another API"));
+    }
+    if (!policy.enabled()) {
+      errors.add(
+          new ValidationError(
+              "RETRY_POLICY_DISABLED", policy.id(), "Disabled retry policy cannot be bound"));
+    }
+    try {
+      RetryPolicyService.validateFields(
+          policy.maxAttempts(),
+          policy.perAttemptTimeoutMs(),
+          policy.retryOnConnectFailure(),
+          policy.retryOnConnectionReset(),
+          policy.retryOnDnsFailure(),
+          policy.retryOnResponseTimeout(),
+          policy.retryableMethods(),
+          policy.requireIdempotencyKeyForUnsafeMethods(),
+          policy.budgetPercent(),
+          policy.budgetMinRetriesPerSecond(),
+          policy.budgetWindowSeconds());
+    } catch (com.autoapi.controlplane.api.ControlPlaneException ex) {
+      errors.add(new ValidationError("RETRY_POLICY_INVALID", policy.id(), ex.getMessage()));
+    }
   }
 
   private static void validateRateLimitPolicyFields(

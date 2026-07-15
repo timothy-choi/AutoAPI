@@ -289,15 +289,25 @@ Consumer authentication keys. Format: `ak_live_<key_id>.<secret>`. Plaintext ret
 
 ## retry_policies
 
+Route-level bounded retry configuration (Phase 6). Gateway-local budget counters are **not** stored here.
+
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | UUID | PK |
 | `api_id` | UUID | FK → apis.id |
-| `name` | VARCHAR(128) | NOT NULL |
-| `max_attempts` | INTEGER | NOT NULL DEFAULT 1 |
-| `backoff_ms` | INTEGER | DEFAULT 100 |
-| `retryable_methods` | VARCHAR(16)[] | |
-| `retryable_status_codes` | INTEGER[] | |
+| `name` | VARCHAR(255) | NOT NULL |
+| `max_attempts` | INTEGER | 1–5; **total attempts including first** |
+| `per_attempt_timeout_ms` | INTEGER | 50–30000 |
+| `retry_on_connect_failure` | BOOLEAN | NOT NULL |
+| `retry_on_connection_reset` | BOOLEAN | NOT NULL |
+| `retry_on_dns_failure` | BOOLEAN | NOT NULL |
+| `retry_on_response_timeout` | BOOLEAN | NOT NULL |
+| `retryable_methods` | TEXT[] | Sorted deterministically in snapshots |
+| `require_idempotency_key_for_unsafe_methods` | BOOLEAN | Required when POST/PATCH are retryable |
+| `budget_percent` | INTEGER | 0–100 |
+| `budget_min_retries_per_second` | INTEGER | 0–10000 |
+| `budget_window_seconds` | INTEGER | 1–300 |
+| `enabled` | BOOLEAN | NOT NULL DEFAULT true |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 

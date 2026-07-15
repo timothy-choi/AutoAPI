@@ -1,6 +1,18 @@
 # AutoAPI Server
 
-Java 21 **Spring WebFlux** application with a nonblocking L7 gateway, PostgreSQL-backed control plane, immutable configuration compilation/activation, multi-gateway convergence, **API-key authentication**, **cross-gateway Redis rate limiting** (Phase 4), and **passive backend health tracking with health-aware routing** (Phase 5).
+Java 21 **Spring WebFlux** application with a nonblocking L7 gateway, PostgreSQL-backed control plane, immutable configuration compilation/activation, multi-gateway convergence, **API-key authentication**, **cross-gateway Redis rate limiting** (Phase 4), **passive backend health tracking with health-aware routing** (Phase 5), and **bounded idempotency-aware request retries with gateway-local retry budgets** (Phase 6).
+
+## Phase 6 highlights
+
+- Route-bound **retry policies** compiled into immutable snapshots (`maxAttempts` includes the first attempt; `1` disables retries)
+- Retries only for configured **pre-response transport failures** (connect, reset, DNS, response timeout) — not HTTP 5xx
+- **Idempotency-Key** required for unsafe methods (POST/PATCH) when policy allows them; gateway does not provide durable exactly-once storage
+- Bounded **request-body replay** for retry-enabled routes (`autoapi.gateway.retry.max-replay-body-bytes`, default 1 MiB); oversized bodies are forwarded once without retry
+- **Per-attempt** passive-health accounting and independent timeouts
+- Retry attempts prefer a **different eligible target** when available
+- **Gateway-local retry budgets** per `apiId + routeId + policyId` (not PostgreSQL/Redis)
+- Internal visibility: `GET /internal/v1/retry-status`
+- Terminal mapping: transport failures → `502 UPSTREAM_UNAVAILABLE`; response timeout → `504 UPSTREAM_TIMEOUT`
 
 ## Phase 5 highlights
 
@@ -41,6 +53,7 @@ From repository root:
 docker compose up --build
 ./scripts/smoke-phase4.sh
 ./scripts/smoke-phase5.sh
+./scripts/smoke-phase6.sh
 docker compose down -v
 ```
 

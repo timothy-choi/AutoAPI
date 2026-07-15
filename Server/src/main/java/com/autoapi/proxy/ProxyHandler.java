@@ -17,6 +17,7 @@ import com.autoapi.gateway.health.SelectedTarget;
 import com.autoapi.gateway.health.TargetHealthRegistry;
 import com.autoapi.gateway.health.TargetHealthState;
 import com.autoapi.gateway.health.TargetKey;
+import com.autoapi.gateway.retry.RetryingProxyExecutor;
 import com.autoapi.gateway.security.GatewaySecurityEnforcer;
 import com.autoapi.middleware.RequestIdSupport;
 import com.autoapi.routing.RouteMatchResult;
@@ -57,6 +58,7 @@ public class ProxyHandler {
   private final ObjectProvider<TargetHealthRegistry> healthRegistryProvider;
   private final FailureClassifier failureClassifier;
   private final ObjectProvider<GatewayUpstreamHealthMetrics> healthMetricsProvider;
+  private final ObjectProvider<RetryingProxyExecutor> retryingProxyExecutorProvider;
   private final String gatewayId;
 
   public ProxyHandler(
@@ -66,13 +68,15 @@ public class ProxyHandler {
       ObjectProvider<TargetHealthRegistry> healthRegistry,
       ObjectProvider<FailureClassifier> failureClassifier,
       ObjectProvider<GatewayUpstreamHealthMetrics> healthMetrics,
-      ObjectProvider<GatewayProperties> gatewayProperties) {
+      ObjectProvider<GatewayProperties> gatewayProperties,
+      ObjectProvider<RetryingProxyExecutor> retryingProxyExecutor) {
     this.errorWriter = errorWriter;
     this.securityPipeline = securityPipeline.getIfAvailable(() -> NOOP_SECURITY);
     this.targetSelectorProvider = targetSelector;
     this.healthRegistryProvider = healthRegistry;
     this.failureClassifier = failureClassifier.getIfAvailable(FailureClassifier::new);
     this.healthMetricsProvider = healthMetrics;
+    this.retryingProxyExecutorProvider = retryingProxyExecutor;
     GatewayProperties properties = gatewayProperties.getIfAvailable();
     this.gatewayId =
         properties == null || properties.gatewayId() == null ? "unknown" : properties.gatewayId();
@@ -155,6 +159,12 @@ public class ProxyHandler {
           exchange, new IllegalStateException("Health-aware target selector is unavailable"));
     }
 
+    RetryingProxyExecutor retryExecutor = retryingProxyExecutorProvider.getIfAvailable();
+    if (retryExecutor != null) {
+      return retryExecutor.executeWithRetries(
+          exchange, bundle, route, request, requestId, upstream, targets);
+    }
+
     SelectedTarget selected;
     try {
       selected =
@@ -184,6 +194,7 @@ public class ProxyHandler {
     TargetKey targetKey = new TargetKey(bundle.apiId(), upstream.poolId(), target.targetId());
     assertSelectedTargetKey(exchange, targetKey);
     URI targetUri = buildUpstreamUri(target.url(), request);
+
     return forward(
         exchange,
         target.url().getAuthority(),
@@ -438,7 +449,7 @@ public class ProxyHandler {
     }
   }
 
-  static String normalizedClientHost(ServerHttpRequest request) {
+  public static String normalizedClientHost(ServerHttpRequest request) {
     String host = request.getHeaders().getFirst(HttpHeaders.HOST);
     if (host == null || host.isBlank()) {
       return "localhost";

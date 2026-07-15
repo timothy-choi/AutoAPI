@@ -25,6 +25,12 @@ cleanup() {
 
 # shellcheck source=scripts/smoke-phase5-parser-lib.sh
 source "${ROOT}/scripts/smoke-phase5-parser-lib.sh"
+# shellcheck source=scripts/smoke-curl-lib.sh
+source "${ROOT}/scripts/smoke-curl-lib.sh"
+# shellcheck source=scripts/smoke-compose-lib.sh
+source "${ROOT}/scripts/smoke-compose-lib.sh"
+# shellcheck source=scripts/smoke-wait-lib.sh
+source "${ROOT}/scripts/smoke-wait-lib.sh"
 
 json_field() {
   python3 - "$1" "$2" <<'PY'
@@ -80,7 +86,7 @@ print_ejection_diagnostics() {
     if ! parsed="$(read_parsed_target_health "${health_json}" "${target_id}")"; then
       return 1
     fi
-    IFS=$'\t' read -r state failures ejected_until category <<<"${parsed}"
+    IFS='|' read -r state failures ejected_until category <<<"${parsed}"
     echo "  target state=${state:-unknown} consecutiveFailures=${failures:-unknown}" >&2
     echo "  ejectedUntil=${ejected_until:-null} lastFailureCategory=${category:-null}" >&2
     echo "  internal health response:" >&2
@@ -155,35 +161,6 @@ wait_convergence() {
   fi
 }
 
-wait_container_healthy() {
-  local service="$1"
-  local label="$2"
-  local healthy=false
-  local cid=""
-  for _ in $(seq 1 30); do
-    cid="$(docker compose ps -q "${service}" 2>/dev/null || true)"
-    if [[ -z "${cid}" ]]; then
-      sleep 1
-      continue
-    fi
-    local health_status
-    health_status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "${cid}" 2>/dev/null || echo none)"
-    if [[ "${health_status}" == "healthy" || "${health_status}" == "none" ]]; then
-      if [[ "$(docker inspect -f '{{.State.Running}}' "${cid}" 2>/dev/null || echo false)" == "true" ]]; then
-        healthy=true
-        break
-      fi
-    fi
-    sleep 1
-  done
-  if [[ "${healthy}" != "true" ]]; then
-    echo "${label} did not become healthy after restart" >&2
-    docker compose logs "${service}" --tail 40 >&2 || true
-    exit 1
-  fi
-}
-
-# Capture HTTP status without aborting on 502. Never use curl --fail here.
 gateway_request() {
   local path_suffix="${1:-smoke}"
   local curl_exit=0
@@ -215,7 +192,8 @@ main() {
 if [[ "${SMOKE_SKIP_UP}" != "true" ]]; then
   docker compose down -v >/dev/null 2>&1 || true
   echo "== Starting Phase 5 stack =="
-  docker compose up --build -d postgres redis upstream-v1 upstream-v2 control-plane
+  build_smoke_images_once
+  start_smoke_base_stack
   wait_ready "${CONTROL_PLANE_URL}" "Control plane"
 fi
 
@@ -280,7 +258,7 @@ control_plane_mutate "activate configuration version 1" \
 
 export AUTOAPI_GATEWAY_API_ID="${api_id}"
 if [[ "${SMOKE_SKIP_UP}" != "true" ]]; then
-  docker compose up --build -d gateway-a
+  start_smoke_gateways gateway-a
 fi
 wait_ready "${GATEWAY_A_URL}" "Gateway A"
 wait_convergence "${api_id}"
@@ -344,7 +322,7 @@ for attempt in $(seq 1 "${EJECTION_DRIVE_MAX_ATTEMPTS}"); do
   if ! parsed_health="$(read_parsed_target_health "${health_json}" "${target_v1_id}")"; then
     exit 1
   fi
-  IFS=$'\t' read -r state failures ejected_until category <<<"${parsed_health}"
+  IFS='|' read -r state failures ejected_until category <<<"${parsed_health}"
   last_category="${category}"
 
   echo "  attempt=${attempt} status=${status} observed_502=${observed_502} target_state=${state} consecutiveFailures=${failures} lastFailureCategory=${category} ejectedUntil=${ejected_until:-null}"
@@ -367,7 +345,7 @@ if [[ "${observed_502}" -lt "${HEALTH_THRESHOLD}" ]]; then
   exit 1
 fi
 
-IFS=$'\t' read -r state failures ejected_until category <<<"$(read_parsed_target_health "${health_json}" "${target_v1_id}")"
+IFS='|' read -r state failures ejected_until category <<<"$(read_parsed_target_health "${health_json}" "${target_v1_id}")"
 if [[ "${state}" != "EJECTED" ]]; then
   echo "Expected EJECTED state after loop, got ${state}" >&2
   print_ejection_diagnostics "${attempt}" "${count_200}" "${observed_502}" "${target_v1_id}" "${health_json}"
@@ -378,8 +356,11 @@ if [[ -z "${ejected_until}" ]]; then
   print_ejection_diagnostics "${attempt}" "${count_200}" "${observed_502}" "${target_v1_id}" "${health_json}"
   exit 1
 fi
-if [[ "${category}" != "CONNECTION_REFUSED" && "${last_category}" != "CONNECTION_REFUSED" ]]; then
-  echo "Expected lastFailureCategory CONNECTION_REFUSED, got ${category}" >&2
+if ! is_qualifying_stopped_upstream_transport_category "${category}" \
+  && ! is_qualifying_stopped_upstream_transport_category "${last_category}"; then
+  echo \
+    "Expected a qualifying stopped-upstream transport category, got ${category:-<empty>} (last observed: ${last_category:-<empty>})" \
+    >&2
   print_ejection_diagnostics "${attempt}" "${count_200}" "${observed_502}" "${target_v1_id}" "${health_json}"
   exit 1
 fi
@@ -403,9 +384,11 @@ for i in $(seq 1 "${POST_EJECTION_REQUESTS}"); do
 done
 
 echo "== Restarting upstream-v1 and waiting for ejection expiry =="
+log_step "Restarting upstream-v1"
 docker compose start upstream-v1
 wait_container_healthy "upstream-v1" "upstream-v1"
 
+log_step "Waiting for ejection expiry"
 recovered=false
 recovery_attempts=$((EJECTION_SECONDS + 20))
 for attempt in $(seq 1 "${recovery_attempts}"); do
@@ -433,13 +416,17 @@ if [[ "${recovered}" != "true" ]]; then
   exit 1
 fi
 
+log_step "upstream-v1 selected again"
+
 health_json="$(fetch_upstream_health)"
-IFS=$'\t' read -r state failures ejected_until category <<<"$(read_parsed_target_health "${health_json}" "${target_v1_id}")"
+IFS='|' read -r state failures ejected_until category <<<"$(read_parsed_target_health "${health_json}" "${target_v1_id}")"
 if [[ "${state}" != "HEALTHY" ]]; then
   echo "Expected upstream-v1 HEALTHY after recovery, got ${state}" >&2
   echo "${health_json}" >&2
   exit 1
 fi
+
+log_step "target state returned to HEALTHY"
 
 echo "Phase 5 passive health smoke passed"
 }

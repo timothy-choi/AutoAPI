@@ -28,16 +28,15 @@ AutoAPI is being renovated into a **distributed API runtime and traffic-manageme
 - Management REST API at `/api/v1/**`
 - **Live gateway still uses static Phase 1 file config** — no polling or activation yet
 
-See [`Server/README.md`](Server/README.md) for build, run, management API, and configuration details.
+See [`Server/README.md`](Server/README.md) for build, run, management API, and configuration details. Phases 1–6 are implemented in `Server/` including passive health (Phase 5) and bounded idempotency-aware retries (Phase 6). Run `./scripts/smoke-phase6.sh` after `docker compose up --build`.
 
 ## Roadmap (not yet implemented)
 
 The following remain documented in `docs/` but are **not** implemented yet:
 
-- Gateway configuration polling and atomic activation (Phase 2B)
-- ACK/NACK and convergence (Phase 2C)
-- API-key authentication and distributed rate limiting (Redis)
-- Health-aware backend selection, retries, canary traffic splitting
+- Canary traffic splitting and weighted pool routing (Phase 7+)
+- Active health probes, hedged requests, HTTP-status retries
+- Kubernetes/AWS deployment automation
 - AWS deployment
 
 ## Quick start (Phase 1)

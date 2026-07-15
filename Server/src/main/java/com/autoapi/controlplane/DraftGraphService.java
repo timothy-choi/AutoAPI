@@ -9,6 +9,8 @@ import com.autoapi.controlplane.persistence.BackendHealthPolicyEntity;
 import com.autoapi.controlplane.persistence.BackendHealthPolicyRepository;
 import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
 import com.autoapi.controlplane.persistence.RateLimitPolicyRepository;
+import com.autoapi.controlplane.persistence.RetryPolicyEntity;
+import com.autoapi.controlplane.persistence.RetryPolicyRepository;
 import com.autoapi.controlplane.persistence.RouteEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingRepository;
@@ -37,6 +39,7 @@ public class DraftGraphService {
   private final ApiKeyRepository apiKeyRepository;
   private final RateLimitPolicyRepository rateLimitPolicyRepository;
   private final BackendHealthPolicyRepository backendHealthPolicyRepository;
+  private final RetryPolicyRepository retryPolicyRepository;
   private final RoutePolicyBindingRepository routePolicyBindingRepository;
   private final ControlPlaneProperties properties;
 
@@ -48,6 +51,7 @@ public class DraftGraphService {
       ApiKeyRepository apiKeyRepository,
       RateLimitPolicyRepository rateLimitPolicyRepository,
       BackendHealthPolicyRepository backendHealthPolicyRepository,
+      RetryPolicyRepository retryPolicyRepository,
       RoutePolicyBindingRepository routePolicyBindingRepository,
       ControlPlaneProperties properties) {
     this.apiRepository = apiRepository;
@@ -57,6 +61,7 @@ public class DraftGraphService {
     this.apiKeyRepository = apiKeyRepository;
     this.rateLimitPolicyRepository = rateLimitPolicyRepository;
     this.backendHealthPolicyRepository = backendHealthPolicyRepository;
+    this.retryPolicyRepository = retryPolicyRepository;
     this.routePolicyBindingRepository = routePolicyBindingRepository;
     this.properties = properties;
   }
@@ -72,11 +77,12 @@ public class DraftGraphService {
                         apiKeyRepository.findByApiId(apiId).collectList(),
                         rateLimitPolicyRepository.findByApiId(apiId).collectList(),
                         backendHealthPolicyRepository.findByApiId(apiId).collectList(),
+                        retryPolicyRepository.findByApiId(apiId).collectList(),
                         routePolicyBindingRepository.findAll().collectList())
                     .flatMap(
                         tuple -> {
                           List<UpstreamPoolEntity> pools = tuple.getT2();
-                          List<RoutePolicyBindingEntity> allBindings = tuple.getT6();
+                          List<RoutePolicyBindingEntity> allBindings = tuple.getT7();
                           List<RoutePolicyBindingEntity> apiBindings =
                               allBindings.stream()
                                   .filter(
@@ -99,6 +105,7 @@ public class DraftGraphService {
                                           tuple.getT3(),
                                           tuple.getT4(),
                                           tuple.getT5(),
+                                          tuple.getT6(),
                                           apiBindings,
                                           gatewayDefaults()));
                         }));
@@ -117,6 +124,7 @@ public class DraftGraphService {
       List<ApiKeyEntity> apiKeys,
       List<RateLimitPolicyEntity> rateLimitPolicies,
       List<BackendHealthPolicyEntity> backendHealthPolicies,
+      List<RetryPolicyEntity> retryPolicies,
       List<RoutePolicyBindingEntity> routePolicyBindings,
       CompiledGatewaySection gatewayDefaults) {}
 }

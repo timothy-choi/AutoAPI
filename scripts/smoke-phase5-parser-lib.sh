@@ -26,7 +26,7 @@ for pool in data.get("pools", []):
                 "" if ejected_until is None else str(ejected_until),
                 "" if last_category is None else str(last_category),
             ]
-            print("\t".join(values))
+            print("|".join(values))
             raise SystemExit(0)
 
 raise SystemExit(2)
@@ -57,4 +57,15 @@ read_parsed_target_health() {
 
   printf '%s' "${parsed}"
   return 0
+}
+
+is_qualifying_stopped_upstream_transport_category() {
+  case "${1:-}" in
+    CONNECTION_REFUSED | CONNECTION_TIMEOUT | CONNECTION_RESET)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }

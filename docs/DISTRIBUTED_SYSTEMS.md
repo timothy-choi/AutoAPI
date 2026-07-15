@@ -252,6 +252,46 @@ Different gateways may temporarily disagree about target health because observat
 
 ---
 
+## Bounded retries and gateway-local retry budgets (Phase 6)
+
+### Failure scenario
+
+A single upstream target fails with a transport error while a healthy peer remains available; without retries the client sees an immediate 502 despite recoverable failover potential.
+
+### Mechanism
+
+One downstream request may produce multiple upstream attempts via `RetryingProxyExecutor`, but **exactly one** downstream response. Retries occur only **before downstream response commitment** (no headers/body sent).
+
+**Retryable in Phase 6 (transport only):** connect failure, connection reset, DNS failure, response timeout — same classifier family as passive health where applicable.
+
+**Not retryable in Phase 6:** upstream HTTP responses (including 5xx), auth/rate-limit rejection, client cancellation, Redis/control-plane failures, post-commit streaming errors.
+
+**Method safety:** GET/HEAD/OPTIONS/PUT/DELETE may be listed explicitly. POST/PATCH require a valid `Idempotency-Key` header when `requireIdempotencyKeyForUnsafeMethods` is true. The gateway uses key **presence/validity as a replay-safety signal only** — no durable exactly-once store.
+
+**Body replay:** Retry-enabled routes buffer request bodies up to `autoapi.gateway.retry.max-replay-body-bytes` (default 1 MiB). Oversized bodies are forwarded once without retry (not rejected with 413 solely for replay limits).
+
+**Target selection:** Attempt 1 uses health-aware round robin. Later attempts prefer targets not yet attempted in this request.
+
+**Passive health:** Each attempt records its own outcome; a later retry success does not erase earlier target failures.
+
+**Retry budget (gateway-local):**
+
+```text
+allowedRetries = max(
+  budgetMinRetriesPerSecond * budgetWindowSeconds,
+  floor(originalRequestsInWindow * budgetPercent / 100)
+)
+```
+
+Initial attempts do not consume budget tokens. Budget state is reconciled on config activation (preserved when policy fingerprint unchanged).
+
+### Tradeoff
+
+- **Cost:** Gateway-local budgets can diverge across instances; idempotency is caller/upstream contract only.
+- **Benefit:** No PostgreSQL/Redis on the data path; bounded amplification; safe defaults for unsafe HTTP methods.
+
+---
+
 ## Timeouts
 
 ### Failure scenario

@@ -6,6 +6,7 @@ import com.autoapi.gateway.config.remote.RemoteSnapshotAdapter;
 import com.autoapi.gateway.config.remote.RemoteSnapshotValidationException;
 import com.autoapi.gateway.health.GatewayHealthReconciler;
 import com.autoapi.gateway.health.TargetHealthRegistry;
+import com.autoapi.gateway.retry.RetryBudgetRegistry;
 import com.autoapi.runtime.AutoApiRole;
 import com.autoapi.runtime.ConditionalOnAutoApiRole;
 import org.slf4j.Logger;
@@ -22,14 +23,17 @@ public class LocalGatewayConfigActivator {
   private final ActiveRuntimeConfigHolder activeRuntimeConfigHolder;
   private final GatewayProperties gatewayProperties;
   private final ObjectProvider<TargetHealthRegistry> targetHealthRegistry;
+  private final ObjectProvider<RetryBudgetRegistry> retryBudgetRegistry;
 
   public LocalGatewayConfigActivator(
       ActiveRuntimeConfigHolder activeRuntimeConfigHolder,
       GatewayProperties gatewayProperties,
-      ObjectProvider<TargetHealthRegistry> targetHealthRegistry) {
+      ObjectProvider<TargetHealthRegistry> targetHealthRegistry,
+      ObjectProvider<RetryBudgetRegistry> retryBudgetRegistry) {
     this.activeRuntimeConfigHolder = activeRuntimeConfigHolder;
     this.gatewayProperties = gatewayProperties;
     this.targetHealthRegistry = targetHealthRegistry;
+    this.retryBudgetRegistry = retryBudgetRegistry;
   }
 
   public GatewayActivationAttempt activateCandidate(StoredRuntimeSnapshot snapshot) {
@@ -39,6 +43,7 @@ public class LocalGatewayConfigActivator {
           RemoteSnapshotAdapter.toActiveBundle(snapshot, gatewayProperties.apiId());
       targetHealthRegistry.ifAvailable(
           registry -> GatewayHealthReconciler.reconcile(registry, candidate));
+      retryBudgetRegistry.ifAvailable(registry -> registry.reconcile(candidate));
       activeRuntimeConfigHolder.activate(candidate);
       long durationMs = (System.nanoTime() - started) / 1_000_000L;
       log.info(

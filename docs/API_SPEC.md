@@ -467,31 +467,93 @@ Passive transport-failure detection is configured in the control plane and compi
 
 ---
 
-## Retry Policies
+## Retry Policies (Phase 6)
+
+Bounded upstream retries are configured in the control plane, compiled into route snapshots, and enforced gateway-locally. **`maxAttempts` is the total upstream attempts including the first attempt** (`1` disables retries; `2` allows at most one retry).
+
+Retry budgets and attempt counters are **not** stored in PostgreSQL or Redis.
 
 ### `POST /api/v1/apis/{api_id}/retry-policies`
 
-**Purpose:** Define retry behavior (post-MVP enforcement; schema defined MVP).
+**Purpose:** Create a retry policy for an API.
 
 **Request:**
 
 ```json
 {
-  "name": "safe-get-retry",
-  "max_attempts": 2,
-  "backoff_ms": 100,
-  "retryable_methods": ["GET", "HEAD"],
-  "retryable_status_codes": [502, 503, 504]
+  "name": "safe-orders-retry",
+  "maxAttempts": 2,
+  "perAttemptTimeoutMs": 1000,
+  "retryOnConnectFailure": true,
+  "retryOnConnectionReset": true,
+  "retryOnDnsFailure": true,
+  "retryOnResponseTimeout": true,
+  "retryableMethods": ["GET", "HEAD", "OPTIONS", "PUT", "DELETE"],
+  "requireIdempotencyKeyForUnsafeMethods": true,
+  "budgetPercent": 20,
+  "budgetMinRetriesPerSecond": 2,
+  "budgetWindowSeconds": 10,
+  "enabled": true
 }
 ```
 
-**Response:** `201`
+**Response:** `201 Created`
+
+Publication rejects POST/PATCH in `retryableMethods` when `requireIdempotencyKeyForUnsafeMethods` is false.
 
 ---
 
 ### `GET /api/v1/apis/{api_id}/retry-policies`
 
-**Purpose:** List retry policies.
+**Purpose:** List retry policies for an API.
+
+**Response:** `200`
+
+---
+
+### `GET /api/v1/apis/{api_id}/retry-policies/{policy_id}`
+
+**Purpose:** Get one retry policy.
+
+**Response:** `200`
+
+---
+
+### `PATCH /api/v1/apis/{api_id}/retry-policies/{policy_id}`
+
+**Purpose:** Partial update. Omitted fields retain existing values; merged state is validated.
+
+**Response:** `200`
+
+---
+
+### `PUT /api/v1/routes/{route_id}/retry-policy`
+
+**Purpose:** Bind an enabled retry policy to a draft route (same API).
+
+**Request:**
+
+```json
+{
+  "retryPolicyId": "uuid"
+}
+```
+
+**Response:** `200 OK`
+
+---
+
+### `DELETE /api/v1/routes/{route_id}/retry-policy`
+
+**Purpose:** Remove retry binding from the draft route (does not delete the policy).
+
+**Response:** `200 OK`
+
+---
+
+### Gateway internal: `GET /internal/v1/retry-status`
+
+**Purpose:** Trusted-network visibility into gateway-local retry budget snapshots (no request or key material).
 
 **Response:** `200`
 

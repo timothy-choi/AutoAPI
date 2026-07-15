@@ -20,6 +20,7 @@ public class GatewayProperties {
   private int port = 8080;
   private ControlPlaneClientProperties controlPlaneClient = new ControlPlaneClientProperties();
   private GatewayRedisProperties redis = new GatewayRedisProperties();
+  private GatewayRetryProperties retry = new GatewayRetryProperties();
 
   public GatewayConfigSource configSource() {
     return configSource;
@@ -138,5 +139,13 @@ public class GatewayProperties {
 
   public void setRedis(GatewayRedisProperties redis) {
     this.redis = redis;
+  }
+
+  public GatewayRetryProperties retry() {
+    return retry;
+  }
+
+  public void setRetry(GatewayRetryProperties retry) {
+    this.retry = retry;
   }
 }

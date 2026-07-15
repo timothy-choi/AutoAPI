@@ -59,9 +59,12 @@ public class GatewayWebConfiguration {
   @Bean
   @Order(5)
   @ConditionalOnAutoApiRole({AutoApiRole.GATEWAY, AutoApiRole.COMBINED})
-  RouterFunction<ServerResponse> internalGatewayRoutes(GatewayInternalHealthHandler healthHandler) {
+  RouterFunction<ServerResponse> internalGatewayRoutes(
+      GatewayInternalHealthHandler healthHandler,
+      com.autoapi.gateway.retry.GatewayInternalRetryHandler retryHandler) {
     return RouterFunctions.route()
         .GET("/internal/v1/upstream-health", healthHandler::upstreamHealth)
+        .GET("/internal/v1/retry-status", retryHandler::retryStatus)
         .build();
   }
 

@@ -320,38 +320,37 @@ Multiple targets per pool; temporarily eject targets after consecutive **transpo
 
 ---
 
-## Phase 6: Timeout and Retry Policy
+## Phase 6: Safe Request Retries, Retry Budgets, and Idempotency-Aware Failover ✅ (implemented)
 
 ### Goal
 
-Outbound request deadlines enforced; bounded retries on eligible GET failures.
+Bounded, safe, nonblocking upstream retries on eligible transport failures before downstream response commitment, with gateway-local retry budgets and idempotency-aware method rules.
 
-### Implementation Tasks
+### Implemented (Phase 6)
 
-- [ ] Route-level `timeout_ms` in snapshot
-- [ ] Context deadline on outbound request
-- [ ] `504 Gateway Timeout` on expiry
-- [ ] `retry_policies` table and snapshot inclusion
-- [ ] Custom outbound execution layer (or custom `RoundTripper`) — not `ReverseProxy.ServeHTTP` alone for retries
-- [ ] Attempt loop: deadline → pool → backend → RoundTrip → classify → retry if eligible
-- [ ] No retry on POST body requests (default)
+- [x] `retry_policies` table (Flyway V5) and route binding via `route_policy_bindings.retry_policy_id`
+- [x] Management API: CRUD + `PUT/DELETE /api/v1/routes/{routeId}/retry-policy`
+- [x] Compiled route `retry` section in immutable snapshots (`maxAttempts` includes first attempt)
+- [x] `RetryingProxyExecutor` explicit attempt loop (no unbounded Reactor `retry()`)
+- [x] Transport-only retry eligibility (CONNECT_FAILURE, CONNECTION_RESET, DNS_FAILURE, RESPONSE_TIMEOUT)
+- [x] No HTTP status-code retries (including 5xx) in Phase 6
+- [x] Idempotency-Key validation for POST/PATCH when policy requires it
+- [x] Bounded request-body replay for retry-enabled routes
+- [x] Per-attempt passive-health accounting
+- [x] Different-target preference on retry attempts
+- [x] Gateway-local sliding-window retry budgets
+- [x] `GET /internal/v1/retry-status`
+- [x] Smoke: `scripts/smoke-phase6.sh`
 
-### Components/Files Affected
+### Not implemented (Phase 6 scope exclusions)
 
-- `gateway/internal/middleware/timeout.go`
-- `gateway/internal/middleware/retry.go`
-- `control-plane/app/models/retry_policies.py`
-
-### Tests
-
-- [ ] Integration: slow upstream (> timeout) → 504, connection cancelled
-- [ ] Integration: upstream 503 on GET → retried up to max_attempts
-- [ ] Integration: upstream 503 on POST → no retry
+- HTTP-status retries, hedged requests, active health probes, globally coordinated retry budgets, durable idempotency storage, traffic splitting, canary routing
 
 ### Definition of Done
 
-- Timeouts prevent hung goroutines (verify with slow upstream test)
-- Retries safe for idempotent methods only
+- Retries bounded by policy max attempts, per-attempt timeout, and gateway-local budget
+- Unsafe methods require valid Idempotency-Key header when listed in policy
+- One downstream response; retries only before response commitment
 
 ---
 

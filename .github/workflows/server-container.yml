@@ -49,6 +49,19 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Bootstrap Gradle wrapper
+        run: |
+          attempt=1
+          until ./gradlew --no-daemon --version; do
+            if [[ "${attempt}" -ge 3 ]]; then
+              echo "Gradle wrapper bootstrap failed after ${attempt} attempts" >&2
+              exit 1
+            fi
+            echo "Gradle wrapper download failed (attempt ${attempt}); retrying in 15s..." >&2
+            attempt=$((attempt + 1))
+            sleep 15
+          done
+
       - name: Verify Java build
         run: |
           ./gradlew --no-daemon spotlessCheck
@@ -116,92 +129,23 @@ jobs:
 
       - name: Remove stale smoke resources
         run: |
-          docker rm -f autoapi-gateway-a autoapi-gateway-b autoapi-gateway upstream-v1 autoapi-postgres autoapi-redis || true
+          docker rm -f autoapi-gateway-a autoapi-gateway-b autoapi-gateway upstream-v1 upstream-v2 autoapi-postgres autoapi-redis || true
           docker volume rm autoapi-postgres-smoke autoapi-redis-smoke || true
           docker network rm autoapi-smoke || true
 
       - name: Smoke test built image
+        timeout-minutes: 20
         run: |
-          set -euo pipefail
-          docker build -t mock-upstream:ci tests/mock-upstream
-          docker network create autoapi-smoke
-          docker run -d --name autoapi-postgres --network autoapi-smoke \
-            -e POSTGRES_DB=autoapi \
-            -e POSTGRES_USER=autoapi \
-            -e POSTGRES_PASSWORD=autoapi \
-            -v autoapi-postgres-smoke:/var/lib/postgresql/data \
-            --health-cmd="pg_isready -U autoapi -d autoapi" \
-            --health-interval=5s \
-            --health-timeout=3s \
-            --health-retries=20 \
-            postgres:16-alpine
-          postgres_ready=false
-          for _ in $(seq 1 30); do
-            if [ "$(docker inspect -f '{{.State.Health.Status}}' autoapi-postgres 2>/dev/null || echo none)" = "healthy" ]; then
-              postgres_ready=true
-              break
-            fi
-            sleep 2
-          done
-          if [ "${postgres_ready}" != "true" ]; then
-            echo "PostgreSQL did not become healthy" >&2
-            docker logs autoapi-postgres
-            exit 1
-          fi
-          docker run -d --name upstream-v1 --network autoapi-smoke mock-upstream:ci
-          cat > /tmp/runtime-smoke.json <<'EOF'
-          {
-            "gateway": { "listenAddress": "0.0.0.0", "port": 8080 },
-            "routes": [{
-              "id": "orders-route",
-              "host": "api.autoapi.local",
-              "pathPrefix": "/v1/orders",
-              "methods": ["GET", "POST"],
-              "upstream": { "url": "http://upstream-v1:8080" }
-            }]
-          }
-          EOF
-          docker run -d --name autoapi-gateway --network autoapi-smoke -p 18081:8080 \
-            -e SPRING_DATASOURCE_URL=jdbc:postgresql://autoapi-postgres:5432/autoapi \
-            -e SPRING_DATASOURCE_USERNAME=autoapi \
-            -e SPRING_DATASOURCE_PASSWORD=autoapi \
-            -e SPRING_R2DBC_URL=r2dbc:postgresql://autoapi-postgres:5432/autoapi?sslMode=disable \
-            -e SPRING_R2DBC_USERNAME=autoapi \
-            -e SPRING_R2DBC_PASSWORD=autoapi \
-            -e AUTOAPI_CONTROLPLANE_ENABLED=true \
-            -v /tmp/runtime-smoke.json:/config/runtime.json:ro \
-            autoapi-server:ci --autoapi.config.path=/config/runtime.json
-          ready=false
-          for _ in $(seq 1 30); do
-            if ! docker ps -q -f name=autoapi-gateway | grep -q .; then
-              echo "Gateway container exited during readiness polling" >&2
-              docker logs autoapi-postgres
-              docker logs autoapi-gateway
-              exit 1
-            fi
-            if curl --fail --silent http://localhost:18081/readyz; then
-              ready=true
-              break
-            fi
-            sleep 2
-          done
-          if [ "${ready}" != "true" ]; then
-            echo "Gateway did not become ready" >&2
-            docker logs autoapi-postgres
-            docker logs autoapi-gateway
-            exit 1
-          fi
-          curl --fail --silent http://localhost:18081/healthz
-          curl --fail --silent http://localhost:18081/readyz
-          curl --fail --silent -H 'Host: api.autoapi.local' http://localhost:18081/v1/orders/1 | grep path
-          curl --fail --silent -H 'Host: api.autoapi.local' http://localhost:18081/v1/orders/1 | grep receivedHost
-          curl --fail --silent http://localhost:18081/api/v1/projects | grep -E '^\[|^\[\]$'
+          chmod +x scripts/smoke-container-candidate.sh scripts/smoke-wait-lib.sh scripts/smoke-retry-lib.sh scripts/smoke-curl-lib.sh scripts/smoke-phase5-parser-lib.sh
+          timeout --signal=TERM --kill-after=15s 15m \
+            env CANDIDATE_IMAGE=autoapi-server:ci MOCK_UPSTREAM_IMAGE=mock-upstream:ci \
+            ./scripts/smoke-container-candidate.sh
 
       - name: Smoke environment cleanup
         if: always()
         run: |
-          docker rm -f autoapi-gateway upstream-v1 autoapi-postgres || true
-          docker volume rm autoapi-postgres-smoke || true
+          docker rm -f autoapi-gateway autoapi-control-plane upstream-v1 upstream-v2 autoapi-postgres autoapi-redis || true
+          docker volume rm autoapi-postgres-smoke autoapi-redis-smoke || true
           docker network rm autoapi-smoke || true
 
       - name: Push validated image

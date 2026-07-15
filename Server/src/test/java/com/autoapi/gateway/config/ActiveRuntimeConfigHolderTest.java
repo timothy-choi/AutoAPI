@@ -56,7 +56,58 @@ class ActiveRuntimeConfigHolderTest {
         new LocalGatewayConfigActivator(
             holder,
             gatewayProperties,
-            registryProvider(new TargetHealthRegistry(Clock.systemUTC())));
+            registryProvider(new TargetHealthRegistry(Clock.systemUTC())),
+            retryBudgetProvider(
+                new com.autoapi.gateway.retry.RetryBudgetRegistry(Clock.systemUTC())));
+  }
+
+  private static ObjectProvider<com.autoapi.gateway.retry.RetryBudgetRegistry> retryBudgetProvider(
+      com.autoapi.gateway.retry.RetryBudgetRegistry registry) {
+    return new ObjectProvider<>() {
+      @Override
+      public com.autoapi.gateway.retry.RetryBudgetRegistry getObject() {
+        return registry;
+      }
+
+      @Override
+      public com.autoapi.gateway.retry.RetryBudgetRegistry getObject(Object... args) {
+        return registry;
+      }
+
+      @Override
+      public com.autoapi.gateway.retry.RetryBudgetRegistry getIfAvailable() {
+        return registry;
+      }
+
+      @Override
+      public com.autoapi.gateway.retry.RetryBudgetRegistry getIfAvailable(
+          java.util.function.Supplier<com.autoapi.gateway.retry.RetryBudgetRegistry>
+              defaultSupplier) {
+        return registry;
+      }
+
+      @Override
+      public com.autoapi.gateway.retry.RetryBudgetRegistry getIfUnique() {
+        return registry;
+      }
+
+      @Override
+      public void ifAvailable(
+          java.util.function.Consumer<com.autoapi.gateway.retry.RetryBudgetRegistry>
+              dependencyConsumer) {
+        dependencyConsumer.accept(registry);
+      }
+
+      @Override
+      public java.util.stream.Stream<com.autoapi.gateway.retry.RetryBudgetRegistry> stream() {
+        return java.util.stream.Stream.of(registry);
+      }
+
+      @Override
+      public java.util.Iterator<com.autoapi.gateway.retry.RetryBudgetRegistry> iterator() {
+        return java.util.List.of(registry).iterator();
+      }
+    };
   }
 
   private static ObjectProvider<TargetHealthRegistry> registryProvider(

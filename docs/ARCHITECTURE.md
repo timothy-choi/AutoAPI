@@ -258,38 +258,43 @@ Client Response
 
 Loading `cfg` once prevents torn reads across policy stages during concurrent `Store()` operations.
 
-### Timeout and Retry Execution Flow
+### Timeout and Retry Execution Flow (Phase 6 — implemented in Java gateway)
 
-Timeout and retry behavior wraps outbound attempts. `httputil.ReverseProxy` is appropriate for the Phase 1 single-attempt vertical slice; retry support requires a custom outbound execution layer or custom `RoundTripper` integration — standard `ReverseProxy.ServeHTTP` alone does not cleanly implement bounded retries.
+Outbound attempts are executed by `RetryingProxyExecutor` / `UpstreamAttemptExecutor` (WebFlux WebClient), not unbounded Reactor `retry()`. **`maxAttempts` includes the first attempt.**
 
 ```text
-request deadline established (from route timeout_ms in cfg)
+route matched + auth/rate-limit passed
         |
         v
-traffic pool selected
+retry policy present? ----no----> single attempt (health-aware RR)
+        |
+       yes
+        v
+buffer body if needed (bounded)
         |
         v
-attempt loop
+attempt loop (maxAttempts)
         |
         v
-backend selected
+select target (prefer unattempted on retry)
         |
         v
-outbound request constructed
+per-attempt timeout + WebClient exchange
         |
         v
-HTTP RoundTrip
+classify result
+        |
+        +---- usable upstream response ----> stream to client (terminal)
+        |
+        +---- retryable transport failure ----+
+        |   method/idempotency/budget OK?     |
+        +-------------------------------------+
         |
         v
-result classified
-        |
-        +---- retry eligible and budget/deadline remain ----+
-        |                                                   |
-        +---------------------------------------------------+
-        |
-        v
-final response returned
+terminal 502/504 to client
 ```
+
+Retries are **transport-only** in Phase 6 (no HTTP 5xx retries). POST/PATCH require valid `Idempotency-Key` when policy allows those methods. Retry budgets are gateway-local sliding windows keyed by `apiId + routeId + policyId`.
 
 ---
 

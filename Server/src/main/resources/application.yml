@@ -62,6 +62,8 @@ autoapi:
       url: ${AUTOAPI_REDIS_URL:redis://redis:6379}
       connect-timeout: 2s
       command-timeout: 1s
+    retry:
+      max-replay-body-bytes: ${AUTOAPI_GATEWAY_RETRY_MAX_REPLAY_BODY_BYTES:1048576}
 
 management:
   endpoints:
