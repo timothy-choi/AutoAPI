@@ -645,7 +645,7 @@ demonstrate_budget_exhaustion() {
   fi
 
   set_smoke_step "Stopping upstream-v1 for budget exhaustion"
-  docker compose stop upstream-v1
+  docker compose stop -t 1 upstream-v1
 
   for i in $(seq 1 "${BUDGET_INITIAL_CAPACITY}"); do
     set_smoke_step "Executing allowed budget retry ${i}"
@@ -965,7 +965,7 @@ main() {
   position_selector_for_v1_first
 
   set_smoke_step "Stopping upstream-v1"
-  docker compose stop upstream-v1
+  docker compose stop -t 1 upstream-v1
 
   demonstrate_get_retry_failover "${api_id}" "${route_id}" "${retry_policy_id}" "$(date +%s)"
 

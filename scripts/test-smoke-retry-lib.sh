@@ -142,6 +142,51 @@ assert_retry_budget_allowed_retry_deltas \
   "${allowed_before}" "${allowed_after}" "${API_A}" "budget-route" "${POLICY_A}"
 echo "PASS allowed retry deltas without originalRequests"
 
+rolling_before='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":2,"retriesUsed":1,"retryCapacity":5,"retryAttempts":1,"retrySuccesses":1,"windowStartedAt":"2026-01-01T00:00:00Z","windowEndsAt":"2026-01-01T00:00:06Z"}]}'
+rolling_after='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":2,"retriesUsed":2,"retryCapacity":5,"retryAttempts":2,"retrySuccesses":2,"windowStartedAt":"2026-01-01T00:00:01Z","windowEndsAt":"2026-01-01T00:00:07Z"}]}'
+assert_retry_budget_allowed_retry_deltas \
+  "${rolling_before}" "${rolling_after}" "${API_A}" "budget-route" "${POLICY_A}"
+echo "PASS rolling window timestamp advance with valid counter increase"
+
+stale_before='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":1,"retriesUsed":1,"retryCapacity":5,"retryAttempts":1,"retrySuccesses":1,"windowStartedAt":"2026-01-01T00:00:00Z","windowEndsAt":"2026-01-01T00:00:06Z"}]}'
+stale_after='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":1,"retriesUsed":1,"retryCapacity":5,"retryAttempts":1,"retrySuccesses":1,"windowStartedAt":"2026-01-01T00:00:00Z","windowEndsAt":"2026-01-01T00:00:06Z"}]}'
+set +e
+assert_retry_budget_allowed_retry_deltas \
+  "${stale_before}" "${stale_after}" "${API_A}" "budget-route" "${POLICY_A}" >/dev/null 2> /tmp/smoke-retry-lib-stale.err
+stale_status=$?
+set -e
+if [[ ${stale_status} -eq 0 ]]; then
+  echo "FAIL unchanged counters accepted for allowed retry" >&2
+  exit 1
+fi
+echo "PASS unchanged counters rejected for allowed retry"
+
+regress_before='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":2,"retriesUsed":2,"retryCapacity":5,"retryAttempts":2,"retrySuccesses":2}]}'
+regress_after='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":2,"retriesUsed":1,"retryCapacity":5,"retryAttempts":2,"retrySuccesses":2}]}'
+set +e
+assert_retry_budget_allowed_retry_deltas \
+  "${regress_before}" "${regress_after}" "${API_A}" "budget-route" "${POLICY_A}" >/dev/null 2> /tmp/smoke-retry-lib-regress.err
+regress_status=$?
+set -e
+if [[ ${regress_status} -eq 0 ]]; then
+  echo "FAIL counter regression accepted" >&2
+  exit 1
+fi
+echo "PASS counter regression rejected"
+
+capacity_before='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":2,"retriesUsed":1,"retryCapacity":5,"retryAttempts":1,"retrySuccesses":1}]}'
+capacity_after='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":2,"retriesUsed":2,"retryCapacity":6,"retryAttempts":2,"retrySuccesses":2}]}'
+set +e
+assert_retry_budget_allowed_retry_deltas \
+  "${capacity_before}" "${capacity_after}" "${API_A}" "budget-route" "${POLICY_A}" >/dev/null 2> /tmp/smoke-retry-lib-capacity.err
+capacity_status=$?
+set -e
+if [[ ${capacity_status} -eq 0 ]]; then
+  echo "FAIL unexpected capacity change accepted" >&2
+  exit 1
+fi
+echo "PASS unexpected capacity change rejected"
+
 rollover_before='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":1,"retriesUsed":1,"retryCapacity":5,"retryAttempts":1,"retrySuccesses":1,"windowStartedAt":"2026-01-01T00:00:00Z","windowEndsAt":"2026-01-01T00:00:06Z"}]}'
 rollover_after='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":0,"retriesUsed":0,"retryCapacity":5,"retryAttempts":0,"retrySuccesses":0,"windowStartedAt":"2026-01-01T00:00:10Z","windowEndsAt":"2026-01-01T00:00:16Z"}]}'
 set +e
@@ -150,16 +195,16 @@ assert_retry_budget_allowed_retry_deltas \
 rollover_status=$?
 set -e
 if [[ ${rollover_status} -eq 0 ]]; then
-  echo "FAIL window rollover accepted" >&2
+  echo "FAIL destructive counter reset accepted" >&2
   exit 1
 fi
-echo "PASS window rollover rejected"
+echo "PASS destructive counter reset rejected"
 
 denied_before='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":5,"retriesUsed":5,"retryCapacity":5,"retryAttempts":5,"retrySuccesses":5,"budgetDenials":0,"windowStartedAt":"2026-01-01T00:00:00Z","windowEndsAt":"2026-01-01T00:00:06Z"}]}'
-denied_after='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":5,"retriesUsed":5,"retryCapacity":5,"retryAttempts":5,"retrySuccesses":5,"budgetDenials":1,"windowStartedAt":"2026-01-01T00:00:00Z","windowEndsAt":"2026-01-01T00:00:06Z"}]}'
+denied_after='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":5,"retriesUsed":5,"retryCapacity":5,"retryAttempts":5,"retrySuccesses":5,"budgetDenials":1,"windowStartedAt":"2026-01-01T00:00:01Z","windowEndsAt":"2026-01-01T00:00:07Z"}]}'
 assert_retry_budget_denied_retry_deltas \
   "${denied_before}" "${denied_after}" "${API_A}" "budget-route" "${POLICY_A}"
-echo "PASS denied retry deltas"
+echo "PASS denied retry with rolling timestamp advance"
 
 clean_before='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":0,"retriesUsed":0,"retryCapacity":5,"retryAttempts":0,"retrySuccesses":0}]}'
 clean_after='{"gatewayId":"gateway-a","budgets":[{"apiId":"'${API_A}'","routeId":"budget-route","policyId":"'${POLICY_A}'","originalRequests":1,"retriesUsed":0,"retryCapacity":5,"retryAttempts":0,"retrySuccesses":0}]}'

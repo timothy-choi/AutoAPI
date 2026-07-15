@@ -393,6 +393,8 @@ PY
 
 # Allowed retry invariant: retriesUsed, retryAttempts, and retrySuccesses each +1;
 # budgetDenials unchanged. originalRequests is not asserted when expect_original_delta=-1.
+# windowStartedAt/windowEndsAt are diagnostic only; they advance each second with the rolling
+# window and must not be treated as stable window identity.
 assert_retry_budget_field_deltas() {
   local before="$1"
   local after="$2"
@@ -444,26 +446,24 @@ def counters(payload):
         "retryAttempts": int(entry.get("retryAttempts") or 0),
         "retrySuccesses": int(entry.get("retrySuccesses") or 0),
         "budgetDenials": int(entry.get("budgetDenials") or 0),
-        "windowStartedAt": entry.get("windowStartedAt"),
+        "retryCapacity": int(entry.get("retryCapacity") or 0),
     }
 
 before_entry = find_entry(before)
 after_entry = find_entry(after)
-before_window = before_entry.get("windowStartedAt")
-after_window = after_entry.get("windowStartedAt")
-if before_window and after_window and before_window != after_window:
-    raise SystemExit(
-        f"retry budget window rolled over during request: "
-        f"{before_window} -> {after_window}"
-    )
-
 before_counts = counters(before)
 after_counts = counters(after)
+
+if after_counts["retryCapacity"] != before_counts["retryCapacity"]:
+    raise SystemExit(
+        f"retryCapacity changed from {before_counts['retryCapacity']} to {after_counts['retryCapacity']}"
+    )
+
 for field in ("retriesUsed", "retryAttempts", "retrySuccesses", "budgetDenials"):
     if after_counts[field] < before_counts[field]:
         raise SystemExit(
             f"{field} decreased from {before_counts[field]} to {after_counts[field]}, "
-            "likely window rollover"
+            "likely destructive window rollover"
         )
 
 checks = [
@@ -513,6 +513,29 @@ assert_retry_budget_denied_retry_deltas() {
     -1 0 0 0 1
 }
 
+read_retry_budget_window_bounds() {
+  local retry_json="$1"
+  local api_id="$2"
+  local route_id="$3"
+  local policy_id="$4"
+  python3 - "${retry_json}" "${api_id}" "${route_id}" "${policy_id}" <<'PY'
+import json
+import sys
+
+payload = json.loads(sys.argv[1])
+api_id, route_id, policy_id = sys.argv[2:5]
+for entry in payload.get("budgets") or []:
+    if (
+        entry.get("apiId") == api_id
+        and entry.get("routeId") == route_id
+        and entry.get("policyId") == policy_id
+    ):
+        print(f"{entry.get('windowStartedAt') or 'null'}|{entry.get('windowEndsAt') or 'null'}")
+        raise SystemExit(0)
+raise SystemExit(2)
+PY
+}
+
 log_budget_retry_diagnostics() {
   local label="$1"
   local http_status="$2"
@@ -526,6 +549,7 @@ log_budget_retry_diagnostics() {
   local before_counters after_counters
   local before_used before_capacity before_attempts before_successes
   local after_used after_capacity after_attempts after_successes
+  local before_window after_window before_window_start before_window_end after_window_start after_window_end
 
   if ! before_counters="$(read_retry_budget_counters "${retry_before}" "${api_id}" "${route_id}" "${policy_id}")"; then
     echo "budget retry ${label}: failed to read before counters" >&2
@@ -544,6 +568,19 @@ log_budget_retry_diagnostics() {
   after_attempts="$(sed -n '4p' <<<"${after_counters}")"
   after_successes="$(sed -n '5p' <<<"${after_counters}")"
 
+  if before_window="$(read_retry_budget_window_bounds "${retry_before}" "${api_id}" "${route_id}" "${policy_id}")"; then
+    IFS='|' read -r before_window_start before_window_end <<<"${before_window}"
+  else
+    before_window_start="unknown"
+    before_window_end="unknown"
+  fi
+  if after_window="$(read_retry_budget_window_bounds "${retry_after}" "${api_id}" "${route_id}" "${policy_id}")"; then
+    IFS='|' read -r after_window_start after_window_end <<<"${after_window}"
+  else
+    after_window_start="unknown"
+    after_window_end="unknown"
+  fi
+
   log_step "budget retry ${label}:"
   log_step "  HTTP ${http_status}"
   log_step "  service=${service}"
@@ -552,6 +589,9 @@ log_budget_retry_diagnostics() {
   log_step "  retryCapacity ${before_capacity} -> ${after_capacity}"
   log_step "  retryAttempts ${before_attempts} -> ${after_attempts}"
   log_step "  retrySuccesses ${before_successes} -> ${after_successes}"
+  if [[ "${before_window_start}" != "${after_window_start}" || "${before_window_end}" != "${after_window_end}" ]]; then
+    log_step "  rolling window bounds ${before_window_start}..${before_window_end} -> ${after_window_start}..${after_window_end} (diagnostic only)"
+  fi
 }
 
 print_failover_proof_diagnostics() {

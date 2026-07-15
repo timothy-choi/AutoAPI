@@ -126,6 +126,13 @@ final class RetryBudgetWindow {
     return Math.floorMod(instant.getEpochSecond(), windowSeconds);
   }
 
+  /**
+   * Rolling-window budget counters for one route policy.
+   *
+   * <p>{@code windowStartedAt} is {@code nowEpochSecond - windowSeconds + 1}: the oldest second
+   * currently included in the aggregate window. It advances each second as buckets roll and is not
+   * a stable window identity. {@code windowEndsAt} is {@code nowEpochSecond + 1}.
+   */
   record RetryBudgetSnapshot(
       int windowSeconds,
       long originalRequests,
