@@ -578,17 +578,19 @@ public final class DraftGraphValidator {
       }
     }
 
-    UpstreamPoolEntity pool = poolById.get(route.upstreamPoolId());
-    if (pool == null) {
-      errors.add(
-          new ValidationError(
-              "ROUTE_POOL_NOT_FOUND", route.id(), "Route references missing upstream pool"));
-    } else if (!pool.apiId().equals(apiId)) {
-      errors.add(
-          new ValidationError(
-              "ROUTE_POOL_WRONG_API",
-              route.id(),
-              "Route references upstream pool from another API"));
+    if (route.upstreamPoolId() != null) {
+      UpstreamPoolEntity pool = poolById.get(route.upstreamPoolId());
+      if (pool == null) {
+        errors.add(
+            new ValidationError(
+                "ROUTE_POOL_NOT_FOUND", route.id(), "Route references missing upstream pool"));
+      } else if (!pool.apiId().equals(apiId)) {
+        errors.add(
+            new ValidationError(
+                "ROUTE_POOL_WRONG_API",
+                route.id(),
+                "Route references upstream pool from another API"));
+      }
     }
   }
 

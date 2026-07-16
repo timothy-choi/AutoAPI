@@ -1,5 +1,7 @@
 package com.autoapi.controlplane.persistence;
 
+import io.r2dbc.spi.Parameters;
+import io.r2dbc.spi.R2dbcType;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -28,29 +30,33 @@ public class TrafficSplitPolicyRepositoryCustom {
       String fallbackMode,
       boolean enabled,
       OffsetDateTime updatedAt) {
-    return databaseClient
-        .sql(
-            """
-            UPDATE traffic_split_policies
-            SET name = :name,
-                selection_key = :selectionKey,
-                selection_key_name = :selectionKeyName,
-                fallback_mode = :fallbackMode,
-                enabled = :enabled,
-                updated_at = :updatedAt
-            WHERE id = :policyId
-            RETURNING id, api_id, name, selection_key, selection_key_name, fallback_mode,
-                      enabled, created_at, updated_at
-            """)
-        .bind("policyId", policyId)
-        .bind("name", name)
-        .bind("selectionKey", selectionKey)
-        .bind("selectionKeyName", selectionKeyName)
-        .bind("fallbackMode", fallbackMode)
-        .bind("enabled", enabled)
-        .bind("updatedAt", updatedAt)
-        .map(this::mapPolicy)
-        .one();
+    DatabaseClient.GenericExecuteSpec spec =
+        databaseClient
+            .sql(
+                """
+                UPDATE traffic_split_policies
+                SET name = :name,
+                    selection_key = :selectionKey,
+                    selection_key_name = :selectionKeyName,
+                    fallback_mode = :fallbackMode,
+                    enabled = :enabled,
+                    updated_at = :updatedAt
+                WHERE id = :policyId
+                RETURNING id, api_id, name, selection_key, selection_key_name, fallback_mode,
+                          enabled, created_at, updated_at
+                """)
+            .bind("policyId", policyId)
+            .bind("name", name)
+            .bind("selectionKey", selectionKey)
+            .bind("fallbackMode", fallbackMode)
+            .bind("enabled", enabled)
+            .bind("updatedAt", updatedAt);
+    if (selectionKeyName == null) {
+      spec = spec.bind("selectionKeyName", Parameters.in(R2dbcType.VARCHAR, selectionKeyName));
+    } else {
+      spec = spec.bind("selectionKeyName", selectionKeyName);
+    }
+    return spec.map(this::mapPolicy).one();
   }
 
   private TrafficSplitPolicyEntity mapPolicy(
