@@ -30,7 +30,7 @@ public class RoutePolicyBindingRepositoryCustom {
                 updated_at = :updatedAt
             WHERE route_id = :routeId
             RETURNING route_id, authentication_required, rate_limit_policy_id,
-                      retry_policy_id, created_at, updated_at
+                      retry_policy_id, traffic_split_policy_id, created_at, updated_at
             """)
         .bind("routeId", routeId)
         .bind("retryPolicyId", retryPolicyId)
@@ -48,7 +48,44 @@ public class RoutePolicyBindingRepositoryCustom {
                 updated_at = :updatedAt
             WHERE route_id = :routeId
             RETURNING route_id, authentication_required, rate_limit_policy_id,
-                      retry_policy_id, created_at, updated_at
+                      retry_policy_id, traffic_split_policy_id, created_at, updated_at
+            """)
+        .bind("routeId", routeId)
+        .bind("updatedAt", updatedAt)
+        .map(this::mapRow)
+        .one();
+  }
+
+  public Mono<RoutePolicyBindingEntity> bindTrafficSplitPolicy(
+      UUID routeId, UUID trafficSplitPolicyId, OffsetDateTime updatedAt) {
+    return databaseClient
+        .sql(
+            """
+            UPDATE route_policy_bindings
+            SET traffic_split_policy_id = :trafficSplitPolicyId,
+                updated_at = :updatedAt
+            WHERE route_id = :routeId
+            RETURNING route_id, authentication_required, rate_limit_policy_id,
+                      retry_policy_id, traffic_split_policy_id, created_at, updated_at
+            """)
+        .bind("routeId", routeId)
+        .bind("trafficSplitPolicyId", trafficSplitPolicyId)
+        .bind("updatedAt", updatedAt)
+        .map(this::mapRow)
+        .one();
+  }
+
+  public Mono<RoutePolicyBindingEntity> clearTrafficSplitPolicy(
+      UUID routeId, OffsetDateTime updatedAt) {
+    return databaseClient
+        .sql(
+            """
+            UPDATE route_policy_bindings
+            SET traffic_split_policy_id = NULL,
+                updated_at = :updatedAt
+            WHERE route_id = :routeId
+            RETURNING route_id, authentication_required, rate_limit_policy_id,
+                      retry_policy_id, traffic_split_policy_id, created_at, updated_at
             """)
         .bind("routeId", routeId)
         .bind("updatedAt", updatedAt)
@@ -63,6 +100,7 @@ public class RoutePolicyBindingRepositoryCustom {
         Boolean.TRUE.equals(row.get("authentication_required", Boolean.class)),
         row.get("rate_limit_policy_id", UUID.class),
         row.get("retry_policy_id", UUID.class),
+        row.get("traffic_split_policy_id", UUID.class),
         row.get("created_at", OffsetDateTime.class),
         row.get("updated_at", OffsetDateTime.class));
   }

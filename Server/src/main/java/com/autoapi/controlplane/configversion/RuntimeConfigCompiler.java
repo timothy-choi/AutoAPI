@@ -6,6 +6,8 @@ import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
 import com.autoapi.controlplane.persistence.RetryPolicyEntity;
 import com.autoapi.controlplane.persistence.RouteEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
+import com.autoapi.controlplane.persistence.TrafficSplitDestinationEntity;
+import com.autoapi.controlplane.persistence.TrafficSplitPolicyEntity;
 import com.autoapi.controlplane.persistence.UpstreamPoolEntity;
 import com.autoapi.controlplane.persistence.UpstreamTargetEntity;
 import com.autoapi.security.ApiKeyDigestService;
@@ -33,40 +35,13 @@ public final class RuntimeConfigCompiler {
       Map<UUID, RateLimitPolicyEntity> policyById,
       Map<UUID, BackendHealthPolicyEntity> healthPolicyById,
       Map<UUID, RetryPolicyEntity> retryPolicyById,
+      Map<UUID, TrafficSplitPolicyEntity> trafficSplitPolicyById,
+      Map<UUID, List<TrafficSplitDestinationEntity>> destinationsByPolicyId,
       List<ApiKeyEntity> apiKeys,
       OffsetDateTime publishInstant) {
     List<CompiledRouteSection> compiledRoutes = new ArrayList<>();
     List<RouteEntity> sortedRoutes = enabledRoutes.stream().sorted(routeComparator()).toList();
     for (RouteEntity route : sortedRoutes) {
-      UpstreamPoolEntity pool = poolById.get(route.upstreamPoolId());
-      List<UpstreamTargetEntity> poolTargets =
-          targetsByPool.getOrDefault(route.upstreamPoolId(), List.of()).stream()
-              .filter(UpstreamTargetEntity::enabled)
-              .sorted(Comparator.comparing(UpstreamTargetEntity::id))
-              .toList();
-      List<CompiledUpstreamTargetSection> compiledTargets =
-          poolTargets.stream()
-              .map(t -> new CompiledUpstreamTargetSection(t.id(), t.url(), t.weight()))
-              .toList();
-      CompiledBackendHealthSection backendHealth = null;
-      if (pool.backendHealthPolicyId() != null) {
-        BackendHealthPolicyEntity healthPolicy = healthPolicyById.get(pool.backendHealthPolicyId());
-        if (healthPolicy != null && healthPolicy.enabled()) {
-          backendHealth =
-              new CompiledBackendHealthSection(
-                  healthPolicy.consecutiveFailureThreshold(),
-                  healthPolicy.ejectionDurationSeconds(),
-                  healthPolicy.maxEjectionPercent());
-        }
-      }
-      CompiledUpstreamPoolSection compiledPool =
-          new CompiledUpstreamPoolSection(
-              pool.id(), pool.loadBalancing(), backendHealth, compiledTargets);
-      List<String> methods =
-          java.util.Arrays.stream(route.methods())
-              .map(m -> m.toUpperCase(Locale.ROOT))
-              .sorted()
-              .toList();
       RoutePolicyBindingEntity binding = bindingByRouteId.get(route.id());
       CompiledAuthenticationSection authentication = null;
       CompiledRateLimitSection rateLimit = null;
@@ -105,6 +80,27 @@ public final class RuntimeConfigCompiler {
                   retryPolicy.budgetWindowSeconds());
         }
       }
+      CompiledTrafficSplitSection trafficSplit = null;
+      CompiledUpstreamPoolSection upstreamPool = null;
+      if (binding != null && binding.trafficSplitPolicyId() != null) {
+        TrafficSplitPolicyEntity splitPolicy =
+            trafficSplitPolicyById.get(binding.trafficSplitPolicyId());
+        List<TrafficSplitDestinationEntity> destinations =
+            destinationsByPolicyId.getOrDefault(binding.trafficSplitPolicyId(), List.of());
+        if (splitPolicy != null && splitPolicy.enabled()) {
+          trafficSplit =
+              compileTrafficSplit(
+                  splitPolicy, destinations, poolById, targetsByPool, healthPolicyById);
+        }
+      } else if (route.upstreamPoolId() != null) {
+        upstreamPool =
+            compilePool(route.upstreamPoolId(), poolById, targetsByPool, healthPolicyById);
+      }
+      List<String> methods =
+          java.util.Arrays.stream(route.methods())
+              .map(m -> m.toUpperCase(Locale.ROOT))
+              .sorted()
+              .toList();
       compiledRoutes.add(
           new CompiledRouteSection(
               route.id(),
@@ -114,10 +110,75 @@ public final class RuntimeConfigCompiler {
               authentication,
               rateLimit,
               retry,
-              compiledPool));
+              trafficSplit,
+              upstreamPool));
     }
     List<CompiledApiKeySection> compiledKeys = compileApiKeys(apiKeys, publishInstant);
     return new HashableRuntimePayload(apiId, gateway, compiledRoutes, compiledKeys);
+  }
+
+  private static CompiledTrafficSplitSection compileTrafficSplit(
+      TrafficSplitPolicyEntity policy,
+      List<TrafficSplitDestinationEntity> destinations,
+      Map<UUID, UpstreamPoolEntity> poolById,
+      Map<UUID, List<UpstreamTargetEntity>> targetsByPool,
+      Map<UUID, BackendHealthPolicyEntity> healthPolicyById) {
+    List<TrafficSplitDestinationEntity> sortedDestinations =
+        destinations.stream()
+            .sorted(
+                Comparator.comparing(TrafficSplitDestinationEntity::priority)
+                    .thenComparing(TrafficSplitDestinationEntity::id))
+            .toList();
+    List<CompiledTrafficSplitDestinationSection> compiledDestinations = new ArrayList<>();
+    for (TrafficSplitDestinationEntity destination : sortedDestinations) {
+      compiledDestinations.add(
+          new CompiledTrafficSplitDestinationSection(
+              destination.id(),
+              destination.name(),
+              destination.weight(),
+              destination.priority(),
+              destination.primary(),
+              compilePool(
+                  destination.upstreamPoolId(), poolById, targetsByPool, healthPolicyById)));
+    }
+    String fingerprint = TrafficSplitPolicyFingerprint.compute(policy, sortedDestinations);
+    return new CompiledTrafficSplitSection(
+        policy.id(),
+        policy.selectionKey(),
+        policy.selectionKeyName(),
+        policy.fallbackMode(),
+        fingerprint,
+        compiledDestinations);
+  }
+
+  private static CompiledUpstreamPoolSection compilePool(
+      UUID poolId,
+      Map<UUID, UpstreamPoolEntity> poolById,
+      Map<UUID, List<UpstreamTargetEntity>> targetsByPool,
+      Map<UUID, BackendHealthPolicyEntity> healthPolicyById) {
+    UpstreamPoolEntity pool = poolById.get(poolId);
+    List<UpstreamTargetEntity> poolTargets =
+        targetsByPool.getOrDefault(poolId, List.of()).stream()
+            .filter(UpstreamTargetEntity::enabled)
+            .sorted(Comparator.comparing(UpstreamTargetEntity::id))
+            .toList();
+    List<CompiledUpstreamTargetSection> compiledTargets =
+        poolTargets.stream()
+            .map(t -> new CompiledUpstreamTargetSection(t.id(), t.url(), t.weight()))
+            .toList();
+    CompiledBackendHealthSection backendHealth = null;
+    if (pool.backendHealthPolicyId() != null) {
+      BackendHealthPolicyEntity healthPolicy = healthPolicyById.get(pool.backendHealthPolicyId());
+      if (healthPolicy != null && healthPolicy.enabled()) {
+        backendHealth =
+            new CompiledBackendHealthSection(
+                healthPolicy.consecutiveFailureThreshold(),
+                healthPolicy.ejectionDurationSeconds(),
+                healthPolicy.maxEjectionPercent());
+      }
+    }
+    return new CompiledUpstreamPoolSection(
+        pool.id(), pool.loadBalancing(), backendHealth, compiledTargets);
   }
 
   public static List<CompiledApiKeySection> compileApiKeys(
@@ -188,6 +249,8 @@ public final class RuntimeConfigCompiler {
         enabledRoutes,
         poolById,
         targetsByPool,
+        Map.of(),
+        Map.of(),
         Map.of(),
         Map.of(),
         Map.of(),

@@ -118,6 +118,10 @@ jobs:
         timeout-minutes: 22
         run: timeout --signal=TERM --kill-after=15s 20m ./scripts/smoke-phase6.sh
 
+      - name: Run Phase 7 traffic split smoke
+        timeout-minutes: 22
+        run: timeout --signal=TERM --kill-after=15s 20m ./scripts/smoke-phase7.sh
+
       - name: Compose cleanup
         if: always()
         run: docker compose down -v

@@ -354,36 +354,37 @@ Bounded, safe, nonblocking upstream retries on eligible transport failures befor
 
 ---
 
-## Phase 7: Canary Traffic Management
+## Phase 7: Weighted Traffic Splitting, Canary Releases, and Deterministic Percentage Routing ✅ (implemented)
 
 ### Goal
 
-Deterministic 90/10 traffic split between two upstream pools; same API key always hits same pool.
+Deterministic weighted stable/canary traffic split between upstream pools; sticky assignment via configured selection keys; cross-gateway consistent mapping.
 
-### Implementation Tasks
+### Implemented (Phase 7)
 
-- [ ] `traffic_splits` and `traffic_split_targets` tables
-- [ ] Route policy binding for traffic split
-- [ ] Gateway consistent hash on API-key ID
-- [ ] Two pools: v1 (90%), v2 (10%) in docker-compose
-- [ ] Metrics label: `upstream_pool` on requests
+- [x] `traffic_split_policies` and `traffic_split_destinations` tables (Flyway V6)
+- [x] Route policy binding via `route_policy_bindings.traffic_split_policy_id`
+- [x] Management API under `/api/v1` for policies, destinations, and route binding
+- [x] Immutable runtime snapshot compilation with policy fingerprint and cumulative weight ranges
+- [x] Gateway SHA-256 deterministic bucket selection (not `String.hashCode()`, not random)
+- [x] Selection keys: `API_KEY_ID`, `REQUEST_ID`, `HEADER`, `COOKIE`
+- [x] Fallback modes: `STRICT`, `FALLBACK_TO_PRIMARY`, `FALLBACK_TO_ANY_HEALTHY_SPLIT`
+- [x] Pipeline: auth → rate limit → traffic split → health-aware target → bounded retries (retries stay in effective split)
+- [x] Internal endpoint `GET /internal/v1/traffic-splits` with gateway-local counters
+- [x] Micrometer metrics: `autoapi_gateway_traffic_split_*`
+- [x] `scripts/smoke-phase7.sh` and compose services `stable-v1`, `stable-v2`, `canary-v1`
 
-### Components/Files Affected
+### Not implemented (Phase 7 scope exclusions)
 
-- `control-plane/app/models/traffic_splits.py`
-- `gateway/internal/middleware/trafficsplit.go`
-- `docker-compose.yml` (upstream-v2)
-
-### Tests
-
-- [ ] Unit: hash distribution ~90/10 over 10000 keys (± tolerance)
-- [ ] Integration: same API key → same upstream pool across 100 requests
-- [ ] Integration: different keys → both pools receive traffic
+- Least-requests / latency-aware routing
+- Active health probes, hedging, request mirroring
+- Arbitrary routing rule engine, geographic routing
+- Globally persistent assignment tables / experiment analytics
 
 ### Definition of Done
 
-- Canary routing deterministic and versioned in config snapshot
-- Changing split weights and republishing changes mapping predictably
+- Canary routing deterministic and versioned in config snapshot ✅
+- Changing split weights and republishing changes mapping predictably ✅
 
 ---
 

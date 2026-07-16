@@ -8,6 +8,8 @@ import com.autoapi.controlplane.persistence.ConfigVersionRepository;
 import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
 import com.autoapi.controlplane.persistence.RetryPolicyEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
+import com.autoapi.controlplane.persistence.TrafficSplitDestinationEntity;
+import com.autoapi.controlplane.persistence.TrafficSplitPolicyEntity;
 import com.autoapi.controlplane.validation.DraftGraphValidator;
 import com.autoapi.controlplane.validation.ValidationResult;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -120,6 +122,17 @@ public class ConfigVersionService {
                                   .collect(
                                       java.util.stream.Collectors.toMap(
                                           RetryPolicyEntity::id, p -> p));
+                          java.util.Map<UUID, TrafficSplitPolicyEntity> trafficSplitPolicyById =
+                              graph.trafficSplitPolicies().stream()
+                                  .collect(
+                                      java.util.stream.Collectors.toMap(
+                                          TrafficSplitPolicyEntity::id, p -> p));
+                          java.util.Map<UUID, java.util.List<TrafficSplitDestinationEntity>>
+                              destinationsByPolicyId =
+                                  graph.trafficSplitDestinations().stream()
+                                      .collect(
+                                          java.util.stream.Collectors.groupingBy(
+                                              TrafficSplitDestinationEntity::trafficSplitPolicyId));
                           HashableRuntimePayload payload =
                               RuntimeConfigCompiler.compile(
                                   apiId,
@@ -145,6 +158,8 @@ public class ConfigVersionService {
                                   policyById,
                                   healthPolicyById,
                                   retryPolicyById,
+                                  trafficSplitPolicyById,
+                                  destinationsByPolicyId,
                                   graph.apiKeys(),
                                   publishInstant);
                           StoredRuntimeSnapshot snapshot =

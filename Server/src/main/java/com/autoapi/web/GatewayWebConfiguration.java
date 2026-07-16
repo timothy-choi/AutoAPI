@@ -61,10 +61,12 @@ public class GatewayWebConfiguration {
   @ConditionalOnAutoApiRole({AutoApiRole.GATEWAY, AutoApiRole.COMBINED})
   RouterFunction<ServerResponse> internalGatewayRoutes(
       GatewayInternalHealthHandler healthHandler,
-      com.autoapi.gateway.retry.GatewayInternalRetryHandler retryHandler) {
+      com.autoapi.gateway.retry.GatewayInternalRetryHandler retryHandler,
+      com.autoapi.gateway.traffic.GatewayInternalTrafficSplitHandler trafficSplitHandler) {
     return RouterFunctions.route()
         .GET("/internal/v1/upstream-health", healthHandler::upstreamHealth)
         .GET("/internal/v1/retry-status", retryHandler::retryStatus)
+        .GET("/internal/v1/traffic-splits", trafficSplitHandler::trafficSplits)
         .build();
   }
 

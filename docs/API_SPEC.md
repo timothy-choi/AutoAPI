@@ -559,52 +559,104 @@ Publication rejects POST/PATCH in `retryableMethods` when `requireIdempotencyKey
 
 ---
 
-## Traffic Policies
+## Traffic Split Policies (Phase 7)
 
-### `POST /api/v1/apis/{api_id}/traffic-splits`
+### `POST /api/v1/apis/{apiId}/traffic-split-policies`
 
-**Purpose:** Define weighted/deterministic split between upstream pools.
+**Purpose:** Create a weighted traffic-split policy for stable/canary routing.
 
 **Request:**
 
 ```json
 {
-  "name": "canary-v2",
-  "stable_identity_header": "X-API-Key-Id",
-  "targets": [
-    { "upstream_pool_id": "uuid-v1", "weight": 90 },
-    { "upstream_pool_id": "uuid-v2", "weight": 10 }
-  ]
+  "name": "orders-canary",
+  "selectionKey": "API_KEY_ID",
+  "selectionKeyName": null,
+  "fallbackMode": "FALLBACK_TO_PRIMARY",
+  "enabled": true
 }
 ```
 
-**Response:** `201`
+**Response:** `201 Created`
+
+Supported `selectionKey`: `REQUEST_ID`, `API_KEY_ID`, `HEADER`, `COOKIE`.  
+Supported `fallbackMode`: `STRICT`, `FALLBACK_TO_PRIMARY`, `FALLBACK_TO_ANY_HEALTHY_SPLIT`.
 
 ---
 
-### `GET /api/v1/apis/{api_id}/traffic-splits`
+### `GET /api/v1/apis/{apiId}/traffic-split-policies`
 
-**Purpose:** List traffic splits.
+List policies for an API.
+
+---
+
+### `GET /api/v1/apis/{apiId}/traffic-split-policies/{policyId}`
+
+Return one policy and its destinations.
+
+---
+
+### `PATCH /api/v1/apis/{apiId}/traffic-split-policies/{policyId}`
+
+Partial update; omitted fields retain existing values.
+
+---
+
+### `POST /api/v1/traffic-split-policies/{policyId}/destinations`
+
+**Request:**
+
+```json
+{
+  "name": "stable",
+  "upstreamPoolId": "uuid",
+  "weight": 80,
+  "priority": 0,
+  "primary": true
+}
+```
+
+**Response:** `201 Created`
+
+---
+
+### `PATCH /api/v1/traffic-split-policies/{policyId}/destinations/{destinationId}`
+
+Partial update for name, weight, priority, primary (pool binding is immutable).
+
+---
+
+### `DELETE /api/v1/traffic-split-policies/{policyId}/destinations/{destinationId}`
+
+Remove destination from draft policy.
+
+---
+
+### `PUT /api/v1/routes/{routeId}/traffic-split-policy`
+
+**Request:**
+
+```json
+{
+  "trafficSplitPolicyId": "uuid"
+}
+```
+
+Clears direct route upstream pool binding when applied. Policy must be enabled and belong to the same API.
+
+---
+
+### `DELETE /api/v1/routes/{routeId}/traffic-split-policy`
+
+Remove traffic-split binding (does not delete the policy).
+
+---
+
+### Gateway internal: `GET /internal/v1/traffic-splits`
+
+Gateway-local traffic-split policy metadata and assignment/fallback counters (no routing-key values).
 
 **Response:** `200`
-
----
-
-### `POST /api/v1/routes/{route_id}/policy-bindings`
-
-**Purpose:** Bind rate limit, retry, or traffic split policy to route.
-
-**Request:**
-
-```json
-{
-  "rate_limit_policy_id": "uuid",
-  "retry_policy_id": "uuid",
-  "traffic_split_id": "uuid"
-}
-```
-
-**Response:** `201`
 
 ---
 

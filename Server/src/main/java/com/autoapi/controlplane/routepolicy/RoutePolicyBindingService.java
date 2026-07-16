@@ -113,6 +113,7 @@ public class RoutePolicyBindingService {
                         authenticationRequired,
                         rateLimitPolicyId,
                         existing.retryPolicyId(),
+                        existing.trafficSplitPolicyId(),
                         existing.createdAt(),
                         now)))
         .switchIfEmpty(
@@ -120,6 +121,12 @@ public class RoutePolicyBindingService {
                 () ->
                     bindingRepository.save(
                         new RoutePolicyBindingEntity(
-                            routeId, authenticationRequired, rateLimitPolicyId, null, now, now))));
+                            routeId,
+                            authenticationRequired,
+                            rateLimitPolicyId,
+                            null,
+                            null,
+                            now,
+                            now))));
   }
 }

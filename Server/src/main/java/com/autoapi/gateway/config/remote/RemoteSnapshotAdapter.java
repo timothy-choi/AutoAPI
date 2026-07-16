@@ -8,11 +8,14 @@ import com.autoapi.config.RuntimeAuthentication;
 import com.autoapi.config.RuntimeConfig;
 import com.autoapi.config.RuntimeRateLimit;
 import com.autoapi.config.RuntimeRetryPolicyConfig;
+import com.autoapi.config.RuntimeTrafficSplitConfig;
+import com.autoapi.config.RuntimeTrafficSplitDestination;
 import com.autoapi.config.UpstreamConfig;
 import com.autoapi.config.UpstreamTargetReference;
 import com.autoapi.controlplane.configversion.CompiledRateLimitSection;
 import com.autoapi.controlplane.configversion.CompiledRouteSection;
-import com.autoapi.controlplane.configversion.CompiledUpstreamPoolSection;
+import com.autoapi.controlplane.configversion.CompiledTrafficSplitDestinationSection;
+import com.autoapi.controlplane.configversion.CompiledTrafficSplitSection;
 import com.autoapi.controlplane.configversion.CompiledUpstreamTargetSection;
 import com.autoapi.controlplane.configversion.HashableRuntimePayload;
 import com.autoapi.controlplane.configversion.RuntimeContentHasher;
@@ -117,7 +120,16 @@ public final class RemoteSnapshotAdapter {
     for (String method : route.methods()) {
       methods.add(HttpMethod.valueOf(method));
     }
-    UpstreamConfig upstream = toUpstreamConfig(route.upstreamPool());
+    UpstreamConfig upstream = null;
+    RuntimeTrafficSplitConfig trafficSplit = null;
+    if (route.trafficSplit() != null) {
+      trafficSplit = toTrafficSplitConfig(route.trafficSplit());
+    } else if (route.upstreamPool() != null) {
+      upstream = toUpstreamConfig(route.upstreamPool());
+    } else {
+      throw new RemoteSnapshotValidationException(
+          "Route must define either trafficSplit or upstreamPool");
+    }
     RuntimeAuthentication authentication = null;
     if (route.authentication() != null && route.authentication().required()) {
       authentication = new RuntimeAuthentication(true);
@@ -136,9 +148,55 @@ public final class RemoteSnapshotAdapter {
         route.pathPrefix(),
         methods,
         upstream,
+        trafficSplit,
         authentication,
         rateLimit,
         retry);
+  }
+
+  private static RuntimeTrafficSplitConfig toTrafficSplitConfig(
+      CompiledTrafficSplitSection section) {
+    if (section.destinations() == null || section.destinations().isEmpty()) {
+      throw new RemoteSnapshotValidationException("Traffic split must contain destinations");
+    }
+    List<RuntimeTrafficSplitDestination> destinations = new ArrayList<>();
+    int cumulative = 0;
+    int totalWeight = 0;
+    for (CompiledTrafficSplitDestinationSection destination : section.destinations()) {
+      if (destination.weight() > 0) {
+        totalWeight += destination.weight();
+      }
+    }
+    for (CompiledTrafficSplitDestinationSection destination : section.destinations()) {
+      UpstreamConfig pool = toUpstreamConfig(destination.upstreamPool());
+      int start = cumulative;
+      int end = cumulative;
+      if (destination.weight() > 0) {
+        end = cumulative + destination.weight();
+        cumulative = end;
+      }
+      destinations.add(
+          new RuntimeTrafficSplitDestination(
+              destination.id(),
+              destination.name(),
+              destination.weight(),
+              destination.priority(),
+              destination.primary(),
+              pool,
+              start,
+              end));
+    }
+    if (totalWeight <= 0) {
+      throw new RemoteSnapshotValidationException("Traffic split total weight must be positive");
+    }
+    return new RuntimeTrafficSplitConfig(
+        section.policyId(),
+        section.selectionKey(),
+        section.selectionKeyName(),
+        section.fallbackMode(),
+        section.fingerprint(),
+        totalWeight,
+        destinations);
   }
 
   private static RuntimeRetryPolicyConfig toRuntimeRetry(
@@ -167,7 +225,8 @@ public final class RemoteSnapshotAdapter {
         section.redisFailureMode());
   }
 
-  private static UpstreamConfig toUpstreamConfig(CompiledUpstreamPoolSection pool) {
+  private static UpstreamConfig toUpstreamConfig(
+      com.autoapi.controlplane.configversion.CompiledUpstreamPoolSection pool) {
     if (pool == null) {
       throw new RemoteSnapshotValidationException("Route upstream pool is required");
     }

@@ -73,10 +73,12 @@ public class RetryRouteBindingService {
                                   existing.authenticationRequired(),
                                   existing.rateLimitPolicyId(),
                                   null,
+                                  existing.trafficSplitPolicyId(),
                                   existing.createdAt(),
                                   now);
                           if (!existing.authenticationRequired()
-                              && existing.rateLimitPolicyId() == null) {
+                              && existing.rateLimitPolicyId() == null
+                              && existing.trafficSplitPolicyId() == null) {
                             return bindingRepository.deleteById(routeId).thenReturn(cleared);
                           }
                           return bindingRepositoryCustom.clearRetryPolicy(routeId, now);
@@ -128,6 +130,6 @@ public class RetryRouteBindingService {
                 () ->
                     bindingRepository.save(
                         new RoutePolicyBindingEntity(
-                            route.id(), false, null, retryPolicyId, now, now))));
+                            route.id(), false, null, retryPolicyId, null, now, now))));
   }
 }

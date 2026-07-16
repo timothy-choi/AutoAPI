@@ -53,6 +53,42 @@ services:
       timeout: 3s
       retries: 5
 
+  stable-v1:
+    image: mock-upstream:smoke
+    build:
+      context: ./tests/mock-upstream
+    environment:
+      UPSTREAM_ID: stable-v1
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/v1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  stable-v2:
+    image: mock-upstream:smoke
+    build:
+      context: ./tests/mock-upstream
+    environment:
+      UPSTREAM_ID: stable-v2
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/v1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  canary-v1:
+    image: mock-upstream:smoke
+    build:
+      context: ./tests/mock-upstream
+    environment:
+      UPSTREAM_ID: canary-v1
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/v1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   control-plane:
     image: autoapi-server:smoke
     build:

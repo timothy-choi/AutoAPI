@@ -15,6 +15,10 @@ import com.autoapi.controlplane.persistence.RouteEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingRepository;
 import com.autoapi.controlplane.persistence.RouteRepository;
+import com.autoapi.controlplane.persistence.TrafficSplitDestinationEntity;
+import com.autoapi.controlplane.persistence.TrafficSplitDestinationRepository;
+import com.autoapi.controlplane.persistence.TrafficSplitPolicyEntity;
+import com.autoapi.controlplane.persistence.TrafficSplitPolicyRepository;
 import com.autoapi.controlplane.persistence.UpstreamPoolEntity;
 import com.autoapi.controlplane.persistence.UpstreamPoolRepository;
 import com.autoapi.controlplane.persistence.UpstreamTargetEntity;
@@ -40,6 +44,8 @@ public class DraftGraphService {
   private final RateLimitPolicyRepository rateLimitPolicyRepository;
   private final BackendHealthPolicyRepository backendHealthPolicyRepository;
   private final RetryPolicyRepository retryPolicyRepository;
+  private final TrafficSplitPolicyRepository trafficSplitPolicyRepository;
+  private final TrafficSplitDestinationRepository trafficSplitDestinationRepository;
   private final RoutePolicyBindingRepository routePolicyBindingRepository;
   private final ControlPlaneProperties properties;
 
@@ -52,6 +58,8 @@ public class DraftGraphService {
       RateLimitPolicyRepository rateLimitPolicyRepository,
       BackendHealthPolicyRepository backendHealthPolicyRepository,
       RetryPolicyRepository retryPolicyRepository,
+      TrafficSplitPolicyRepository trafficSplitPolicyRepository,
+      TrafficSplitDestinationRepository trafficSplitDestinationRepository,
       RoutePolicyBindingRepository routePolicyBindingRepository,
       ControlPlaneProperties properties) {
     this.apiRepository = apiRepository;
@@ -62,6 +70,8 @@ public class DraftGraphService {
     this.rateLimitPolicyRepository = rateLimitPolicyRepository;
     this.backendHealthPolicyRepository = backendHealthPolicyRepository;
     this.retryPolicyRepository = retryPolicyRepository;
+    this.trafficSplitPolicyRepository = trafficSplitPolicyRepository;
+    this.trafficSplitDestinationRepository = trafficSplitDestinationRepository;
     this.routePolicyBindingRepository = routePolicyBindingRepository;
     this.properties = properties;
   }
@@ -78,11 +88,12 @@ public class DraftGraphService {
                         rateLimitPolicyRepository.findByApiId(apiId).collectList(),
                         backendHealthPolicyRepository.findByApiId(apiId).collectList(),
                         retryPolicyRepository.findByApiId(apiId).collectList(),
+                        trafficSplitPolicyRepository.findByApiId(apiId).collectList(),
                         routePolicyBindingRepository.findAll().collectList())
                     .flatMap(
                         tuple -> {
                           List<UpstreamPoolEntity> pools = tuple.getT2();
-                          List<RoutePolicyBindingEntity> allBindings = tuple.getT7();
+                          List<RoutePolicyBindingEntity> allBindings = tuple.getT8();
                           List<RoutePolicyBindingEntity> apiBindings =
                               allBindings.stream()
                                   .filter(
@@ -95,19 +106,29 @@ public class DraftGraphService {
                               .flatMap(
                                   pool -> upstreamTargetRepository.findByUpstreamPoolId(pool.id()))
                               .collectList()
-                              .map(
+                              .flatMap(
                                   targets ->
-                                      new DraftGraph(
-                                          api,
-                                          tuple.getT1(),
-                                          pools,
-                                          targets,
-                                          tuple.getT3(),
-                                          tuple.getT4(),
-                                          tuple.getT5(),
-                                          tuple.getT6(),
-                                          apiBindings,
-                                          gatewayDefaults()));
+                                      reactor.core.publisher.Flux.fromIterable(tuple.getT7())
+                                          .flatMap(
+                                              policy ->
+                                                  trafficSplitDestinationRepository
+                                                      .findByTrafficSplitPolicyId(policy.id()))
+                                          .collectList()
+                                          .map(
+                                              splitDestinations ->
+                                                  new DraftGraph(
+                                                      api,
+                                                      tuple.getT1(),
+                                                      pools,
+                                                      targets,
+                                                      tuple.getT3(),
+                                                      tuple.getT4(),
+                                                      tuple.getT5(),
+                                                      tuple.getT6(),
+                                                      tuple.getT7(),
+                                                      splitDestinations,
+                                                      apiBindings,
+                                                      gatewayDefaults())));
                         }));
   }
 
@@ -125,6 +146,8 @@ public class DraftGraphService {
       List<RateLimitPolicyEntity> rateLimitPolicies,
       List<BackendHealthPolicyEntity> backendHealthPolicies,
       List<RetryPolicyEntity> retryPolicies,
+      List<TrafficSplitPolicyEntity> trafficSplitPolicies,
+      List<TrafficSplitDestinationEntity> trafficSplitDestinations,
       List<RoutePolicyBindingEntity> routePolicyBindings,
       CompiledGatewaySection gatewayDefaults) {}
 }

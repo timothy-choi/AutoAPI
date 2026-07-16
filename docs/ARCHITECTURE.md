@@ -294,6 +294,42 @@ classify result
 terminal 502/504 to client
 ```
 
+### Traffic Split Selection Flow (Phase 7 — implemented in Java gateway)
+
+Traffic-split assignment runs **after** authentication and rate limiting and **before** health-aware target selection. The gateway captures the active immutable runtime configuration once per request.
+
+```text
+route matched
+        |
+        v
+authentication (required for API_KEY_ID stickiness)
+        |
+        v
+rate limiting
+        |
+        v
+resolve selection key (API key ID / header / cookie / request ID)
+        |
+        v
+SHA-256 bucket = hash(routeId|policyId|fingerprint|key) mod totalWeight
+        |
+        v
+nominal destination (weighted cumulative ranges)
+        |
+        v
+split-level fallback if pool has no eligible target
+        |
+        v
+health-aware target selection inside effective pool
+        |
+        v
+bounded retries (same effective split; no re-hash on retry)
+```
+
+Hash input excludes gateway ID, raw API-key secrets, and per-request randomness. Policy fingerprint changes (weights, destinations, selection key, fallback mode) can remap sticky assignments.
+
+---
+
 Retries are **transport-only** in Phase 6 (no HTTP 5xx retries). POST/PATCH require valid `Idempotency-Key` when policy allows those methods. Retry budgets are gateway-local sliding windows keyed by `apiId + routeId + policyId`.
 
 ---

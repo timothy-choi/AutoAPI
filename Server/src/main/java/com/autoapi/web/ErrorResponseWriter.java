@@ -126,6 +126,22 @@ public class ErrorResponseWriter {
         "No upstream target is available");
   }
 
+  public Mono<Void> noAvailableTrafficDestination(ServerWebExchange exchange) {
+    return write(
+        exchange,
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "NO_AVAILABLE_TRAFFIC_DESTINATION",
+        "No configured traffic destination is available");
+  }
+
+  public Mono<Void> trafficSplitConfigurationUnavailable(ServerWebExchange exchange) {
+    return write(
+        exchange,
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "TRAFFIC_SPLIT_CONFIGURATION_UNAVAILABLE",
+        "Traffic split configuration is unavailable");
+  }
+
   private void logProxyFailure(ServerWebExchange exchange, Throwable cause) {
     String requestId = com.autoapi.middleware.RequestIdSupport.getRequestId(exchange);
     log.warn(
