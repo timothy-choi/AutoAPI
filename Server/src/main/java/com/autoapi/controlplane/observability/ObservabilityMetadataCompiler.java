@@ -1,5 +1,6 @@
 package com.autoapi.controlplane.observability;
 
+import com.autoapi.controlplane.configversion.CompiledDiscoveredInstanceSection;
 import com.autoapi.controlplane.configversion.CompiledObservabilityMetadataSection;
 import com.autoapi.controlplane.configversion.CompiledRouteSection;
 import com.autoapi.controlplane.configversion.CompiledTrafficSplitDestinationSection;
@@ -24,6 +25,9 @@ public final class ObservabilityMetadataCompiler {
     List<CompiledRouteSection> routes = payload.routes();
     int routeCount = routes.size();
     Set<UUID> targetIds = new HashSet<>();
+    Set<UUID> serviceIds = new HashSet<>();
+    int serviceInstanceCount = 0;
+    long discoveryMembershipVersion = 0L;
     Map<String, Integer> policyCounts = new HashMap<>();
     int rateLimit = 0;
     int retry = 0;
@@ -44,6 +48,15 @@ public final class ObservabilityMetadataCompiler {
         trafficSplit++;
       }
       collectTargets(route.upstreamPool(), targetIds);
+      if (route.discoveredService() != null) {
+        serviceIds.add(route.discoveredService().serviceId());
+        serviceInstanceCount += route.discoveredService().instances().size();
+        discoveryMembershipVersion =
+            Math.max(discoveryMembershipVersion, route.discoveredService().membershipVersion());
+        for (CompiledDiscoveredInstanceSection instance : route.discoveredService().instances()) {
+          targetIds.add(instance.targetId());
+        }
+      }
       if (route.upstreamPool() != null && route.upstreamPool().backendHealth() != null) {
         backendHealth++;
       }
@@ -51,6 +64,18 @@ public final class ObservabilityMetadataCompiler {
         for (CompiledTrafficSplitDestinationSection destination :
             route.trafficSplit().destinations()) {
           collectTargets(destination.upstreamPool(), targetIds);
+          if (destination.discoveredService() != null) {
+            serviceIds.add(destination.discoveredService().serviceId());
+            serviceInstanceCount += destination.discoveredService().instances().size();
+            discoveryMembershipVersion =
+                Math.max(
+                    discoveryMembershipVersion,
+                    destination.discoveredService().membershipVersion());
+            for (CompiledDiscoveredInstanceSection instance :
+                destination.discoveredService().instances()) {
+              targetIds.add(instance.targetId());
+            }
+          }
         }
       }
     }
@@ -60,7 +85,14 @@ public final class ObservabilityMetadataCompiler {
     policyCounts.put("traffic_split", trafficSplit);
     policyCounts.put("backend_health", backendHealth);
     return new CompiledObservabilityMetadataSection(
-        compiledAt.toString(), version, routeCount, targetIds.size(), Map.copyOf(policyCounts));
+        compiledAt.toString(),
+        version,
+        routeCount,
+        targetIds.size(),
+        serviceIds.size(),
+        serviceInstanceCount,
+        discoveryMembershipVersion,
+        Map.copyOf(policyCounts));
   }
 
   private static void collectTargets(CompiledUpstreamPoolSection pool, Set<UUID> targetIds) {
@@ -77,6 +109,6 @@ public final class ObservabilityMetadataCompiler {
       return snapshot.observabilityMetadata();
     }
     return new CompiledObservabilityMetadataSection(
-        "", snapshot.version(), snapshot.routes().size(), 0, Map.of());
+        "", snapshot.version(), snapshot.routes().size(), 0, 0, 0, 0L, Map.of());
   }
 }

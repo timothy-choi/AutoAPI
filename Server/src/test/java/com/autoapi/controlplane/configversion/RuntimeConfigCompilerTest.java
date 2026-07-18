@@ -37,6 +37,7 @@ class RuntimeConfigCompilerTest {
             "/v1/orders",
             new String[] {"POST", "GET"},
             poolId,
+            null,
             true,
             now,
             now);
@@ -75,6 +76,7 @@ class RuntimeConfigCompilerTest {
             "/v1/orders",
             new String[] {"GET"},
             poolId,
+            null,
             true,
             now,
             now);
@@ -87,6 +89,7 @@ class RuntimeConfigCompilerTest {
             "/v1/orders",
             new String[] {"GET", "POST"},
             poolId,
+            null,
             true,
             now,
             now);
@@ -130,6 +133,7 @@ class RuntimeConfigCompilerTest {
             "/v1/orders",
             new String[] {"GET"},
             poolId,
+            null,
             true,
             now,
             now);
@@ -163,6 +167,7 @@ class RuntimeConfigCompilerTest {
             "/v1/orders",
             new String[] {"POST", "GET"},
             poolId,
+            null,
             true,
             now,
             now);

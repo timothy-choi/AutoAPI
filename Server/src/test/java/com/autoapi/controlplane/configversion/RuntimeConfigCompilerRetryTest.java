@@ -88,6 +88,8 @@ class RuntimeConfigCompilerRetryTest {
         Map.of(),
         Map.of(),
         Map.of(),
+        Map.of(),
+        Map.of(),
         List.of(),
         NOW);
   }
@@ -135,6 +137,7 @@ class RuntimeConfigCompilerRetryTest {
             "/v1/orders",
             new String[] {"GET"},
             poolId,
+            null,
             true,
             NOW,
             NOW);

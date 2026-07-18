@@ -137,6 +137,7 @@ class TrafficSplitFallbackResolverTest {
         0,
         true,
         poolWithHealth(STABLE_POOL, STABLE_TARGET, "stable-v1"),
+        null,
         0,
         80);
   }
@@ -149,6 +150,7 @@ class TrafficSplitFallbackResolverTest {
         1,
         false,
         poolWithHealth(CANARY_POOL, CANARY_TARGET, "canary-v1"),
+        null,
         80,
         100);
   }

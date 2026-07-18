@@ -8,4 +8,7 @@ public record RuntimeSnapshotMetadata(
     long configurationVersion,
     int routeCount,
     int targetCount,
+    int serviceCount,
+    int serviceInstanceCount,
+    long discoveryMembershipVersion,
     Map<String, Integer> policyCounts) {}

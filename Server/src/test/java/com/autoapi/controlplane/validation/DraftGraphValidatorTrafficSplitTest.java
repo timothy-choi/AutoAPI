@@ -57,6 +57,8 @@ class DraftGraphValidatorTrafficSplitTest {
         List.of(graph.policy()),
         graph.destinations(),
         List.of(graph.binding()),
+        List.of(),
+        List.of(),
         GATEWAY);
   }
 
@@ -110,6 +112,7 @@ class DraftGraphValidatorTrafficSplitTest {
             "/v1/orders",
             new String[] {"GET"},
             routeUpstreamPoolId,
+            null,
             true,
             NOW,
             NOW);
@@ -127,9 +130,18 @@ class DraftGraphValidatorTrafficSplitTest {
     List<TrafficSplitDestinationEntity> destinations =
         List.of(
             new TrafficSplitDestinationEntity(
-                stableDestinationId, policyId, stablePoolId, "stable", 80, 0, true, NOW, NOW),
+                stableDestinationId, policyId, stablePoolId, null, "stable", 80, 0, true, NOW, NOW),
             new TrafficSplitDestinationEntity(
-                canaryDestinationId, policyId, canaryPoolId, "canary", 20, 1, false, NOW, NOW));
+                canaryDestinationId,
+                policyId,
+                canaryPoolId,
+                null,
+                "canary",
+                20,
+                1,
+                false,
+                NOW,
+                NOW));
     RoutePolicyBindingEntity binding =
         new RoutePolicyBindingEntity(routeId, false, null, NOW, NOW, null, policyId, null);
 

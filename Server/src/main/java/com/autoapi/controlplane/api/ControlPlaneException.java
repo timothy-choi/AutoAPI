@@ -39,6 +39,11 @@ public final class ControlPlaneException extends RuntimeException {
         "INVALID_REQUEST", message, HttpStatus.BAD_REQUEST, List.of(), null);
   }
 
+  public static ControlPlaneException unauthorized(String message) {
+    return new ControlPlaneException(
+        "UNAUTHORIZED", message, HttpStatus.UNAUTHORIZED, List.of(), null);
+  }
+
   public static ControlPlaneException validationFailed(List<ValidationError> errors) {
     return new ControlPlaneException(
         "CONFIG_VALIDATION_FAILED",

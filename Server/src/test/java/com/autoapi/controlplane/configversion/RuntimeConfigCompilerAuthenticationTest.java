@@ -104,6 +104,7 @@ public class RuntimeConfigCompilerAuthenticationTest {
                 graph.route().pathPrefix(),
                 graph.route().methods(),
                 null,
+                null,
                 true,
                 NOW,
                 NOW);
@@ -126,6 +127,8 @@ public class RuntimeConfigCompilerAuthenticationTest {
         graph.trafficSplitPolicyId() == null
             ? Map.of()
             : Map.of(graph.trafficSplitPolicyId(), graph.destinations()),
+        Map.of(),
+        Map.of(),
         List.of(graph.apiKey()),
         NOW);
   }
@@ -177,6 +180,7 @@ public class RuntimeConfigCompilerAuthenticationTest {
             "/v1/orders",
             new String[] {"GET", "POST"},
             stablePoolId,
+            null,
             true,
             NOW,
             NOW);
@@ -218,6 +222,7 @@ public class RuntimeConfigCompilerAuthenticationTest {
                     UUID.fromString("00000000-0000-0000-0000-000000000051"),
                     policyId,
                     stablePoolId,
+                    null,
                     "stable",
                     80,
                     0,
@@ -228,6 +233,7 @@ public class RuntimeConfigCompilerAuthenticationTest {
                     UUID.fromString("00000000-0000-0000-0000-000000000052"),
                     policyId,
                     canaryPoolId,
+                    null,
                     "canary",
                     20,
                     1,

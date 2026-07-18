@@ -12,10 +12,12 @@ import com.autoapi.controlplane.persistence.ApiEntity;
 import com.autoapi.controlplane.persistence.ApiKeyEntity;
 import com.autoapi.controlplane.persistence.BackendHealthPolicyEntity;
 import com.autoapi.controlplane.persistence.CircuitBreakerPolicyEntity;
+import com.autoapi.controlplane.persistence.DiscoveredServiceEntity;
 import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
 import com.autoapi.controlplane.persistence.RetryPolicyEntity;
 import com.autoapi.controlplane.persistence.RouteEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
+import com.autoapi.controlplane.persistence.ServiceInstanceEntity;
 import com.autoapi.controlplane.persistence.TrafficSplitDestinationEntity;
 import com.autoapi.controlplane.persistence.TrafficSplitPolicyEntity;
 import com.autoapi.controlplane.persistence.UpstreamPoolEntity;
@@ -58,6 +60,8 @@ public final class DraftGraphValidator {
         graph.trafficSplitPolicies(),
         graph.trafficSplitDestinations(),
         graph.routePolicyBindings(),
+        graph.discoveredServices(),
+        graph.serviceInstances(),
         graph.gatewayDefaults());
   }
 
@@ -74,6 +78,8 @@ public final class DraftGraphValidator {
       List<TrafficSplitPolicyEntity> trafficSplitPolicies,
       List<TrafficSplitDestinationEntity> trafficSplitDestinations,
       List<RoutePolicyBindingEntity> routePolicyBindings,
+      List<DiscoveredServiceEntity> discoveredServices,
+      List<ServiceInstanceEntity> serviceInstances,
       CompiledGatewaySection gatewayDefaults) {
     List<ValidationError> errors = new ArrayList<>();
     OffsetDateTime publishInstant = OffsetDateTime.now(ZoneOffset.UTC);
@@ -109,6 +115,10 @@ public final class DraftGraphValidator {
     Map<UUID, RoutePolicyBindingEntity> bindingByRouteId =
         routePolicyBindings.stream()
             .collect(Collectors.toMap(RoutePolicyBindingEntity::routeId, b -> b));
+    Map<UUID, DiscoveredServiceEntity> discoveredServiceById =
+        discoveredServices.stream().collect(Collectors.toMap(DiscoveredServiceEntity::id, s -> s));
+    Map<UUID, List<ServiceInstanceEntity>> instancesByServiceId =
+        serviceInstances.stream().collect(Collectors.groupingBy(ServiceInstanceEntity::serviceId));
 
     for (UpstreamPoolEntity pool : pools) {
       validatePool(
@@ -124,7 +134,7 @@ public final class DraftGraphValidator {
     }
 
     for (RouteEntity route : enabledRoutes) {
-      validateRoute(route, api.id(), poolById, errors);
+      validateRoute(route, api.id(), api.projectId(), poolById, discoveredServiceById, errors);
       validateRoutePolicyBinding(route, api.id(), bindingByRouteId, policyById, errors);
       validateRetryPolicyBinding(route, api.id(), bindingByRouteId, retryPolicyById, errors);
       validateCircuitBreakerPolicyBinding(
@@ -132,11 +142,13 @@ public final class DraftGraphValidator {
       validateTrafficSplitBinding(
           route,
           api.id(),
+          api.projectId(),
           bindingByRouteId,
           trafficSplitPolicyById,
           destinationsByPolicyId,
           poolById,
           targetsByPool,
+          discoveredServiceById,
           errors);
     }
 
@@ -176,6 +188,8 @@ public final class DraftGraphValidator {
             circuitBreakerPolicyById,
             trafficSplitPolicyById,
             destinationsByPolicyId,
+            discoveredServiceById,
+            instancesByServiceId,
             apiKeys,
             publishInstant);
     validateCompiledPayload(payload, errors);
@@ -213,35 +227,50 @@ public final class DraftGraphValidator {
         List.of(),
         List.of(),
         List.of(),
+        List.of(),
+        List.of(),
         gatewayDefaults);
   }
 
   private static void validateTrafficSplitBinding(
       RouteEntity route,
       UUID apiId,
+      UUID projectId,
       Map<UUID, RoutePolicyBindingEntity> bindingByRouteId,
       Map<UUID, TrafficSplitPolicyEntity> trafficSplitPolicyById,
       Map<UUID, List<TrafficSplitDestinationEntity>> destinationsByPolicyId,
       Map<UUID, UpstreamPoolEntity> poolById,
       Map<UUID, List<UpstreamTargetEntity>> targetsByPool,
+      Map<UUID, DiscoveredServiceEntity> discoveredServiceById,
       List<ValidationError> errors) {
     RoutePolicyBindingEntity binding = bindingByRouteId.get(route.id());
     if (binding == null || binding.trafficSplitPolicyId() == null) {
-      if (route.upstreamPoolId() == null) {
+      if (route.upstreamPoolId() == null && route.discoveredServiceId() == null) {
         errors.add(
             new ValidationError(
                 "ROUTE_UPSTREAM_REQUIRED",
                 route.id(),
-                "Route must bind either an upstream pool or a traffic split policy"));
+                "Route must bind an upstream pool, discovered service, or traffic split policy"));
+      }
+      if (route.discoveredServiceId() != null && route.upstreamPoolId() != null) {
+        errors.add(
+            new ValidationError(
+                "ROUTE_TARGET_CONFLICT",
+                route.id(),
+                "Route cannot bind both an upstream pool and a discovered service"));
+      }
+      if (route.discoveredServiceId() != null) {
+        validateDiscoveredServiceReference(
+            route.id(), route.discoveredServiceId(), projectId, discoveredServiceById, errors);
       }
       return;
     }
-    if (route.upstreamPoolId() != null) {
+    if (route.upstreamPoolId() != null || route.discoveredServiceId() != null) {
       errors.add(
           new ValidationError(
               "ROUTE_TRAFFIC_SPLIT_CONFLICT",
               route.id(),
-              "Route cannot bind both a direct upstream pool and a traffic split policy"));
+              "Route cannot bind a direct target and a traffic split policy"));
     }
     TrafficSplitPolicyEntity policy = trafficSplitPolicyById.get(binding.trafficSplitPolicyId());
     if (policy == null || !policy.apiId().equals(apiId)) {
@@ -299,6 +328,15 @@ public final class DraftGraphValidator {
       errors.add(new ValidationError("TRAFFIC_SPLIT_POLICY_INVALID", route.id(), ex.getMessage()));
     }
     for (TrafficSplitDestinationEntity destination : destinations) {
+      if (destination.discoveredServiceId() != null) {
+        validateDiscoveredServiceReference(
+            destination.id(),
+            destination.discoveredServiceId(),
+            projectId,
+            discoveredServiceById,
+            errors);
+        continue;
+      }
       UpstreamPoolEntity pool = poolById.get(destination.upstreamPoolId());
       if (pool == null || !pool.apiId().equals(apiId)) {
         errors.add(
@@ -604,10 +642,43 @@ public final class DraftGraphValidator {
     }
   }
 
+  private static void validateDiscoveredServiceReference(
+      UUID resourceId,
+      UUID discoveredServiceId,
+      UUID projectId,
+      Map<UUID, DiscoveredServiceEntity> discoveredServiceById,
+      List<ValidationError> errors) {
+    DiscoveredServiceEntity service = discoveredServiceById.get(discoveredServiceId);
+    if (service == null) {
+      errors.add(
+          new ValidationError(
+              "DISCOVERED_SERVICE_NOT_FOUND",
+              resourceId,
+              "Discovered service was not found for this project"));
+      return;
+    }
+    if (!service.projectId().equals(projectId)) {
+      errors.add(
+          new ValidationError(
+              "DISCOVERED_SERVICE_WRONG_PROJECT",
+              resourceId,
+              "Discovered service belongs to another project"));
+    }
+    if (!service.enabled()) {
+      errors.add(
+          new ValidationError(
+              "DISCOVERED_SERVICE_DISABLED",
+              resourceId,
+              "Disabled discovered service cannot be published"));
+    }
+  }
+
   private static void validateRoute(
       RouteEntity route,
       UUID apiId,
+      UUID projectId,
       Map<UUID, UpstreamPoolEntity> poolById,
+      Map<UUID, DiscoveredServiceEntity> discoveredServiceById,
       List<ValidationError> errors) {
     if (route.host() == null || route.host().isBlank()) {
       errors.add(
@@ -641,6 +712,14 @@ public final class DraftGraphValidator {
                   "ROUTE_METHOD_UNSUPPORTED", route.id(), "Unsupported HTTP method: " + method));
         }
       }
+    }
+
+    if (route.upstreamPoolId() != null && route.discoveredServiceId() != null) {
+      errors.add(
+          new ValidationError(
+              "ROUTE_TARGET_CONFLICT",
+              route.id(),
+              "Route cannot bind both an upstream pool and a discovered service"));
     }
 
     if (route.upstreamPoolId() != null) {

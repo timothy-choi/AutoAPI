@@ -11,6 +11,7 @@ public record TrafficSplitDestinationEntity(
     @Id UUID id,
     @Column("traffic_split_policy_id") UUID trafficSplitPolicyId,
     @Column("upstream_pool_id") UUID upstreamPoolId,
+    @Column("discovered_service_id") UUID discoveredServiceId,
     String name,
     int weight,
     int priority,

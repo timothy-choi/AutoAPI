@@ -8,6 +8,9 @@ import java.util.Map;
   "configurationVersion",
   "routeCount",
   "targetCount",
+  "serviceCount",
+  "serviceInstanceCount",
+  "discoveryMembershipVersion",
   "policyCounts"
 })
 public record CompiledObservabilityMetadataSection(
@@ -15,4 +18,7 @@ public record CompiledObservabilityMetadataSection(
     long configurationVersion,
     int routeCount,
     int targetCount,
+    int serviceCount,
+    int serviceInstanceCount,
+    long discoveryMembershipVersion,
     Map<String, Integer> policyCounts) {}

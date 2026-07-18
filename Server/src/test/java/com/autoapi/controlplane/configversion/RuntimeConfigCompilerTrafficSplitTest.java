@@ -43,6 +43,7 @@ class RuntimeConfigCompilerTrafficSplitTest {
             graph.canaryDestinationId(),
             graph.policyId(),
             graph.canaryPoolId(),
+            null,
             "canary",
             15,
             1,
@@ -88,6 +89,7 @@ class RuntimeConfigCompilerTrafficSplitTest {
             "/v1/orders",
             new String[] {"GET"},
             null,
+            null,
             true,
             NOW,
             NOW);
@@ -106,6 +108,8 @@ class RuntimeConfigCompilerTrafficSplitTest {
         Map.of(),
         Map.of(graph.policyId(), graph.policy()),
         Map.of(graph.policyId(), graph.destinations()),
+        Map.of(),
+        Map.of(),
         List.of(),
         NOW);
   }
@@ -143,6 +147,7 @@ class RuntimeConfigCompilerTrafficSplitTest {
             "/v1/orders",
             new String[] {"GET"},
             null,
+            null,
             true,
             NOW,
             NOW);
@@ -159,10 +164,10 @@ class RuntimeConfigCompilerTrafficSplitTest {
             NOW);
     TrafficSplitDestinationEntity stableDestination =
         new TrafficSplitDestinationEntity(
-            stableDestinationId, policyId, stablePoolId, "stable", 80, 0, true, NOW, NOW);
+            stableDestinationId, policyId, stablePoolId, null, "stable", 80, 0, true, NOW, NOW);
     TrafficSplitDestinationEntity canaryDestination =
         new TrafficSplitDestinationEntity(
-            canaryDestinationId, policyId, canaryPoolId, "canary", 20, 1, false, NOW, NOW);
+            canaryDestinationId, policyId, canaryPoolId, null, "canary", 20, 1, false, NOW, NOW);
     return new Graph(
         routeId,
         policyId,

@@ -59,6 +59,7 @@ public class TrafficSplitDestinationService {
                                       UUID.randomUUID(),
                                       policyId,
                                       upstreamPoolId,
+                                      null,
                                       name.trim(),
                                       weight,
                                       priority,

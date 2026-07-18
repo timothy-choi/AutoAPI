@@ -15,6 +15,7 @@ public record RouteEntity(
     @Column("path_prefix") String pathPrefix,
     String[] methods,
     @Column("upstream_pool_id") UUID upstreamPoolId,
+    @Column("discovered_service_id") UUID discoveredServiceId,
     boolean enabled,
     @Column("created_at") OffsetDateTime createdAt,
     @Column("updated_at") OffsetDateTime updatedAt)

@@ -116,6 +116,8 @@ class RuntimeConfigCompilerHealthTest {
         Map.of(),
         Map.of(),
         Map.of(),
+        Map.of(),
+        Map.of(),
         List.of(),
         NOW);
   }
@@ -142,6 +144,7 @@ class RuntimeConfigCompilerHealthTest {
             "/v1/orders",
             new String[] {"GET"},
             poolId,
+            null,
             true,
             NOW,
             NOW);
