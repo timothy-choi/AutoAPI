@@ -2,3 +2,5 @@ autoapi:
   gateway:
     observability:
       tracing-enabled: false
+  discovery:
+    stale-reaper-interval: 1h
