@@ -30,33 +30,39 @@ public class WebhookDeliveryRepositoryCustom {
       OffsetDateTime now,
       UUID replayOfDeliveryId) {
     UUID id = UUID.randomUUID();
-    return databaseClient
-        .sql(
-            """
-            INSERT INTO webhook_deliveries (
-              id, subscription_id, event_id, status, attempt_count, next_attempt_at,
-              secret_version, replay_of_delivery_id, created_at, updated_at
-            ) VALUES (
-              :id, :subscriptionId, :eventId, 'PENDING', 0, :nextAttemptAt,
-              :secretVersion, :replayOfDeliveryId, :createdAt, :updatedAt
-            )
-            ON CONFLICT (subscription_id, event_id) DO NOTHING
-            RETURNING id, subscription_id, event_id, status, attempt_count, next_attempt_at,
-                      last_attempt_at, delivered_at, dead_lettered_at, last_status_code,
-                      last_error_type, last_error_summary, secret_version, replay_of_delivery_id,
-                      created_at, updated_at
-            """)
-        .bind("id", id)
-        .bind("subscriptionId", subscriptionId)
-        .bind("eventId", eventId)
-        .bind("nextAttemptAt", now)
-        .bind("secretVersion", secretVersion)
-        .bind("replayOfDeliveryId", replayOfDeliveryId)
-        .bind("createdAt", now)
+    DatabaseClient.GenericExecuteSpec spec =
+        databaseClient
+            .sql(
+                """
+                INSERT INTO webhook_deliveries (
+                  id, subscription_id, event_id, status, attempt_count, next_attempt_at,
+                  secret_version, replay_of_delivery_id, created_at, updated_at
+                ) VALUES (
+                  :id, :subscriptionId, :eventId, 'PENDING', 0, :nextAttemptAt,
+                  :secretVersion, :replayOfDeliveryId, :createdAt, :updatedAt
+                )
+                ON CONFLICT (subscription_id, event_id) DO NOTHING
+                RETURNING id, subscription_id, event_id, status, attempt_count, next_attempt_at,
+                          last_attempt_at, delivered_at, dead_lettered_at, last_status_code,
+                          last_error_type, last_error_summary, secret_version, replay_of_delivery_id,
+                          created_at, updated_at
+                """)
+            .bind("id", id)
+            .bind("subscriptionId", subscriptionId)
+            .bind("eventId", eventId)
+            .bind("nextAttemptAt", now)
+            .bind("secretVersion", secretVersion);
+    spec = bindNullableUuid(spec, "replayOfDeliveryId", replayOfDeliveryId);
+    return spec.bind("createdAt", now)
         .bind("updatedAt", now)
         .map(this::mapDelivery)
         .one()
         .switchIfEmpty(findBySubscriptionAndEvent(subscriptionId, eventId));
+  }
+
+  private static DatabaseClient.GenericExecuteSpec bindNullableUuid(
+      DatabaseClient.GenericExecuteSpec spec, String name, UUID value) {
+    return value == null ? spec.bindNull(name, UUID.class) : spec.bind(name, value);
   }
 
   public Mono<WebhookDeliveryEntity> findBySubscriptionAndEvent(UUID subscriptionId, UUID eventId) {

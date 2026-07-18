@@ -9,7 +9,7 @@ import reactor.core.publisher.Mono;
 
 @Service
 @ConditionalOnProperty(
-    name = {"autoapi.controlplane.enabled", "autoapi.events.enabled"},
+    name = "autoapi.controlplane.enabled",
     havingValue = "true",
     matchIfMissing = true)
 public class PlatformEventRecorder {

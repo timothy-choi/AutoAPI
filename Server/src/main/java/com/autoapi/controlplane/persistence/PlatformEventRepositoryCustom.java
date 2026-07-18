@@ -33,36 +33,38 @@ public class PlatformEventRepositoryCustom {
     OffsetDateTime recordedAt = OffsetDateTime.now(java.time.ZoneOffset.UTC);
     String payloadJson = writeJson(request.payload());
     String metadataJson = writeJson(request.metadata());
-    return databaseClient
-        .sql(
-            """
-            INSERT INTO platform_events (
-              id, event_type, event_version, project_id, api_id, resource_type, resource_id,
-              actor_type, actor_id, source, correlation_id, causation_id, occurred_at, recorded_at,
-              payload, metadata, webhook_dispatch_status, created_at
-            ) VALUES (
-              :id, :eventType, :eventVersion, :projectId, :apiId, :resourceType, :resourceId,
-              :actorType, :actorId, :source, :correlationId, :causationId, :occurredAt, :recordedAt,
-              :payload::jsonb, :metadata::jsonb, 'PENDING', :createdAt
-            )
-            RETURNING id, sequence, event_type, event_version, project_id, api_id, resource_type,
-                      resource_id, actor_type, actor_id, source, correlation_id, causation_id,
-                      occurred_at, recorded_at, payload::text, metadata::text,
-                      webhook_dispatch_status, created_at
-            """)
-        .bind("id", id)
-        .bind("eventType", request.eventType())
-        .bind("eventVersion", request.eventVersion())
-        .bind("projectId", request.projectId())
-        .bind("apiId", request.apiId())
-        .bind("resourceType", request.resourceType())
-        .bind("resourceId", request.resourceId())
-        .bind("actorType", request.context().actorType())
-        .bind("actorId", request.context().actorId())
-        .bind("source", request.context().source())
-        .bind("correlationId", request.context().correlationId())
-        .bind("causationId", request.context().causationId())
-        .bind("occurredAt", now)
+    DatabaseClient.GenericExecuteSpec spec =
+        databaseClient
+            .sql(
+                """
+                INSERT INTO platform_events (
+                  id, event_type, event_version, project_id, api_id, resource_type, resource_id,
+                  actor_type, actor_id, source, correlation_id, causation_id, occurred_at, recorded_at,
+                  payload, metadata, webhook_dispatch_status, created_at
+                ) VALUES (
+                  :id, :eventType, :eventVersion, :projectId, :apiId, :resourceType, :resourceId,
+                  :actorType, :actorId, :source, :correlationId, :causationId, :occurredAt, :recordedAt,
+                  :payload::jsonb, :metadata::jsonb, 'PENDING', :createdAt
+                )
+                RETURNING id, sequence, event_type, event_version, project_id, api_id, resource_type,
+                          resource_id, actor_type, actor_id, source, correlation_id, causation_id,
+                          occurred_at, recorded_at, payload::text, metadata::text,
+                          webhook_dispatch_status, created_at
+                """)
+            .bind("id", id)
+            .bind("eventType", request.eventType())
+            .bind("eventVersion", request.eventVersion())
+            .bind("projectId", request.projectId());
+    spec = bindNullableUuid(spec, "apiId", request.apiId());
+    spec =
+        spec.bind("resourceType", request.resourceType())
+            .bind("resourceId", request.resourceId())
+            .bind("actorType", request.context().actorType())
+            .bind("actorId", request.context().actorId())
+            .bind("source", request.context().source())
+            .bind("correlationId", request.context().correlationId());
+    spec = bindNullableUuid(spec, "causationId", request.context().causationId());
+    return spec.bind("occurredAt", now)
         .bind("recordedAt", recordedAt)
         .bind("payload", payloadJson)
         .bind("metadata", metadataJson)
@@ -205,6 +207,11 @@ public class PlatformEventRepositoryCustom {
         .fetch()
         .rowsUpdated()
         .then();
+  }
+
+  private static DatabaseClient.GenericExecuteSpec bindNullableUuid(
+      DatabaseClient.GenericExecuteSpec spec, String name, UUID value) {
+    return value == null ? spec.bindNull(name, UUID.class) : spec.bind(name, value);
   }
 
   private String writeJson(Object value) {
