@@ -120,7 +120,11 @@ public class ControlPlaneRouter {
           .flatMap(
               body ->
                   projectService
-                      .create(body.name(), body.description())
+                      .create(
+                          body.name(),
+                          body.description(),
+                          com.autoapi.controlplane.events.EventContext.managementApi(
+                              request.headers().firstHeader("X-Request-ID")))
                       .flatMap(entity -> created(ProjectResponse.from(entity))))
           .onErrorResume(ControlPlaneException.class, this::error)
           .onErrorResume(ex -> unexpectedError(request, ex));

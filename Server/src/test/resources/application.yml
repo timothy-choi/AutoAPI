@@ -4,3 +4,12 @@ autoapi:
       tracing-enabled: false
   discovery:
     stale-reaper-interval: 1h
+  events:
+    outbox-poll-interval: 1h
+    cleanup-interval: 1h
+  webhooks:
+    worker-poll-interval: 1h
+    security:
+      master-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      allow-loopback: true
+      require-https: false

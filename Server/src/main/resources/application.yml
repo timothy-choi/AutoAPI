@@ -81,6 +81,38 @@ autoapi:
     stale-retention: ${AUTOAPI_DISCOVERY_STALE_RETENTION:24h}
     auto-activate-on-membership-change: ${AUTOAPI_DISCOVERY_AUTO_ACTIVATE:true}
 
+  events:
+    enabled: true
+    max-payload-bytes: 65536
+    outbox-poll-interval: 500ms
+    outbox-batch-size: 100
+    outbox-worker-concurrency: 2
+    retention: 90d
+    cleanup-interval: 1h
+    cleanup-batch-size: 1000
+  webhooks:
+    enabled: true
+    default-max-attempts: 8
+    default-timeout: 5s
+    default-initial-backoff: 1s
+    default-max-backoff: 5m
+    worker-poll-interval: 500ms
+    worker-batch-size: 50
+    worker-concurrency: 8
+    max-payload-bytes: 65536
+    max-response-preview-bytes: 1024
+    max-event-filters: 32
+    max-subscriptions-per-project: 20
+    security:
+      master-key: ${AUTOAPI_WEBHOOK_SECRET_MASTER_KEY:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
+      require-https: true
+      allow-private-addresses: false
+      allow-loopback: false
+      follow-redirects: false
+    retention:
+      deliveries: 30d
+      attempts: 30d
+
 management:
   endpoints:
     web:
