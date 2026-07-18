@@ -123,7 +123,25 @@ gateway_get_with_key() {
 wait_convergence() {
   local api_id="$1"
   wait_until "convergence CONVERGED for API ${api_id}" 45 2 \
-    "smoke_curl --fail ${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/convergence | grep -q '\"derivedState\"[[:space:]]*:[[:space:]]*\"CONVERGED\"'"
+    convergence_reached "${api_id}" "CONVERGED"
+}
+
+convergence_reached() {
+  local api_id="$1"
+  local expected_state="$2"
+  smoke_curl --fail "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/convergence" \
+    | grep -q "\"derivedState\"[[:space:]]*:[[:space:]]*\"${expected_state}\""
+}
+
+compose_service_is_stopped() {
+  local service="$1"
+  local container_id state
+  container_id="$(resolve_container_id "${service}" 2>/dev/null || true)"
+  if [[ -z "${container_id}" ]]; then
+    return 0
+  fi
+  state="$(docker inspect -f '{{.State.Status}}' "${container_id}" 2>/dev/null || true)"
+  [[ "${state}" == "exited" ]]
 }
 
 fetch_traffic_splits() {
@@ -311,7 +329,7 @@ main() {
 
   set_smoke_step "Stopping canary upstream and verifying fallback"
   docker compose stop canary-v1
-  wait_until "canary-v1 stopped" 30 2 "docker compose ps canary-v1 | grep -q Exit"
+  wait_until "canary-v1 stopped" 30 2 compose_service_is_stopped canary-v1
 
   gateway_get_with_key "${GATEWAY_A_URL}" "${CANARY_KEY}" >/dev/null
   fallback_service="$(service_from_body)"
@@ -333,7 +351,7 @@ main() {
 
   set_smoke_step "Restarting canary and verifying recovery"
   docker compose start canary-v1
-  wait_until "canary-v1 healthy" 60 3 "docker compose ps canary-v1 | grep -q healthy"
+  wait_compose_service_healthy canary-v1 "canary-v1 healthy"
 
   recovered=false
   for _ in $(seq 1 30); do

@@ -130,7 +130,7 @@ class DraftGraphValidatorTrafficSplitTest {
             new TrafficSplitDestinationEntity(
                 canaryDestinationId, policyId, canaryPoolId, "canary", 20, 1, false, NOW, NOW));
     RoutePolicyBindingEntity binding =
-        new RoutePolicyBindingEntity(routeId, false, null, null, policyId, NOW, NOW);
+        new RoutePolicyBindingEntity(routeId, false, null, NOW, NOW, null, policyId);
 
     return new Graph(
         API_ID,

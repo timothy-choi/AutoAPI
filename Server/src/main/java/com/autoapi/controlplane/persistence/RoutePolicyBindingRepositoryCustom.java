@@ -20,6 +20,34 @@ public class RoutePolicyBindingRepositoryCustom {
     this.databaseClient = databaseClient;
   }
 
+  public Mono<RoutePolicyBindingEntity> bindAuthenticationAndRateLimit(
+      UUID routeId,
+      boolean authenticationRequired,
+      UUID rateLimitPolicyId,
+      OffsetDateTime updatedAt) {
+    var spec =
+        databaseClient
+            .sql(
+                """
+                UPDATE route_policy_bindings
+                SET authentication_required = :authenticationRequired,
+                    rate_limit_policy_id = :rateLimitPolicyId,
+                    updated_at = :updatedAt
+                WHERE route_id = :routeId
+                RETURNING route_id, authentication_required, rate_limit_policy_id,
+                          retry_policy_id, traffic_split_policy_id, created_at, updated_at
+                """)
+            .bind("routeId", routeId)
+            .bind("authenticationRequired", authenticationRequired)
+            .bind("updatedAt", updatedAt);
+    if (rateLimitPolicyId == null) {
+      spec = spec.bindNull("rateLimitPolicyId", UUID.class);
+    } else {
+      spec = spec.bind("rateLimitPolicyId", rateLimitPolicyId);
+    }
+    return spec.map(this::mapRow).one();
+  }
+
   public Mono<RoutePolicyBindingEntity> bindRetryPolicy(
       UUID routeId, UUID retryPolicyId, OffsetDateTime updatedAt) {
     return databaseClient
@@ -99,9 +127,9 @@ public class RoutePolicyBindingRepositoryCustom {
         row.get("route_id", UUID.class),
         Boolean.TRUE.equals(row.get("authentication_required", Boolean.class)),
         row.get("rate_limit_policy_id", UUID.class),
-        row.get("retry_policy_id", UUID.class),
-        row.get("traffic_split_policy_id", UUID.class),
         row.get("created_at", OffsetDateTime.class),
-        row.get("updated_at", OffsetDateTime.class));
+        row.get("updated_at", OffsetDateTime.class),
+        row.get("retry_policy_id", UUID.class),
+        row.get("traffic_split_policy_id", UUID.class));
   }
 }

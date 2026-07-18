@@ -78,7 +78,7 @@ class RuntimeConfigCompilerTrafficSplitTest {
   private static HashableRuntimePayload compile(Graph graph) {
     RoutePolicyBindingEntity binding =
         new RoutePolicyBindingEntity(
-            graph.routeId(), false, null, null, graph.policyId(), NOW, NOW);
+            graph.routeId(), false, null, NOW, NOW, null, graph.policyId());
     RouteEntity splitRoute =
         new RouteEntity(
             graph.routeId(),

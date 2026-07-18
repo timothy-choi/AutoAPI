@@ -9,18 +9,12 @@ import com.autoapi.gateway.config.ActiveRuntimeBundle;
 import com.autoapi.gateway.redis.GatewayRateLimitService;
 import com.autoapi.gateway.redis.GatewayRateLimitService.RateLimitDecision;
 import com.autoapi.proxy.GatewayAttributes;
-import com.autoapi.runtime.AutoApiRole;
-import com.autoapi.runtime.ConditionalOnAutoApiRole;
 import com.autoapi.web.ErrorResponseWriter;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpHeaders;
-import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-@Component
-@ConditionalOnAutoApiRole({AutoApiRole.GATEWAY, AutoApiRole.COMBINED})
-@org.springframework.boot.autoconfigure.condition.ConditionalOnBean(ApiKeyAuthenticator.class)
 public class GatewaySecurityPipeline implements GatewaySecurityEnforcer {
 
   private final ApiKeyAuthenticator apiKeyAuthenticator;

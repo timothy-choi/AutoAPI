@@ -130,7 +130,7 @@ class RemoteSnapshotAdapterTest {
             now,
             now);
     RoutePolicyBindingEntity binding =
-        new RoutePolicyBindingEntity(routeId, false, null, policyId, null, now, now);
+        new RoutePolicyBindingEntity(routeId, false, null, now, now, policyId, null);
 
     HashableRuntimePayload payload =
         RuntimeConfigCompiler.compile(
