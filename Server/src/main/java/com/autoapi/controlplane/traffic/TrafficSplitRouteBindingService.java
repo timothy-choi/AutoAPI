@@ -80,10 +80,12 @@ public class TrafficSplitRouteBindingService {
                                   existing.createdAt(),
                                   now,
                                   existing.retryPolicyId(),
-                                  null);
+                                  null,
+                                  existing.circuitBreakerPolicyId());
                           if (!existing.authenticationRequired()
                               && existing.rateLimitPolicyId() == null
-                              && existing.retryPolicyId() == null) {
+                              && existing.retryPolicyId() == null
+                              && existing.circuitBreakerPolicyId() == null) {
                             return bindingRepository.deleteById(routeId).thenReturn(cleared);
                           }
                           return bindingRepositoryCustom.clearTrafficSplitPolicy(routeId, now);
@@ -123,6 +125,13 @@ public class TrafficSplitRouteBindingService {
                     () ->
                         bindingRepository.save(
                             new RoutePolicyBindingEntity(
-                                route.id(), false, null, now, now, null, trafficSplitPolicyId)))));
+                                route.id(),
+                                false,
+                                null,
+                                now,
+                                now,
+                                null,
+                                trafficSplitPolicyId,
+                                null)))));
   }
 }

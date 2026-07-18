@@ -3,8 +3,8 @@ package com.autoapi.gateway.traffic;
 import com.autoapi.config.RouteConfig;
 import com.autoapi.config.RuntimeTrafficSplitConfig;
 import com.autoapi.config.RuntimeTrafficSplitDestination;
+import com.autoapi.gateway.circuitbreaker.GatewayTargetSelector;
 import com.autoapi.gateway.config.ActiveRuntimeBundle;
-import com.autoapi.gateway.health.HealthAwareTargetSelector;
 import com.autoapi.middleware.RequestIdSupport;
 import com.autoapi.proxy.GatewayAttributes;
 import java.util.Optional;
@@ -17,12 +17,12 @@ public class TrafficSplitSelector {
 
   private static final Logger log = LoggerFactory.getLogger(TrafficSplitSelector.class);
 
-  private final HealthAwareTargetSelector targetSelector;
+  private final GatewayTargetSelector targetSelector;
   private final TrafficSplitRegistry registry;
   private final ObjectProvider<GatewayTrafficSplitMetrics> metricsProvider;
 
   public TrafficSplitSelector(
-      HealthAwareTargetSelector targetSelector,
+      GatewayTargetSelector targetSelector,
       TrafficSplitRegistry registry,
       ObjectProvider<GatewayTrafficSplitMetrics> metricsProvider) {
     this.targetSelector = targetSelector;
@@ -49,7 +49,7 @@ public class TrafficSplitSelector {
     RuntimeTrafficSplitDestination nominalDestination = nominal.get();
     Optional<RuntimeTrafficSplitDestination> effective =
         TrafficSplitFallbackResolver.resolveEffectiveDestination(
-            config, nominalDestination, bundle, targetSelector);
+            config, nominalDestination, bundle, targetSelector, route.circuitBreaker(), route.id());
     if (effective.isEmpty()) {
       registry.recordUnavailable(route.id(), config.policyId());
       recordUnavailableMetrics(route, config);

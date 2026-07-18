@@ -62,6 +62,10 @@ class UpstreamAttemptExecutorBodyTest {
     ObjectProvider<com.autoapi.gateway.health.GatewayUpstreamHealthMetrics> metricsProvider =
         org.mockito.Mockito.mock(ObjectProvider.class);
     org.mockito.Mockito.when(metricsProvider.getIfAvailable()).thenReturn(null);
+    @SuppressWarnings("unchecked")
+    ObjectProvider<com.autoapi.gateway.circuitbreaker.CircuitBreakerRegistry>
+        circuitBreakerRegistryProvider = org.mockito.Mockito.mock(ObjectProvider.class);
+    org.mockito.Mockito.when(circuitBreakerRegistryProvider.getIfAvailable()).thenReturn(null);
 
     executor =
         new UpstreamAttemptExecutor(
@@ -69,6 +73,7 @@ class UpstreamAttemptExecutorBodyTest {
             new FailureClassifier(),
             healthRegistryProvider,
             metricsProvider,
+            circuitBreakerRegistryProvider,
             "test-gateway");
   }
 
@@ -100,6 +105,8 @@ class UpstreamAttemptExecutorBodyTest {
                 null,
                 2,
                 "route-1",
+                API_ID,
+                null,
                 null,
                 Duration.ofSeconds(5)))
         .assertNext(
@@ -139,6 +146,8 @@ class UpstreamAttemptExecutorBodyTest {
                     null,
                     2,
                     "route-1",
+                    API_ID,
+                    null,
                     null,
                     Duration.ofSeconds(5))
                 .flatMap(

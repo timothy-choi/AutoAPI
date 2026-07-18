@@ -1,12 +1,14 @@
 package com.autoapi.gateway.retry;
 
 import com.autoapi.config.RouteConfig;
+import com.autoapi.config.RuntimeCircuitBreakerPolicyConfig;
 import com.autoapi.config.RuntimeRetryPolicyConfig;
 import com.autoapi.config.UpstreamConfig;
 import com.autoapi.config.UpstreamTargetReference;
 import com.autoapi.gateway.GatewayProperties;
+import com.autoapi.gateway.circuitbreaker.CircuitBreakerOpenException;
+import com.autoapi.gateway.circuitbreaker.GatewayTargetSelector;
 import com.autoapi.gateway.config.ActiveRuntimeBundle;
-import com.autoapi.gateway.health.HealthAwareTargetSelector;
 import com.autoapi.gateway.health.PassiveHealthPolicy;
 import com.autoapi.gateway.health.SelectedTarget;
 import com.autoapi.gateway.health.TargetKey;
@@ -30,7 +32,7 @@ public class RetryingProxyExecutor {
   private static final Logger log = LoggerFactory.getLogger(RetryingProxyExecutor.class);
 
   private final UpstreamAttemptExecutor attemptExecutor;
-  private final ObjectProvider<HealthAwareTargetSelector> targetSelectorProvider;
+  private final ObjectProvider<GatewayTargetSelector> targetSelectorProvider;
   private final RetryBudgetRegistry retryBudgetRegistry;
   private final ObjectProvider<GatewayRetryMetrics> retryMetricsProvider;
   private final ErrorResponseWriter errorWriter;
@@ -38,7 +40,7 @@ public class RetryingProxyExecutor {
 
   public RetryingProxyExecutor(
       UpstreamAttemptExecutor attemptExecutor,
-      ObjectProvider<HealthAwareTargetSelector> targetSelectorProvider,
+      ObjectProvider<GatewayTargetSelector> targetSelectorProvider,
       RetryBudgetRegistry retryBudgetRegistry,
       ObjectProvider<GatewayRetryMetrics> retryMetricsProvider,
       ErrorResponseWriter errorWriter,
@@ -60,6 +62,7 @@ public class RetryingProxyExecutor {
       UpstreamConfig upstream,
       java.util.List<UpstreamTargetReference> targets) {
     RuntimeRetryPolicyConfig retryPolicy = route.retry();
+    RuntimeCircuitBreakerPolicyConfig circuitPolicy = route.circuitBreaker();
     PassiveHealthPolicy healthPolicy =
         upstream.backendHealth() != null
             ? PassiveHealthPolicy.from(upstream.backendHealth())
@@ -67,7 +70,16 @@ public class RetryingProxyExecutor {
 
     if (retryPolicy == null || !retryPolicy.retriesEnabled()) {
       return executeSingleAttemptWithoutCapture(
-          exchange, bundle, route, request, requestId, upstream, targets, healthPolicy, 1);
+          exchange,
+          bundle,
+          route,
+          request,
+          requestId,
+          upstream,
+          targets,
+          healthPolicy,
+          circuitPolicy,
+          1);
     }
 
     boolean idempotencyPresent =
@@ -95,6 +107,7 @@ public class RetryingProxyExecutor {
                     upstream,
                     targets,
                     healthPolicy,
+                    circuitPolicy,
                     1);
               }
               RetryBudgetKey budgetKey =
@@ -110,6 +123,7 @@ public class RetryingProxyExecutor {
                   upstream,
                   targets,
                   healthPolicy,
+                  circuitPolicy,
                   retryPolicy,
                   budgetKey,
                   replayable,
@@ -130,6 +144,7 @@ public class RetryingProxyExecutor {
       UpstreamConfig upstream,
       java.util.List<UpstreamTargetReference> targets,
       PassiveHealthPolicy healthPolicy,
+      RuntimeCircuitBreakerPolicyConfig circuitPolicy,
       int attemptNumber) {
     return ReplayableRequest.capture(request, maxReplayBodyBytes)
         .flatMap(
@@ -143,6 +158,7 @@ public class RetryingProxyExecutor {
                     upstream,
                     targets,
                     healthPolicy,
+                    circuitPolicy,
                     route.retry(),
                     null,
                     replayable,
@@ -159,7 +175,11 @@ public class RetryingProxyExecutor {
               UpstreamAttemptExecutor.AttemptResult.Failure failure =
                   (UpstreamAttemptExecutor.AttemptResult.Failure) result;
               return writeTerminalFailure(exchange, failure);
-            });
+            })
+        .onErrorResume(
+            CircuitBreakerOpenException.class, ex -> errorWriter.circuitBreakerOpen(exchange))
+        .onErrorResume(
+            IllegalArgumentException.class, ex -> errorWriter.noAvailableUpstream(exchange));
   }
 
   private Mono<UpstreamAttemptExecutor.AttemptResult> executeAttempt(
@@ -171,14 +191,15 @@ public class RetryingProxyExecutor {
       UpstreamConfig upstream,
       java.util.List<UpstreamTargetReference> targets,
       PassiveHealthPolicy healthPolicy,
+      RuntimeCircuitBreakerPolicyConfig circuitPolicy,
       RuntimeRetryPolicyConfig retryPolicy,
       RetryBudgetKey budgetKey,
       ReplayableRequest replayable,
       Set<UUID> attempted,
       int attemptNumber) {
-    HealthAwareTargetSelector selector = targetSelectorProvider.getIfAvailable();
+    GatewayTargetSelector selector = targetSelectorProvider.getIfAvailable();
     if (selector == null) {
-      return Mono.error(new IllegalStateException("Health-aware target selector is unavailable"));
+      return Mono.error(new IllegalStateException("Gateway target selector is unavailable"));
     }
     SelectedTarget selected =
         RetryTargetSelector.selectForAttempt(
@@ -187,6 +208,8 @@ public class RetryingProxyExecutor {
             upstream.poolId(),
             targets,
             healthPolicy,
+            circuitPolicy,
+            route.id(),
             attempted,
             attemptNumber);
     UpstreamTargetReference target = selected.target();
@@ -214,6 +237,8 @@ public class RetryingProxyExecutor {
         healthPolicy,
         targets.size(),
         route.id(),
+        bundle.apiId(),
+        circuitPolicy,
         replayable,
         timeout);
   }
@@ -227,6 +252,7 @@ public class RetryingProxyExecutor {
       UpstreamConfig upstream,
       java.util.List<UpstreamTargetReference> targets,
       PassiveHealthPolicy healthPolicy,
+      RuntimeCircuitBreakerPolicyConfig circuitPolicy,
       RuntimeRetryPolicyConfig retryPolicy,
       RetryBudgetKey budgetKey,
       ReplayableRequest replayable,
@@ -249,6 +275,7 @@ public class RetryingProxyExecutor {
             upstream,
             targets,
             healthPolicy,
+            circuitPolicy,
             retryPolicy,
             budgetKey,
             replayable,
@@ -313,6 +340,7 @@ public class RetryingProxyExecutor {
                   upstream,
                   targets,
                   healthPolicy,
+                  circuitPolicy,
                   retryPolicy,
                   budgetKey,
                   replayable,
@@ -321,7 +349,11 @@ public class RetryingProxyExecutor {
                   idempotencyValid,
                   attemptNumber + 1,
                   failure);
-            });
+            })
+        .onErrorResume(
+            CircuitBreakerOpenException.class, ex -> errorWriter.circuitBreakerOpen(exchange))
+        .onErrorResume(
+            IllegalArgumentException.class, ex -> errorWriter.noAvailableUpstream(exchange));
   }
 
   private Mono<Void> completeCancelled(ServerWebExchange exchange) {

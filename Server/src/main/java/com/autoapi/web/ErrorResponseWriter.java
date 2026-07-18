@@ -126,6 +126,14 @@ public class ErrorResponseWriter {
         "No upstream target is available");
   }
 
+  public Mono<Void> circuitBreakerOpen(ServerWebExchange exchange) {
+    return write(
+        exchange,
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "CIRCUIT_BREAKER_OPEN",
+        "Upstream circuit breaker is open");
+  }
+
   public Mono<Void> noAvailableTrafficDestination(ServerWebExchange exchange) {
     return write(
         exchange,

@@ -1,7 +1,8 @@
 package com.autoapi.gateway.retry;
 
+import com.autoapi.config.RuntimeCircuitBreakerPolicyConfig;
 import com.autoapi.config.UpstreamTargetReference;
-import com.autoapi.gateway.health.HealthAwareTargetSelector;
+import com.autoapi.gateway.circuitbreaker.GatewayTargetSelector;
 import com.autoapi.gateway.health.PassiveHealthPolicy;
 import com.autoapi.gateway.health.SelectedTarget;
 import java.util.ArrayList;
@@ -16,26 +17,26 @@ public final class RetryTargetSelector {
   private RetryTargetSelector() {}
 
   public static SelectedTarget selectForAttempt(
-      HealthAwareTargetSelector selector,
+      GatewayTargetSelector selector,
       UUID apiId,
       UUID poolId,
       List<UpstreamTargetReference> targets,
       PassiveHealthPolicy healthPolicy,
+      RuntimeCircuitBreakerPolicyConfig circuitPolicy,
+      String routeId,
       Set<UUID> attemptedTargetIds,
       int attemptNumber) {
     List<UpstreamTargetReference> candidates = new ArrayList<>(targets);
+    Set<UUID> excluded = new HashSet<>();
     if (attemptNumber > 1 && attemptedTargetIds.size() < targets.size()) {
-      List<UpstreamTargetReference> unattempted = new ArrayList<>();
       for (UpstreamTargetReference target : targets) {
-        if (!attemptedTargetIds.contains(target.targetId())) {
-          unattempted.add(target);
+        if (attemptedTargetIds.contains(target.targetId())) {
+          excluded.add(target.targetId());
         }
       }
-      if (!unattempted.isEmpty()) {
-        candidates = unattempted;
-      }
     }
-    return selector.select(apiId, poolId, candidates, healthPolicy);
+    return selector.select(
+        apiId, poolId, candidates, healthPolicy, circuitPolicy, routeId, excluded);
   }
 
   public static Set<UUID> newAttemptedSet() {

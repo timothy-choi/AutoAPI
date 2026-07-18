@@ -9,7 +9,8 @@ public record RouteConfig(
     RuntimeTrafficSplitConfig trafficSplit,
     RuntimeAuthentication authentication,
     RuntimeRateLimit rateLimit,
-    RuntimeRetryPolicyConfig retry) {
+    RuntimeRetryPolicyConfig retry,
+    RuntimeCircuitBreakerPolicyConfig circuitBreaker) {
 
   public RouteConfig(
       String id,
@@ -17,7 +18,7 @@ public record RouteConfig(
       String pathPrefix,
       java.util.Set<org.springframework.http.HttpMethod> methods,
       UpstreamConfig upstream) {
-    this(id, host, pathPrefix, methods, upstream, null, null, null, null);
+    this(id, host, pathPrefix, methods, upstream, null, null, null, null, null);
   }
 
   public RouteConfig(
@@ -28,7 +29,7 @@ public record RouteConfig(
       UpstreamConfig upstream,
       RuntimeAuthentication authentication,
       RuntimeRateLimit rateLimit) {
-    this(id, host, pathPrefix, methods, upstream, null, authentication, rateLimit, null);
+    this(id, host, pathPrefix, methods, upstream, null, authentication, rateLimit, null, null);
   }
 
   public RouteConfig(
@@ -40,7 +41,7 @@ public record RouteConfig(
       RuntimeAuthentication authentication,
       RuntimeRateLimit rateLimit,
       RuntimeRetryPolicyConfig retry) {
-    this(id, host, pathPrefix, methods, upstream, null, authentication, rateLimit, retry);
+    this(id, host, pathPrefix, methods, upstream, null, authentication, rateLimit, retry, null);
   }
 
   public RouteConfig {
@@ -61,5 +62,9 @@ public record RouteConfig(
 
   public boolean trafficSplitEnabled() {
     return trafficSplit != null;
+  }
+
+  public boolean circuitBreakerEnabled() {
+    return circuitBreaker != null && circuitBreaker.circuitBreakerEnabled();
   }
 }

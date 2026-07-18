@@ -3,6 +3,7 @@ package com.autoapi.controlplane.validation;
 import com.autoapi.config.HostNormalizer;
 import com.autoapi.controlplane.DraftGraphService;
 import com.autoapi.controlplane.backendhealth.BackendHealthPolicyService;
+import com.autoapi.controlplane.circuitbreaker.CircuitBreakerPolicyService;
 import com.autoapi.controlplane.configversion.CompiledGatewaySection;
 import com.autoapi.controlplane.configversion.HashableRuntimePayload;
 import com.autoapi.controlplane.configversion.RuntimeConfigCompiler;
@@ -10,6 +11,7 @@ import com.autoapi.controlplane.configversion.RuntimeContentHasher;
 import com.autoapi.controlplane.persistence.ApiEntity;
 import com.autoapi.controlplane.persistence.ApiKeyEntity;
 import com.autoapi.controlplane.persistence.BackendHealthPolicyEntity;
+import com.autoapi.controlplane.persistence.CircuitBreakerPolicyEntity;
 import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
 import com.autoapi.controlplane.persistence.RetryPolicyEntity;
 import com.autoapi.controlplane.persistence.RouteEntity;
@@ -52,6 +54,7 @@ public final class DraftGraphValidator {
         graph.rateLimitPolicies(),
         graph.backendHealthPolicies(),
         graph.retryPolicies(),
+        graph.circuitBreakerPolicies(),
         graph.trafficSplitPolicies(),
         graph.trafficSplitDestinations(),
         graph.routePolicyBindings(),
@@ -67,6 +70,7 @@ public final class DraftGraphValidator {
       List<RateLimitPolicyEntity> rateLimitPolicies,
       List<BackendHealthPolicyEntity> backendHealthPolicies,
       List<RetryPolicyEntity> retryPolicies,
+      List<CircuitBreakerPolicyEntity> circuitBreakerPolicies,
       List<TrafficSplitPolicyEntity> trafficSplitPolicies,
       List<TrafficSplitDestinationEntity> trafficSplitDestinations,
       List<RoutePolicyBindingEntity> routePolicyBindings,
@@ -93,6 +97,9 @@ public final class DraftGraphValidator {
             .collect(Collectors.toMap(BackendHealthPolicyEntity::id, p -> p));
     Map<UUID, RetryPolicyEntity> retryPolicyById =
         retryPolicies.stream().collect(Collectors.toMap(RetryPolicyEntity::id, p -> p));
+    Map<UUID, CircuitBreakerPolicyEntity> circuitBreakerPolicyById =
+        circuitBreakerPolicies.stream()
+            .collect(Collectors.toMap(CircuitBreakerPolicyEntity::id, p -> p));
     Map<UUID, TrafficSplitPolicyEntity> trafficSplitPolicyById =
         trafficSplitPolicies.stream()
             .collect(Collectors.toMap(TrafficSplitPolicyEntity::id, p -> p));
@@ -120,6 +127,8 @@ public final class DraftGraphValidator {
       validateRoute(route, api.id(), poolById, errors);
       validateRoutePolicyBinding(route, api.id(), bindingByRouteId, policyById, errors);
       validateRetryPolicyBinding(route, api.id(), bindingByRouteId, retryPolicyById, errors);
+      validateCircuitBreakerPolicyBinding(
+          route, api.id(), bindingByRouteId, circuitBreakerPolicyById, errors);
       validateTrafficSplitBinding(
           route,
           api.id(),
@@ -164,6 +173,7 @@ public final class DraftGraphValidator {
             policyById,
             healthPolicyById,
             retryPolicyById,
+            circuitBreakerPolicyById,
             trafficSplitPolicyById,
             destinationsByPolicyId,
             apiKeys,
@@ -195,6 +205,7 @@ public final class DraftGraphValidator {
         routes,
         pools,
         targets,
+        List.of(),
         List.of(),
         List.of(),
         List.of(),
@@ -386,6 +397,60 @@ public final class DraftGraphValidator {
               "Disabled rate limit policy cannot be bound"));
     }
     validateRateLimitPolicyFields(policy, errors);
+  }
+
+  private static void validateCircuitBreakerPolicyBinding(
+      RouteEntity route,
+      UUID apiId,
+      Map<UUID, RoutePolicyBindingEntity> bindingByRouteId,
+      Map<UUID, CircuitBreakerPolicyEntity> circuitBreakerPolicyById,
+      List<ValidationError> errors) {
+    RoutePolicyBindingEntity binding = bindingByRouteId.get(route.id());
+    if (binding == null || binding.circuitBreakerPolicyId() == null) {
+      return;
+    }
+    CircuitBreakerPolicyEntity policy =
+        circuitBreakerPolicyById.get(binding.circuitBreakerPolicyId());
+    if (policy == null) {
+      errors.add(
+          new ValidationError(
+              "CIRCUIT_BREAKER_POLICY_NOT_FOUND",
+              route.id(),
+              "Route references missing circuit breaker policy"));
+      return;
+    }
+    if (!policy.apiId().equals(apiId)) {
+      errors.add(
+          new ValidationError(
+              "CIRCUIT_BREAKER_POLICY_WRONG_API",
+              route.id(),
+              "Circuit breaker policy belongs to another API"));
+    }
+    if (!policy.enabled()) {
+      errors.add(
+          new ValidationError(
+              "CIRCUIT_BREAKER_POLICY_DISABLED",
+              policy.id(),
+              "Disabled circuit breaker policy cannot be bound"));
+    }
+    try {
+      CircuitBreakerPolicyService.validateFields(
+          policy.failureThreshold(),
+          policy.rollingWindowSeconds(),
+          policy.openDurationSeconds(),
+          policy.halfOpenMaxRequests(),
+          policy.successThreshold(),
+          policy.predicateCountHttp5xx(),
+          policy.predicateCountConnectFailure(),
+          policy.predicateCountConnectTimeout(),
+          policy.predicateCountReadTimeout(),
+          policy.predicateCountTlsFailure(),
+          policy.predicateCountTransportException(),
+          policy.predicateCountHttp429());
+    } catch (com.autoapi.controlplane.api.ControlPlaneException ex) {
+      errors.add(
+          new ValidationError("CIRCUIT_BREAKER_POLICY_INVALID", policy.id(), ex.getMessage()));
+    }
   }
 
   private static void validateRetryPolicyBinding(

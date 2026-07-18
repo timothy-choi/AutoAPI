@@ -9,6 +9,8 @@ import com.autoapi.config.RuntimeTrafficSplitConfig;
 import com.autoapi.config.RuntimeTrafficSplitDestination;
 import com.autoapi.config.UpstreamConfig;
 import com.autoapi.config.UpstreamTargetReference;
+import com.autoapi.gateway.circuitbreaker.CircuitBreakerRegistry;
+import com.autoapi.gateway.circuitbreaker.GatewayTargetSelector;
 import com.autoapi.gateway.config.ActiveRuntimeBundle;
 import com.autoapi.gateway.health.FailureCategory;
 import com.autoapi.gateway.health.HealthAwareTargetSelector;
@@ -24,6 +26,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 
 class TrafficSplitFallbackResolverTest {
 
@@ -42,13 +45,20 @@ class TrafficSplitFallbackResolverTest {
   private final ControllableClock clock =
       ControllableClock.fixed(Instant.parse("2026-01-01T00:00:00Z"));
   private TargetHealthRegistry registry;
-  private HealthAwareTargetSelector selector;
+  private GatewayTargetSelector selector;
   private ActiveRuntimeBundle bundle;
 
   @BeforeEach
   void setUp() {
     registry = new TargetHealthRegistry(clock);
-    selector = new HealthAwareTargetSelector(registry, clock);
+    @SuppressWarnings("unchecked")
+    ObjectProvider<com.autoapi.gateway.circuitbreaker.GatewayCircuitBreakerMetrics>
+        metricsProvider = org.mockito.Mockito.mock(ObjectProvider.class);
+    org.mockito.Mockito.when(metricsProvider.getIfAvailable()).thenReturn(null);
+    CircuitBreakerRegistry circuitRegistry =
+        new CircuitBreakerRegistry(clock, "test-gateway", metricsProvider);
+    selector =
+        new GatewayTargetSelector(new HealthAwareTargetSelector(registry, clock), circuitRegistry);
     bundle =
         new ActiveRuntimeBundle(
             API_ID, 1, "hash", new RuntimeConfig(new GatewayConfig("0.0.0.0", 8080), List.of()));
@@ -60,7 +70,8 @@ class TrafficSplitFallbackResolverTest {
     RuntimeTrafficSplitDestination nominal = canaryDestination();
 
     Optional<RuntimeTrafficSplitDestination> effective =
-        TrafficSplitFallbackResolver.resolveEffectiveDestination(config, nominal, bundle, selector);
+        TrafficSplitFallbackResolver.resolveEffectiveDestination(
+            config, nominal, bundle, selector, null, "test-route");
 
     assertTrue(effective.isPresent());
     assertEquals(CANARY_DEST, effective.get().destinationId());
@@ -77,7 +88,8 @@ class TrafficSplitFallbackResolverTest {
     RuntimeTrafficSplitDestination nominal = canaryDestination();
 
     Optional<RuntimeTrafficSplitDestination> effective =
-        TrafficSplitFallbackResolver.resolveEffectiveDestination(config, nominal, bundle, selector);
+        TrafficSplitFallbackResolver.resolveEffectiveDestination(
+            config, nominal, bundle, selector, null, "test-route");
 
     assertTrue(effective.isPresent());
     assertEquals(STABLE_DEST, effective.get().destinationId());
@@ -94,7 +106,8 @@ class TrafficSplitFallbackResolverTest {
     RuntimeTrafficSplitDestination nominal = canaryDestination();
 
     Optional<RuntimeTrafficSplitDestination> effective =
-        TrafficSplitFallbackResolver.resolveEffectiveDestination(config, nominal, bundle, selector);
+        TrafficSplitFallbackResolver.resolveEffectiveDestination(
+            config, nominal, bundle, selector, null, "test-route");
 
     assertTrue(effective.isEmpty());
   }

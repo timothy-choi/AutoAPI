@@ -2,6 +2,7 @@ package com.autoapi.controlplane.configversion;
 
 import com.autoapi.controlplane.persistence.ApiKeyEntity;
 import com.autoapi.controlplane.persistence.BackendHealthPolicyEntity;
+import com.autoapi.controlplane.persistence.CircuitBreakerPolicyEntity;
 import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
 import com.autoapi.controlplane.persistence.RetryPolicyEntity;
 import com.autoapi.controlplane.persistence.RouteEntity;
@@ -35,6 +36,7 @@ public final class RuntimeConfigCompiler {
       Map<UUID, RateLimitPolicyEntity> policyById,
       Map<UUID, BackendHealthPolicyEntity> healthPolicyById,
       Map<UUID, RetryPolicyEntity> retryPolicyById,
+      Map<UUID, CircuitBreakerPolicyEntity> circuitBreakerPolicyById,
       Map<UUID, TrafficSplitPolicyEntity> trafficSplitPolicyById,
       Map<UUID, List<TrafficSplitDestinationEntity>> destinationsByPolicyId,
       List<ApiKeyEntity> apiKeys,
@@ -46,6 +48,7 @@ public final class RuntimeConfigCompiler {
       CompiledAuthenticationSection authentication = null;
       CompiledRateLimitSection rateLimit = null;
       CompiledRetrySection retry = null;
+      CompiledCircuitBreakerSection circuitBreaker = null;
       if (binding != null && binding.authenticationRequired()) {
         authentication = new CompiledAuthenticationSection(true);
         if (binding.rateLimitPolicyId() != null) {
@@ -80,6 +83,28 @@ public final class RuntimeConfigCompiler {
                   retryPolicy.budgetWindowSeconds());
         }
       }
+      if (binding != null && binding.circuitBreakerPolicyId() != null) {
+        CircuitBreakerPolicyEntity cbPolicy =
+            circuitBreakerPolicyById.get(binding.circuitBreakerPolicyId());
+        if (cbPolicy != null && cbPolicy.enabled()) {
+          circuitBreaker =
+              new CompiledCircuitBreakerSection(
+                  cbPolicy.id(),
+                  cbPolicy.failureThreshold(),
+                  cbPolicy.rollingWindowSeconds(),
+                  cbPolicy.openDurationSeconds(),
+                  cbPolicy.halfOpenMaxRequests(),
+                  cbPolicy.successThreshold(),
+                  new CompiledCircuitBreakerFailurePredicateSection(
+                      cbPolicy.predicateCountHttp5xx(),
+                      cbPolicy.predicateCountConnectFailure(),
+                      cbPolicy.predicateCountConnectTimeout(),
+                      cbPolicy.predicateCountReadTimeout(),
+                      cbPolicy.predicateCountTlsFailure(),
+                      cbPolicy.predicateCountTransportException(),
+                      cbPolicy.predicateCountHttp429()));
+        }
+      }
       CompiledTrafficSplitSection trafficSplit = null;
       CompiledUpstreamPoolSection upstreamPool = null;
       if (binding != null && binding.trafficSplitPolicyId() != null) {
@@ -110,6 +135,7 @@ public final class RuntimeConfigCompiler {
               authentication,
               rateLimit,
               retry,
+              circuitBreaker,
               trafficSplit,
               upstreamPool));
     }
@@ -249,6 +275,7 @@ public final class RuntimeConfigCompiler {
         enabledRoutes,
         poolById,
         targetsByPool,
+        Map.of(),
         Map.of(),
         Map.of(),
         Map.of(),

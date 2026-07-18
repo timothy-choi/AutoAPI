@@ -78,7 +78,7 @@ class RuntimeConfigCompilerTrafficSplitTest {
   private static HashableRuntimePayload compile(Graph graph) {
     RoutePolicyBindingEntity binding =
         new RoutePolicyBindingEntity(
-            graph.routeId(), false, null, NOW, NOW, null, graph.policyId());
+            graph.routeId(), false, null, NOW, NOW, null, graph.policyId(), null);
     RouteEntity splitRoute =
         new RouteEntity(
             graph.routeId(),
@@ -100,6 +100,7 @@ class RuntimeConfigCompilerTrafficSplitTest {
             graph.stablePoolId(), List.of(graph.stableTarget()),
             graph.canaryPoolId(), List.of(graph.canaryTarget())),
         Map.of(graph.routeId(), binding),
+        Map.of(),
         Map.of(),
         Map.of(),
         Map.of(),

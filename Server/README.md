@@ -1,6 +1,16 @@
 # AutoAPI Server
 
-Java 21 **Spring WebFlux** application with a nonblocking L7 gateway, PostgreSQL-backed control plane, immutable configuration compilation/activation, multi-gateway convergence, **API-key authentication**, **cross-gateway Redis rate limiting** (Phase 4), **passive backend health tracking with health-aware routing** (Phase 5), **bounded idempotency-aware request retries with gateway-local retry budgets** (Phase 6), and **deterministic weighted traffic splitting for stable/canary releases** (Phase 7).
+Java 21 **Spring WebFlux** application with a nonblocking L7 gateway, PostgreSQL-backed control plane, immutable configuration compilation/activation, multi-gateway convergence, **API-key authentication**, **cross-gateway Redis rate limiting** (Phase 4), **passive backend health tracking with health-aware routing** (Phase 5), **bounded idempotency-aware request retries with gateway-local retry budgets** (Phase 6), **deterministic weighted traffic splitting for stable/canary releases** (Phase 7), and **per-target circuit breakers with rolling failure detection and half-open recovery** (Phase 8).
+
+## Phase 8 highlights
+
+- Route-bound **circuit breaker policies** with rolling-window failure counting
+- Per-target local states: `CLOSED` → `OPEN` → `HALF_OPEN` → `CLOSED` (gateway-local; not synchronized)
+- Configurable failure predicates (HTTP 5xx, connect/timeout/TLS/transport; 429 optional)
+- Pipeline order: auth → rate limit → traffic split → backend health → **circuit breaker** → retries → proxy
+- Retries and traffic-split fallback never bypass **OPEN** circuits
+- Internal visibility: `GET /internal/v1/circuit-breakers`
+- Terminal mapping when all targets are open: `503 CIRCUIT_BREAKER_OPEN`
 
 ## Phase 7 highlights
 

@@ -14,7 +14,8 @@ public record RoutePolicyBindingEntity(
     @Column("created_at") OffsetDateTime createdAt,
     @Column("updated_at") OffsetDateTime updatedAt,
     @Column("retry_policy_id") UUID retryPolicyId,
-    @Column("traffic_split_policy_id") UUID trafficSplitPolicyId)
+    @Column("traffic_split_policy_id") UUID trafficSplitPolicyId,
+    @Column("circuit_breaker_policy_id") UUID circuitBreakerPolicyId)
     implements NewEntity {
 
   @Override
