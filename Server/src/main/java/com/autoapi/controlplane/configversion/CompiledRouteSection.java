@@ -14,7 +14,8 @@ import java.util.UUID;
   "retry",
   "circuitBreaker",
   "trafficSplit",
-  "upstreamPool"
+  "upstreamPool",
+  "discoveredService"
 })
 public record CompiledRouteSection(
     UUID id,
@@ -26,4 +27,5 @@ public record CompiledRouteSection(
     CompiledRetrySection retry,
     CompiledCircuitBreakerSection circuitBreaker,
     CompiledTrafficSplitSection trafficSplit,
-    CompiledUpstreamPoolSection upstreamPool) {}
+    CompiledUpstreamPoolSection upstreamPool,
+    CompiledDiscoveredServiceSection discoveredService) {}

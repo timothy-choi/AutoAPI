@@ -37,8 +37,8 @@ public class TrafficSplitDestinationRepositoryCustom {
                 is_primary = :primary,
                 updated_at = :updatedAt
             WHERE id = :destinationId
-            RETURNING id, traffic_split_policy_id, upstream_pool_id, name, weight, priority,
-                      is_primary, created_at, updated_at
+            RETURNING id, traffic_split_policy_id, upstream_pool_id, discovered_service_id, name,
+                      weight, priority, is_primary, created_at, updated_at
             """)
         .bind("destinationId", destinationId)
         .bind("name", name)
@@ -56,6 +56,7 @@ public class TrafficSplitDestinationRepositoryCustom {
         row.get("id", UUID.class),
         row.get("traffic_split_policy_id", UUID.class),
         row.get("upstream_pool_id", UUID.class),
+        row.get("discovered_service_id", UUID.class),
         row.get("name", String.class),
         row.get("weight", Integer.class),
         row.get("priority", Integer.class),

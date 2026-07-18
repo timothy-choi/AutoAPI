@@ -34,6 +34,7 @@ class RuntimeConfigCompilerCircuitBreakerTest {
             "/v1/orders",
             new String[] {"GET"},
             poolId,
+            null,
             true,
             NOW,
             NOW);
@@ -60,6 +61,8 @@ class RuntimeConfigCompilerCircuitBreakerTest {
             Map.of(),
             Map.of(),
             Map.of(policyId, policy),
+            Map.of(),
+            Map.of(),
             Map.of(),
             Map.of(),
             List.of(),

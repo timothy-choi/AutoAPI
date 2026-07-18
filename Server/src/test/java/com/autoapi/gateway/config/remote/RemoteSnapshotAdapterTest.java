@@ -108,6 +108,7 @@ class RemoteSnapshotAdapterTest {
             "/v1/orders",
             new String[] {"POST", "GET"},
             poolId,
+            null,
             true,
             now,
             now);
@@ -147,6 +148,8 @@ class RemoteSnapshotAdapterTest {
             Map.of(),
             Map.of(),
             Map.of(),
+            Map.of(),
+            Map.of(),
             List.of(),
             now);
     String hash = RuntimeContentHasher.sha256Hex(RuntimeContentHasher.canonicalJson(payload));
@@ -172,6 +175,7 @@ class RemoteSnapshotAdapterTest {
             "/v1/orders",
             new String[] {"POST", "GET"},
             poolId,
+            null,
             true,
             now,
             now);

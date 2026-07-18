@@ -9,5 +9,6 @@ public record RuntimeTrafficSplitDestination(
     int priority,
     boolean primary,
     UpstreamConfig upstreamPool,
+    RuntimeDiscoveredServiceConfig discoveredService,
     int cumulativeWeightStart,
     int cumulativeWeightEnd) {}

@@ -88,6 +88,7 @@ public class TrafficSplitSelector {
             effectiveDestination.destinationId(),
             effectiveDestination.name(),
             effectiveDestination.upstreamPool(),
+            effectiveDestination.discoveredService(),
             selectionKey.source().name(),
             selectedBucket,
             config.totalWeight(),

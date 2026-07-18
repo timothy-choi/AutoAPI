@@ -101,6 +101,7 @@ class WeightedDestinationSelectorTest {
         priority,
         primary,
         UpstreamConfig.single(poolId, UUID.randomUUID(), URI.create("http://" + name + ":8080"), 1),
+        null,
         start,
         end);
   }

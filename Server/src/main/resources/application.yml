@@ -70,6 +70,16 @@ autoapi:
       request-summary-buffer-size: 200
     retry:
       max-replay-body-bytes: ${AUTOAPI_GATEWAY_RETRY_MAX_REPLAY_BODY_BYTES:1048576}
+  discovery:
+    enabled: ${AUTOAPI_DISCOVERY_ENABLED:true}
+    heartbeat-interval: ${AUTOAPI_DISCOVERY_HEARTBEAT_INTERVAL:10s}
+    default-lease-duration: ${AUTOAPI_DISCOVERY_DEFAULT_LEASE_DURATION:30s}
+    min-lease-duration: ${AUTOAPI_DISCOVERY_MIN_LEASE_DURATION:5s}
+    max-lease-duration: ${AUTOAPI_DISCOVERY_MAX_LEASE_DURATION:5m}
+    stale-reaper-interval: ${AUTOAPI_DISCOVERY_STALE_REAPER_INTERVAL:5s}
+    stale-reaper-batch-size: ${AUTOAPI_DISCOVERY_STALE_REAPER_BATCH_SIZE:100}
+    stale-retention: ${AUTOAPI_DISCOVERY_STALE_RETENTION:24h}
+    auto-activate-on-membership-change: ${AUTOAPI_DISCOVERY_AUTO_ACTIVATE:true}
 
 management:
   endpoints:

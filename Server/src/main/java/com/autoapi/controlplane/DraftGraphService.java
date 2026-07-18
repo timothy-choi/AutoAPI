@@ -9,6 +9,8 @@ import com.autoapi.controlplane.persistence.BackendHealthPolicyEntity;
 import com.autoapi.controlplane.persistence.BackendHealthPolicyRepository;
 import com.autoapi.controlplane.persistence.CircuitBreakerPolicyEntity;
 import com.autoapi.controlplane.persistence.CircuitBreakerPolicyRepository;
+import com.autoapi.controlplane.persistence.DiscoveredServiceEntity;
+import com.autoapi.controlplane.persistence.DiscoveredServiceRepository;
 import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
 import com.autoapi.controlplane.persistence.RateLimitPolicyRepository;
 import com.autoapi.controlplane.persistence.RetryPolicyEntity;
@@ -17,6 +19,8 @@ import com.autoapi.controlplane.persistence.RouteEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingRepository;
 import com.autoapi.controlplane.persistence.RouteRepository;
+import com.autoapi.controlplane.persistence.ServiceInstanceEntity;
+import com.autoapi.controlplane.persistence.ServiceInstanceRepository;
 import com.autoapi.controlplane.persistence.TrafficSplitDestinationEntity;
 import com.autoapi.controlplane.persistence.TrafficSplitDestinationRepository;
 import com.autoapi.controlplane.persistence.TrafficSplitPolicyEntity;
@@ -50,6 +54,8 @@ public class DraftGraphService {
   private final TrafficSplitPolicyRepository trafficSplitPolicyRepository;
   private final TrafficSplitDestinationRepository trafficSplitDestinationRepository;
   private final RoutePolicyBindingRepository routePolicyBindingRepository;
+  private final DiscoveredServiceRepository discoveredServiceRepository;
+  private final ServiceInstanceRepository serviceInstanceRepository;
   private final ControlPlaneProperties properties;
 
   public DraftGraphService(
@@ -65,6 +71,8 @@ public class DraftGraphService {
       TrafficSplitPolicyRepository trafficSplitPolicyRepository,
       TrafficSplitDestinationRepository trafficSplitDestinationRepository,
       RoutePolicyBindingRepository routePolicyBindingRepository,
+      DiscoveredServiceRepository discoveredServiceRepository,
+      ServiceInstanceRepository serviceInstanceRepository,
       ControlPlaneProperties properties) {
     this.apiRepository = apiRepository;
     this.routeRepository = routeRepository;
@@ -78,6 +86,8 @@ public class DraftGraphService {
     this.trafficSplitPolicyRepository = trafficSplitPolicyRepository;
     this.trafficSplitDestinationRepository = trafficSplitDestinationRepository;
     this.routePolicyBindingRepository = routePolicyBindingRepository;
+    this.discoveredServiceRepository = discoveredServiceRepository;
+    this.serviceInstanceRepository = serviceInstanceRepository;
     this.properties = properties;
   }
 
@@ -131,22 +141,47 @@ public class DraftGraphService {
                                                                   .findByTrafficSplitPolicyId(
                                                                       policy.id()))
                                                       .collectList()
-                                                      .map(
+                                                      .flatMap(
                                                           splitDestinations ->
-                                                              new DraftGraph(
-                                                                  api,
-                                                                  tuple.getT1(),
-                                                                  pools,
-                                                                  targets,
-                                                                  tuple.getT3(),
-                                                                  tuple.getT4(),
-                                                                  tuple.getT5(),
-                                                                  tuple.getT6(),
-                                                                  circuitBreakerPolicies,
-                                                                  tuple.getT7(),
-                                                                  splitDestinations,
-                                                                  apiBindings,
-                                                                  gatewayDefaults())));
+                                                              discoveredServiceRepository
+                                                                  .findByProjectId(api.projectId())
+                                                                  .collectList()
+                                                                  .flatMap(
+                                                                      services ->
+                                                                          reactor.core.publisher
+                                                                              .Flux.fromIterable(
+                                                                                  services)
+                                                                              .flatMap(
+                                                                                  service ->
+                                                                                      serviceInstanceRepository
+                                                                                          .findByServiceId(
+                                                                                              service
+                                                                                                  .id()))
+                                                                              .collectList()
+                                                                              .map(
+                                                                                  instances ->
+                                                                                      new DraftGraph(
+                                                                                          api,
+                                                                                          tuple
+                                                                                              .getT1(),
+                                                                                          pools,
+                                                                                          targets,
+                                                                                          tuple
+                                                                                              .getT3(),
+                                                                                          tuple
+                                                                                              .getT4(),
+                                                                                          tuple
+                                                                                              .getT5(),
+                                                                                          tuple
+                                                                                              .getT6(),
+                                                                                          circuitBreakerPolicies,
+                                                                                          tuple
+                                                                                              .getT7(),
+                                                                                          splitDestinations,
+                                                                                          apiBindings,
+                                                                                          services,
+                                                                                          instances,
+                                                                                          gatewayDefaults())))));
                                     })));
   }
 
@@ -168,5 +203,7 @@ public class DraftGraphService {
       List<TrafficSplitPolicyEntity> trafficSplitPolicies,
       List<TrafficSplitDestinationEntity> trafficSplitDestinations,
       List<RoutePolicyBindingEntity> routePolicyBindings,
+      List<DiscoveredServiceEntity> discoveredServices,
+      List<ServiceInstanceEntity> serviceInstances,
       CompiledGatewaySection gatewayDefaults) {}
 }

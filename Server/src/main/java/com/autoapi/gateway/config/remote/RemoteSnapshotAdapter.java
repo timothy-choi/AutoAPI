@@ -8,6 +8,8 @@ import com.autoapi.config.RuntimeAuthentication;
 import com.autoapi.config.RuntimeCircuitBreakerFailurePredicate;
 import com.autoapi.config.RuntimeCircuitBreakerPolicyConfig;
 import com.autoapi.config.RuntimeConfig;
+import com.autoapi.config.RuntimeDiscoveredInstance;
+import com.autoapi.config.RuntimeDiscoveredServiceConfig;
 import com.autoapi.config.RuntimeRateLimit;
 import com.autoapi.config.RuntimeRetryPolicyConfig;
 import com.autoapi.config.RuntimeSnapshotMetadata;
@@ -15,6 +17,8 @@ import com.autoapi.config.RuntimeTrafficSplitConfig;
 import com.autoapi.config.RuntimeTrafficSplitDestination;
 import com.autoapi.config.UpstreamConfig;
 import com.autoapi.config.UpstreamTargetReference;
+import com.autoapi.controlplane.configversion.CompiledDiscoveredInstanceSection;
+import com.autoapi.controlplane.configversion.CompiledDiscoveredServiceSection;
 import com.autoapi.controlplane.configversion.CompiledObservabilityMetadataSection;
 import com.autoapi.controlplane.configversion.CompiledRateLimitSection;
 import com.autoapi.controlplane.configversion.CompiledRouteSection;
@@ -70,7 +74,7 @@ public final class RemoteSnapshotAdapter {
   private static RuntimeSnapshotMetadata toRuntimeMetadata(
       CompiledObservabilityMetadataSection metadata, long version) {
     if (metadata == null) {
-      return new RuntimeSnapshotMetadata(version, "", version, 0, 0, Map.of());
+      return new RuntimeSnapshotMetadata(version, "", version, 0, 0, 0, 0, 0L, Map.of());
     }
     return new RuntimeSnapshotMetadata(
         version,
@@ -78,6 +82,9 @@ public final class RemoteSnapshotAdapter {
         metadata.configurationVersion(),
         metadata.routeCount(),
         metadata.targetCount(),
+        metadata.serviceCount(),
+        metadata.serviceInstanceCount(),
+        metadata.discoveryMembershipVersion(),
         metadata.policyCounts());
   }
 
@@ -146,14 +153,17 @@ public final class RemoteSnapshotAdapter {
       methods.add(HttpMethod.valueOf(method));
     }
     UpstreamConfig upstream = null;
+    RuntimeDiscoveredServiceConfig discoveredService = null;
     RuntimeTrafficSplitConfig trafficSplit = null;
     if (route.trafficSplit() != null) {
       trafficSplit = toTrafficSplitConfig(route.trafficSplit());
+    } else if (route.discoveredService() != null) {
+      discoveredService = toDiscoveredServiceConfig(route.discoveredService());
     } else if (route.upstreamPool() != null) {
       upstream = toUpstreamConfig(route.upstreamPool());
     } else {
       throw new RemoteSnapshotValidationException(
-          "Route must define either trafficSplit or upstreamPool");
+          "Route must define trafficSplit, discoveredService, or upstreamPool");
     }
     RuntimeAuthentication authentication = null;
     if (route.authentication() != null && route.authentication().required()) {
@@ -177,11 +187,40 @@ public final class RemoteSnapshotAdapter {
         route.pathPrefix(),
         methods,
         upstream,
+        discoveredService,
         trafficSplit,
         authentication,
         rateLimit,
         retry,
         circuitBreaker);
+  }
+
+  private static RuntimeDiscoveredServiceConfig toDiscoveredServiceConfig(
+      CompiledDiscoveredServiceSection section) {
+    if (section == null) {
+      throw new RemoteSnapshotValidationException("Discovered service section is required");
+    }
+    List<RuntimeDiscoveredInstance> instances = new ArrayList<>();
+    for (CompiledDiscoveredInstanceSection instance : section.instances()) {
+      URI uri = URI.create(instance.url());
+      UpstreamUriValidator.validate(uri, "discovered instance");
+      instances.add(
+          new RuntimeDiscoveredInstance(
+              instance.targetId(),
+              instance.instanceId(),
+              uri,
+              instance.weight(),
+              instance.zone(),
+              instance.region(),
+              instance.registrationEpoch()));
+    }
+    return new RuntimeDiscoveredServiceConfig(
+        section.serviceId(),
+        section.selectionStrategy(),
+        section.consistentHashKey(),
+        section.consistentHashKeyName(),
+        section.membershipVersion(),
+        instances);
   }
 
   private static RuntimeTrafficSplitConfig toTrafficSplitConfig(
@@ -198,7 +237,13 @@ public final class RemoteSnapshotAdapter {
       }
     }
     for (CompiledTrafficSplitDestinationSection destination : section.destinations()) {
-      UpstreamConfig pool = toUpstreamConfig(destination.upstreamPool());
+      UpstreamConfig pool = null;
+      RuntimeDiscoveredServiceConfig discoveredService = null;
+      if (destination.discoveredService() != null) {
+        discoveredService = toDiscoveredServiceConfig(destination.discoveredService());
+      } else {
+        pool = toUpstreamConfig(destination.upstreamPool());
+      }
       int start = cumulative;
       int end = cumulative;
       if (destination.weight() > 0) {
@@ -213,6 +258,7 @@ public final class RemoteSnapshotAdapter {
               destination.priority(),
               destination.primary(),
               pool,
+              discoveredService,
               start,
               end));
     }

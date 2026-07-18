@@ -90,6 +90,7 @@ public class RouteService {
                                   pathPrefix,
                                   normalized,
                                   upstreamPoolId,
+                                  null,
                                   enabled,
                                   now,
                                   now);

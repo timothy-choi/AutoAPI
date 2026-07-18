@@ -1,12 +1,15 @@
 package com.autoapi.controlplane.configversion;
 
+import com.autoapi.controlplane.discovery.DiscoveredServiceCompiler;
 import com.autoapi.controlplane.persistence.ApiKeyEntity;
 import com.autoapi.controlplane.persistence.BackendHealthPolicyEntity;
 import com.autoapi.controlplane.persistence.CircuitBreakerPolicyEntity;
+import com.autoapi.controlplane.persistence.DiscoveredServiceEntity;
 import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
 import com.autoapi.controlplane.persistence.RetryPolicyEntity;
 import com.autoapi.controlplane.persistence.RouteEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
+import com.autoapi.controlplane.persistence.ServiceInstanceEntity;
 import com.autoapi.controlplane.persistence.TrafficSplitDestinationEntity;
 import com.autoapi.controlplane.persistence.TrafficSplitPolicyEntity;
 import com.autoapi.controlplane.persistence.UpstreamPoolEntity;
@@ -39,6 +42,8 @@ public final class RuntimeConfigCompiler {
       Map<UUID, CircuitBreakerPolicyEntity> circuitBreakerPolicyById,
       Map<UUID, TrafficSplitPolicyEntity> trafficSplitPolicyById,
       Map<UUID, List<TrafficSplitDestinationEntity>> destinationsByPolicyId,
+      Map<UUID, DiscoveredServiceEntity> discoveredServiceById,
+      Map<UUID, List<ServiceInstanceEntity>> instancesByServiceId,
       List<ApiKeyEntity> apiKeys,
       OffsetDateTime publishInstant) {
     List<CompiledRouteSection> compiledRoutes = new ArrayList<>();
@@ -107,6 +112,7 @@ public final class RuntimeConfigCompiler {
       }
       CompiledTrafficSplitSection trafficSplit = null;
       CompiledUpstreamPoolSection upstreamPool = null;
+      CompiledDiscoveredServiceSection discoveredService = null;
       if (binding != null && binding.trafficSplitPolicyId() != null) {
         TrafficSplitPolicyEntity splitPolicy =
             trafficSplitPolicyById.get(binding.trafficSplitPolicyId());
@@ -115,8 +121,22 @@ public final class RuntimeConfigCompiler {
         if (splitPolicy != null && splitPolicy.enabled()) {
           trafficSplit =
               compileTrafficSplit(
-                  splitPolicy, destinations, poolById, targetsByPool, healthPolicyById);
+                  splitPolicy,
+                  destinations,
+                  poolById,
+                  targetsByPool,
+                  healthPolicyById,
+                  discoveredServiceById,
+                  instancesByServiceId,
+                  publishInstant);
         }
+      } else if (route.discoveredServiceId() != null) {
+        discoveredService =
+            compileDiscoveredService(
+                route.discoveredServiceId(),
+                discoveredServiceById,
+                instancesByServiceId,
+                publishInstant);
       } else if (route.upstreamPoolId() != null) {
         upstreamPool =
             compilePool(route.upstreamPoolId(), poolById, targetsByPool, healthPolicyById);
@@ -137,7 +157,8 @@ public final class RuntimeConfigCompiler {
               retry,
               circuitBreaker,
               trafficSplit,
-              upstreamPool));
+              upstreamPool,
+              discoveredService));
     }
     List<CompiledApiKeySection> compiledKeys = compileApiKeys(apiKeys, publishInstant);
     return new HashableRuntimePayload(apiId, gateway, compiledRoutes, compiledKeys);
@@ -148,7 +169,10 @@ public final class RuntimeConfigCompiler {
       List<TrafficSplitDestinationEntity> destinations,
       Map<UUID, UpstreamPoolEntity> poolById,
       Map<UUID, List<UpstreamTargetEntity>> targetsByPool,
-      Map<UUID, BackendHealthPolicyEntity> healthPolicyById) {
+      Map<UUID, BackendHealthPolicyEntity> healthPolicyById,
+      Map<UUID, DiscoveredServiceEntity> discoveredServiceById,
+      Map<UUID, List<ServiceInstanceEntity>> instancesByServiceId,
+      OffsetDateTime publishInstant) {
     List<TrafficSplitDestinationEntity> sortedDestinations =
         destinations.stream()
             .sorted(
@@ -157,6 +181,19 @@ public final class RuntimeConfigCompiler {
             .toList();
     List<CompiledTrafficSplitDestinationSection> compiledDestinations = new ArrayList<>();
     for (TrafficSplitDestinationEntity destination : sortedDestinations) {
+      CompiledUpstreamPoolSection upstreamPool = null;
+      CompiledDiscoveredServiceSection discoveredService = null;
+      if (destination.discoveredServiceId() != null) {
+        discoveredService =
+            compileDiscoveredService(
+                destination.discoveredServiceId(),
+                discoveredServiceById,
+                instancesByServiceId,
+                publishInstant);
+      } else {
+        upstreamPool =
+            compilePool(destination.upstreamPoolId(), poolById, targetsByPool, healthPolicyById);
+      }
       compiledDestinations.add(
           new CompiledTrafficSplitDestinationSection(
               destination.id(),
@@ -164,8 +201,8 @@ public final class RuntimeConfigCompiler {
               destination.weight(),
               destination.priority(),
               destination.primary(),
-              compilePool(
-                  destination.upstreamPoolId(), poolById, targetsByPool, healthPolicyById)));
+              upstreamPool,
+              discoveredService));
     }
     String fingerprint = TrafficSplitPolicyFingerprint.compute(policy, sortedDestinations);
     return new CompiledTrafficSplitSection(
@@ -205,6 +242,19 @@ public final class RuntimeConfigCompiler {
     }
     return new CompiledUpstreamPoolSection(
         pool.id(), pool.loadBalancing(), backendHealth, compiledTargets);
+  }
+
+  private static CompiledDiscoveredServiceSection compileDiscoveredService(
+      UUID serviceId,
+      Map<UUID, DiscoveredServiceEntity> discoveredServiceById,
+      Map<UUID, List<ServiceInstanceEntity>> instancesByServiceId,
+      OffsetDateTime publishInstant) {
+    DiscoveredServiceEntity service = discoveredServiceById.get(serviceId);
+    if (service == null || !service.enabled()) {
+      return null;
+    }
+    List<ServiceInstanceEntity> instances = instancesByServiceId.getOrDefault(serviceId, List.of());
+    return DiscoveredServiceCompiler.compileService(service, instances, publishInstant);
   }
 
   public static List<CompiledApiKeySection> compileApiKeys(
@@ -284,6 +334,8 @@ public final class RuntimeConfigCompiler {
         enabledRoutes,
         poolById,
         targetsByPool,
+        Map.of(),
+        Map.of(),
         Map.of(),
         Map.of(),
         Map.of(),

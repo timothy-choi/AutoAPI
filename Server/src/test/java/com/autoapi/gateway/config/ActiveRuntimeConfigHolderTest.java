@@ -330,6 +330,7 @@ class ActiveRuntimeConfigHolderTest {
             "/v1/orders",
             new String[] {"GET"},
             poolId,
+            null,
             true,
             now,
             now);

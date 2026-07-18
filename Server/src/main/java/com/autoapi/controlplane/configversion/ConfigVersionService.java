@@ -167,6 +167,19 @@ public class ConfigVersionService {
                                   circuitBreakerPolicyById,
                                   trafficSplitPolicyById,
                                   destinationsByPolicyId,
+                                  graph.discoveredServices().stream()
+                                      .collect(
+                                          java.util.stream.Collectors.toMap(
+                                              com.autoapi.controlplane.persistence
+                                                      .DiscoveredServiceEntity
+                                                  ::id,
+                                              s -> s)),
+                                  graph.serviceInstances().stream()
+                                      .collect(
+                                          java.util.stream.Collectors.groupingBy(
+                                              com.autoapi.controlplane.persistence
+                                                      .ServiceInstanceEntity
+                                                  ::serviceId)),
                                   graph.apiKeys(),
                                   publishInstant);
                           StoredRuntimeSnapshot snapshot =

@@ -45,6 +45,7 @@ class RuntimeConfigCompilerObservabilityTest {
             "/",
             new String[] {"GET"},
             poolId,
+            null,
             true,
             compiledAt,
             compiledAt);

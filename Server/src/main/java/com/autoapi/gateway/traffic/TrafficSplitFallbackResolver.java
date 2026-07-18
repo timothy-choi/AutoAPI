@@ -1,12 +1,14 @@
 package com.autoapi.gateway.traffic;
 
 import com.autoapi.config.RuntimeCircuitBreakerPolicyConfig;
+import com.autoapi.config.RuntimeDiscoveredServiceConfig;
 import com.autoapi.config.RuntimeTrafficSplitConfig;
 import com.autoapi.config.RuntimeTrafficSplitDestination;
 import com.autoapi.config.UpstreamConfig;
 import com.autoapi.config.UpstreamTargetReference;
 import com.autoapi.gateway.circuitbreaker.GatewayTargetSelector;
 import com.autoapi.gateway.config.ActiveRuntimeBundle;
+import com.autoapi.gateway.discovery.RendezvousHash;
 import com.autoapi.gateway.health.PassiveHealthPolicy;
 import com.autoapi.gateway.health.SelectedTarget;
 import java.util.Comparator;
@@ -94,7 +96,20 @@ public final class TrafficSplitFallbackResolver {
       RuntimeTrafficSplitDestination destination,
       RuntimeCircuitBreakerPolicyConfig circuitPolicy,
       String routeId) {
+    RuntimeDiscoveredServiceConfig discoveredService = destination.discoveredService();
+    if (discoveredService != null) {
+      if (!discoveredService.hasEligibleInstances()) {
+        return false;
+      }
+      List<UpstreamTargetReference> targets =
+          RendezvousHash.toTargetReferences(discoveredService.instances());
+      return targetSelector.hasCircuitEligibleTarget(
+          bundle.apiId(), discoveredService.serviceId(), targets, null, circuitPolicy, routeId);
+    }
     UpstreamConfig upstream = destination.upstreamPool();
+    if (upstream == null) {
+      return false;
+    }
     List<UpstreamTargetReference> targets = upstream.targets();
     if (targets.isEmpty()) {
       return false;

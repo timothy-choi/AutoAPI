@@ -44,6 +44,7 @@ class DraftGraphValidatorTest {
             "v1",
             new String[] {"GET"},
             poolId,
+            null,
             true,
             NOW,
             NOW);
@@ -121,6 +122,7 @@ class DraftGraphValidatorTest {
         prefix,
         new String[] {method},
         poolId,
+        null,
         true,
         NOW,
         NOW);

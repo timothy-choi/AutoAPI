@@ -3,10 +3,13 @@ package com.autoapi.proxy;
 import com.autoapi.config.HostNormalizer;
 import com.autoapi.config.RouteConfig;
 import com.autoapi.config.RuntimeConfig;
+import com.autoapi.config.RuntimeDiscoveredServiceConfig;
 import com.autoapi.config.UpstreamConfig;
 import com.autoapi.config.UpstreamTargetReference;
 import com.autoapi.gateway.GatewayProperties;
 import com.autoapi.gateway.config.ActiveRuntimeBundle;
+import com.autoapi.gateway.discovery.DiscoveredServiceSelector;
+import com.autoapi.gateway.discovery.RendezvousHash;
 import com.autoapi.gateway.health.FailureCategory;
 import com.autoapi.gateway.health.FailureClassifier;
 import com.autoapi.gateway.health.GatewayUpstreamHealthMetrics;
@@ -62,6 +65,7 @@ public class ProxyHandler {
   private final ObjectProvider<GatewayUpstreamHealthMetrics> healthMetricsProvider;
   private final ObjectProvider<RetryingProxyExecutor> retryingProxyExecutorProvider;
   private final ObjectProvider<TrafficSplitSelector> trafficSplitSelectorProvider;
+  private final ObjectProvider<DiscoveredServiceSelector> discoveredServiceSelectorProvider;
   private final String gatewayId;
 
   public ProxyHandler(
@@ -73,7 +77,8 @@ public class ProxyHandler {
       ObjectProvider<GatewayUpstreamHealthMetrics> healthMetrics,
       ObjectProvider<GatewayProperties> gatewayProperties,
       ObjectProvider<RetryingProxyExecutor> retryingProxyExecutor,
-      ObjectProvider<TrafficSplitSelector> trafficSplitSelector) {
+      ObjectProvider<TrafficSplitSelector> trafficSplitSelector,
+      ObjectProvider<DiscoveredServiceSelector> discoveredServiceSelector) {
     this.errorWriter = errorWriter;
     this.securityPipeline = securityPipeline.getIfAvailable(() -> NOOP_SECURITY);
     this.targetSelectorProvider = targetSelector;
@@ -82,6 +87,7 @@ public class ProxyHandler {
     this.healthMetricsProvider = healthMetrics;
     this.retryingProxyExecutorProvider = retryingProxyExecutor;
     this.trafficSplitSelectorProvider = trafficSplitSelector;
+    this.discoveredServiceSelectorProvider = discoveredServiceSelector;
     GatewayProperties properties = gatewayProperties.getIfAvailable();
     this.gatewayId =
         properties == null || properties.gatewayId() == null ? "unknown" : properties.gatewayId();
@@ -142,6 +148,7 @@ public class ProxyHandler {
       ServerHttpRequest request,
       String requestId) {
     UpstreamConfig upstream;
+    RuntimeDiscoveredServiceConfig discoveredService = null;
     if (route.trafficSplitEnabled()) {
       TrafficSplitSelector selector = trafficSplitSelectorProvider.getIfAvailable();
       if (selector == null) {
@@ -152,11 +159,59 @@ public class ProxyHandler {
         return errorWriter.noAvailableTrafficDestination(exchange);
       }
       upstream = decision.get().upstreamPool();
+      discoveredService = decision.get().discoveredService();
+    } else if (route.discoveredServiceEnabled()) {
+      discoveredService = route.discoveredService();
+      upstream = null;
     } else {
       upstream = route.upstream();
       if (upstream == null) {
         return errorWriter.trafficSplitConfigurationUnavailable(exchange);
       }
+    }
+
+    if (discoveredService != null) {
+      RetryingProxyExecutor retryExecutor = retryingProxyExecutorProvider.getIfAvailable();
+      if ("ROUND_ROBIN".equalsIgnoreCase(discoveredService.selectionStrategy())
+          && retryExecutor != null
+          && route.retryEnabled()) {
+        List<UpstreamTargetReference> targets =
+            RendezvousHash.toTargetReferences(discoveredService.instances());
+        UpstreamConfig materialized =
+            UpstreamConfig.roundRobin(discoveredService.serviceId(), targets, null);
+        return retryExecutor.executeWithRetries(
+            exchange, bundle, route, request, requestId, materialized, targets);
+      }
+      DiscoveredServiceSelector selector = discoveredServiceSelectorProvider.getIfAvailable();
+      if (selector == null) {
+        return errorWriter.internalError(
+            exchange, new IllegalStateException("Discovered service selector is unavailable"));
+      }
+      SelectedTarget selected;
+      try {
+        selected =
+            selector.select(
+                exchange, bundle.apiId(), discoveredService, route.circuitBreaker(), route.id());
+      } catch (IllegalArgumentException ex) {
+        return errorWriter.noAvailableUpstream(exchange);
+      }
+      UpstreamTargetReference target = selected.target();
+      exchange.getAttributes().put(GatewayAttributes.SELECTED_TARGET_ID, target.targetId());
+      exchange
+          .getAttributes()
+          .put(GatewayAttributes.UPSTREAM_AUTHORITY, target.url().getAuthority());
+      TargetKey targetKey =
+          new TargetKey(bundle.apiId(), discoveredService.serviceId(), target.targetId());
+      assertSelectedTargetKey(exchange, targetKey);
+      URI targetUri = buildUpstreamUri(target.url(), request);
+      return forward(
+          exchange,
+          target.url().getAuthority(),
+          targetUri,
+          requestId,
+          targetKey,
+          null,
+          discoveredService.instances().size());
     }
 
     List<UpstreamTargetReference> targets = upstream.targets();

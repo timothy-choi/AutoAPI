@@ -29,7 +29,7 @@ public class RouteRepositoryCustom {
                 updated_at = :updatedAt
             WHERE id = :routeId
             RETURNING id, api_id, name, host, path_prefix, methods, upstream_pool_id,
-                      enabled, created_at, updated_at
+                      discovered_service_id, enabled, created_at, updated_at
             """)
         .bind("routeId", routeId)
         .bind("updatedAt", updatedAt)
@@ -46,6 +46,7 @@ public class RouteRepositoryCustom {
         row.get("path_prefix", String.class),
         row.get("methods", String[].class),
         row.get("upstream_pool_id", UUID.class),
+        row.get("discovered_service_id", UUID.class),
         Boolean.TRUE.equals(row.get("enabled", Boolean.class)),
         row.get("created_at", OffsetDateTime.class),
         row.get("updated_at", OffsetDateTime.class));
