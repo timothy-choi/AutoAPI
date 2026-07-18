@@ -29,6 +29,13 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-redis-reactive")
+    implementation("io.opentelemetry:opentelemetry-api:1.42.1")
+    implementation("io.opentelemetry:opentelemetry-context:1.42.1")
+    implementation("io.opentelemetry:opentelemetry-sdk:1.42.1")
+    implementation("io.opentelemetry:opentelemetry-sdk-common:1.42.1")
+    implementation("io.opentelemetry:opentelemetry-sdk-trace:1.42.1")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp:1.42.1")
+    implementation("io.opentelemetry:opentelemetry-extension-trace-propagators:1.42.1")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.projectreactor:reactor-test")

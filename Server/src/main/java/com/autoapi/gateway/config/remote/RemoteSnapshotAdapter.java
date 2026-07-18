@@ -10,10 +10,12 @@ import com.autoapi.config.RuntimeCircuitBreakerPolicyConfig;
 import com.autoapi.config.RuntimeConfig;
 import com.autoapi.config.RuntimeRateLimit;
 import com.autoapi.config.RuntimeRetryPolicyConfig;
+import com.autoapi.config.RuntimeSnapshotMetadata;
 import com.autoapi.config.RuntimeTrafficSplitConfig;
 import com.autoapi.config.RuntimeTrafficSplitDestination;
 import com.autoapi.config.UpstreamConfig;
 import com.autoapi.config.UpstreamTargetReference;
+import com.autoapi.controlplane.configversion.CompiledObservabilityMetadataSection;
 import com.autoapi.controlplane.configversion.CompiledRateLimitSection;
 import com.autoapi.controlplane.configversion.CompiledRouteSection;
 import com.autoapi.controlplane.configversion.CompiledTrafficSplitDestinationSection;
@@ -54,8 +56,29 @@ public final class RemoteSnapshotAdapter {
             new GatewayConfig(snapshot.gateway().listenAddress(), snapshot.gateway().port()),
             routes,
             apiKeys);
+    RuntimeSnapshotMetadata metadata =
+        toRuntimeMetadata(snapshot.observabilityMetadata(), snapshot.version());
     return new ActiveRuntimeBundle(
-        snapshot.apiId(), snapshot.version(), snapshot.contentHash(), runtimeConfig);
+        snapshot.apiId(),
+        snapshot.version(),
+        snapshot.contentHash(),
+        runtimeConfig,
+        metadata,
+        Instant.now());
+  }
+
+  private static RuntimeSnapshotMetadata toRuntimeMetadata(
+      CompiledObservabilityMetadataSection metadata, long version) {
+    if (metadata == null) {
+      return new RuntimeSnapshotMetadata(version, "", version, 0, 0, Map.of());
+    }
+    return new RuntimeSnapshotMetadata(
+        version,
+        metadata.compiledAt(),
+        metadata.configurationVersion(),
+        metadata.routeCount(),
+        metadata.targetCount(),
+        metadata.policyCounts());
   }
 
   private static void validateSnapshot(StoredRuntimeSnapshot snapshot, UUID expectedApiId) {

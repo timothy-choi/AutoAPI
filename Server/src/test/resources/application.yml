@@ -1,0 +1,4 @@
+autoapi:
+  gateway:
+    observability:
+      tracing-enabled: false

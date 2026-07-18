@@ -10,6 +10,8 @@ public final class ControlPlaneDatabaseCleaner {
   private ControlPlaneDatabaseCleaner() {}
 
   public static void cleanAll(DatabaseClient databaseClient) {
+    databaseClient.sql("DELETE FROM request_summaries").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM gateway_instances").fetch().rowsUpdated().block();
     databaseClient.sql("DELETE FROM config_activation_events").fetch().rowsUpdated().block();
     databaseClient.sql("DELETE FROM gateway_api_status").fetch().rowsUpdated().block();
     databaseClient.sql("DELETE FROM gateways").fetch().rowsUpdated().block();

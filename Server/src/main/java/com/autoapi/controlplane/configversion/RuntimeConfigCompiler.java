@@ -239,13 +239,22 @@ public final class RuntimeConfigCompiler {
 
   public static StoredRuntimeSnapshot toStoredSnapshot(
       HashableRuntimePayload payload, long version, String contentHash) {
+    return toStoredSnapshot(payload, version, contentHash, OffsetDateTime.now(ZoneOffset.UTC));
+  }
+
+  public static StoredRuntimeSnapshot toStoredSnapshot(
+      HashableRuntimePayload payload, long version, String contentHash, OffsetDateTime compiledAt) {
+    CompiledObservabilityMetadataSection metadata =
+        com.autoapi.controlplane.observability.ObservabilityMetadataCompiler.compile(
+            payload, version, compiledAt);
     return new StoredRuntimeSnapshot(
         payload.apiId(),
         version,
         contentHash,
         payload.gateway(),
         payload.routes(),
-        payload.apiKeys());
+        payload.apiKeys(),
+        metadata);
   }
 
   private static Comparator<RouteEntity> routeComparator() {

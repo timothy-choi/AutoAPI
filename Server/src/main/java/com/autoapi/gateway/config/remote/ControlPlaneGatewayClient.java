@@ -5,6 +5,7 @@ import com.autoapi.gateway.GatewayProperties;
 import com.autoapi.gateway.config.GatewayActivationAttempt;
 import com.autoapi.gateway.config.remote.ControlPlaneGatewayClient.ConfigStatusPayload;
 import com.autoapi.gateway.config.remote.ControlPlaneGatewayClient.RegistrationPayload;
+import com.autoapi.gateway.observability.GatewayRuntimeStatusBuilder;
 import com.autoapi.runtime.AutoApiRole;
 import com.autoapi.runtime.ConditionalOnAutoApiRole;
 import io.netty.channel.ChannelOption;
@@ -83,22 +84,53 @@ public class ControlPlaneGatewayClient {
         .then();
   }
 
-  public Mono<Void> heartbeat(UUID apiId, Long activeVersion, String activeContentHash) {
-    Map<String, Object> body;
-    if (apiId != null && activeVersion != null && activeContentHash != null) {
-      body =
-          Map.of(
-              "sentAt",
-              OffsetDateTime.now(ZoneOffset.UTC).toString(),
-              "apiStatuses",
-              java.util.List.of(
-                  Map.of(
-                      "apiId", apiId.toString(),
-                      "activeVersion", activeVersion,
-                      "activeContentHash", activeContentHash)));
-    } else {
-      body = Map.of("sentAt", OffsetDateTime.now(ZoneOffset.UTC).toString());
+  public Mono<Void> heartbeat(GatewayRuntimeStatusBuilder.HeartbeatPayload payload) {
+    java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+    body.put("sentAt", OffsetDateTime.now(ZoneOffset.UTC));
+    if (payload.apiStatuses() != null && !payload.apiStatuses().isEmpty()) {
+      body.put(
+          "apiStatuses",
+          payload.apiStatuses().stream()
+              .map(
+                  status ->
+                      Map.of(
+                          "apiId", status.apiId(),
+                          "activeVersion", status.activeVersion(),
+                          "activeContentHash", status.activeContentHash()))
+              .toList());
     }
+    body.put("instanceId", payload.instanceId());
+    body.put("status", payload.status());
+    body.put("startedAt", payload.startedAt());
+    body.put("softwareVersion", payload.softwareVersion());
+    body.put("activeSnapshotVersion", payload.activeSnapshotVersion());
+    body.put("activeSnapshotActivatedAt", payload.activeSnapshotActivatedAt());
+    body.put("routeCount", payload.routeCount());
+    body.put("targetCount", payload.targetCount());
+    body.put("uptimeSeconds", payload.uptimeSeconds());
+    body.put("metadata", Map.of("configSource", gatewayProperties.configSource().name()));
+    if (payload.requestSummaries() != null && !payload.requestSummaries().isEmpty()) {
+      body.put("requestSummaries", payload.requestSummaries());
+    }
+    return postHeartbeat(body);
+  }
+
+  public Mono<Void> heartbeat(UUID apiId, Long activeVersion, String activeContentHash) {
+    java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+    body.put("sentAt", OffsetDateTime.now(ZoneOffset.UTC));
+    if (apiId != null && activeVersion != null && activeContentHash != null) {
+      body.put(
+          "apiStatuses",
+          java.util.List.of(
+              Map.of(
+                  "apiId", apiId,
+                  "activeVersion", activeVersion,
+                  "activeContentHash", activeContentHash)));
+    }
+    return postHeartbeat(body);
+  }
+
+  private Mono<Void> postHeartbeat(Map<String, Object> body) {
     return webClient
         .post()
         .uri(

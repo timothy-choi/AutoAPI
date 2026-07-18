@@ -63,13 +63,14 @@ public class GatewayWebConfiguration {
       GatewayInternalHealthHandler healthHandler,
       com.autoapi.gateway.retry.GatewayInternalRetryHandler retryHandler,
       com.autoapi.gateway.traffic.GatewayInternalTrafficSplitHandler trafficSplitHandler,
-      com.autoapi.gateway.circuitbreaker.GatewayInternalCircuitBreakerHandler
-          circuitBreakerHandler) {
+      com.autoapi.gateway.circuitbreaker.GatewayInternalCircuitBreakerHandler circuitBreakerHandler,
+      com.autoapi.gateway.observability.GatewayInternalObservabilityHandler observabilityHandler) {
     return RouterFunctions.route()
         .GET("/internal/v1/upstream-health", healthHandler::upstreamHealth)
         .GET("/internal/v1/retry-status", retryHandler::retryStatus)
         .GET("/internal/v1/traffic-splits", trafficSplitHandler::trafficSplits)
         .GET("/internal/v1/circuit-breakers", circuitBreakerHandler::circuitBreakers)
+        .GET("/internal/v1/request-summaries", observabilityHandler::requestSummaries)
         .build();
   }
 

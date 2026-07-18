@@ -60,7 +60,34 @@ class ActiveRuntimeConfigHolderTest {
             registryProvider(new TargetHealthRegistry(Clock.systemUTC())),
             retryBudgetProvider(
                 new com.autoapi.gateway.retry.RetryBudgetRegistry(Clock.systemUTC())),
-            trafficSplitProvider(new TrafficSplitRegistry()));
+            trafficSplitProvider(new TrafficSplitRegistry()),
+            emptyProvider(),
+            emptyProvider(),
+            emptyProvider());
+  }
+
+  private static <T> ObjectProvider<T> emptyProvider() {
+    return new ObjectProvider<>() {
+      @Override
+      public T getObject() {
+        return null;
+      }
+
+      @Override
+      public T getObject(Object... args) {
+        return null;
+      }
+
+      @Override
+      public T getIfAvailable() {
+        return null;
+      }
+
+      @Override
+      public T getIfUnique() {
+        return null;
+      }
+    };
   }
 
   private static ObjectProvider<TrafficSplitRegistry> trafficSplitProvider(
@@ -322,6 +349,7 @@ class ActiveRuntimeConfigHolderTest {
         "deadbeef",
         snapshot.gateway(),
         snapshot.routes(),
-        snapshot.apiKeys());
+        snapshot.apiKeys(),
+        null);
   }
 }

@@ -138,7 +138,43 @@ public class GatewayRouter {
                                         item.activeVersion(),
                                         item.activeContentHash()))
                             .toList();
-                return heartbeatService.heartbeat(gatewayId, body.sentAt(), summaries);
+                GatewayHeartbeatService.ExtendedInstanceStatus instanceStatus = null;
+                if (body.instanceId() != null && !body.instanceId().isBlank()) {
+                  instanceStatus =
+                      new GatewayHeartbeatService.ExtendedInstanceStatus(
+                          body.instanceId(),
+                          body.status(),
+                          body.startedAt(),
+                          body.softwareVersion(),
+                          body.activeSnapshotVersion(),
+                          body.activeSnapshotActivatedAt(),
+                          body.routeCount() == null ? 0 : body.routeCount(),
+                          body.targetCount() == null ? 0 : body.targetCount(),
+                          body.uptimeSeconds() == null ? 0L : body.uptimeSeconds(),
+                          "{}");
+                }
+                List<GatewayHeartbeatService.RequestSummaryHeartbeat> requestSummaries =
+                    body.requestSummaries() == null
+                        ? List.of()
+                        : body.requestSummaries().stream()
+                            .map(
+                                item ->
+                                    new GatewayHeartbeatService.RequestSummaryHeartbeat(
+                                        item.requestId(),
+                                        item.traceId(),
+                                        item.apiId(),
+                                        item.routeId(),
+                                        item.method(),
+                                        item.status(),
+                                        item.durationMs(),
+                                        item.attemptCount(),
+                                        item.retryCount(),
+                                        item.fallbackUsed()))
+                            .toList();
+                return heartbeatService.heartbeat(
+                    gatewayId,
+                    new GatewayHeartbeatService.ExtendedHeartbeatRequest(
+                        body.sentAt(), summaries, instanceStatus, requestSummaries));
               })
           .flatMap(result -> ServerResponse.ok().bodyValue(HeartbeatResponse.from(result)))
           .onErrorResume(ControlPlaneException.class, this::error)
@@ -236,7 +272,32 @@ public class GatewayRouter {
     }
   }
 
-  record HeartbeatRequest(OffsetDateTime sentAt, List<HeartbeatApiStatus> apiStatuses) {}
+  record HeartbeatRequest(
+      OffsetDateTime sentAt,
+      List<HeartbeatApiStatus> apiStatuses,
+      String instanceId,
+      String status,
+      OffsetDateTime startedAt,
+      String softwareVersion,
+      Long activeSnapshotVersion,
+      OffsetDateTime activeSnapshotActivatedAt,
+      Integer routeCount,
+      Integer targetCount,
+      Long uptimeSeconds,
+      Map<String, Object> metadata,
+      List<HeartbeatRequestSummary> requestSummaries) {}
+
+  record HeartbeatRequestSummary(
+      String requestId,
+      String traceId,
+      UUID apiId,
+      String routeId,
+      String method,
+      int status,
+      long durationMs,
+      int attemptCount,
+      int retryCount,
+      boolean fallbackUsed) {}
 
   record HeartbeatApiStatus(UUID apiId, long activeVersion, String activeContentHash) {}
 

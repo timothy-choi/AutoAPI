@@ -10,6 +10,7 @@ public class GatewayProperties {
   private GatewayConfigSource configSource = GatewayConfigSource.STATIC;
   private String gatewayId;
   private String gatewayGroup = "default";
+  private String softwareVersion = "0.1.0-SNAPSHOT";
   private UUID apiId;
   private String controlPlaneBaseUrl = "http://control-plane:8080";
   private Duration pollInterval = Duration.ofSeconds(5);
@@ -59,6 +60,14 @@ public class GatewayProperties {
    */
   public void setGroup(String group) {
     this.gatewayGroup = group;
+  }
+
+  public String softwareVersion() {
+    return softwareVersion;
+  }
+
+  public void setSoftwareVersion(String softwareVersion) {
+    this.softwareVersion = softwareVersion;
   }
 
   public UUID apiId() {

@@ -6,6 +6,9 @@ import com.autoapi.gateway.config.remote.RemoteSnapshotAdapter;
 import com.autoapi.gateway.config.remote.RemoteSnapshotValidationException;
 import com.autoapi.gateway.health.GatewayHealthReconciler;
 import com.autoapi.gateway.health.TargetHealthRegistry;
+import com.autoapi.gateway.observability.GatewayInstanceIdentity;
+import com.autoapi.gateway.observability.GatewayObservabilityMetrics;
+import com.autoapi.gateway.observability.GatewayStructuredLogger;
 import com.autoapi.gateway.retry.RetryBudgetRegistry;
 import com.autoapi.gateway.traffic.TrafficSplitReconciler;
 import com.autoapi.gateway.traffic.TrafficSplitRegistry;
@@ -27,18 +30,27 @@ public class LocalGatewayConfigActivator {
   private final ObjectProvider<TargetHealthRegistry> targetHealthRegistry;
   private final ObjectProvider<RetryBudgetRegistry> retryBudgetRegistry;
   private final ObjectProvider<TrafficSplitRegistry> trafficSplitRegistry;
+  private final ObjectProvider<GatewayStructuredLogger> structuredLoggerProvider;
+  private final ObjectProvider<GatewayObservabilityMetrics> observabilityMetricsProvider;
+  private final ObjectProvider<GatewayInstanceIdentity> instanceIdentityProvider;
 
   public LocalGatewayConfigActivator(
       ActiveRuntimeConfigHolder activeRuntimeConfigHolder,
       GatewayProperties gatewayProperties,
       ObjectProvider<TargetHealthRegistry> targetHealthRegistry,
       ObjectProvider<RetryBudgetRegistry> retryBudgetRegistry,
-      ObjectProvider<TrafficSplitRegistry> trafficSplitRegistry) {
+      ObjectProvider<TrafficSplitRegistry> trafficSplitRegistry,
+      ObjectProvider<GatewayStructuredLogger> structuredLoggerProvider,
+      ObjectProvider<GatewayObservabilityMetrics> observabilityMetricsProvider,
+      ObjectProvider<GatewayInstanceIdentity> instanceIdentityProvider) {
     this.activeRuntimeConfigHolder = activeRuntimeConfigHolder;
     this.gatewayProperties = gatewayProperties;
     this.targetHealthRegistry = targetHealthRegistry;
     this.retryBudgetRegistry = retryBudgetRegistry;
     this.trafficSplitRegistry = trafficSplitRegistry;
+    this.structuredLoggerProvider = structuredLoggerProvider;
+    this.observabilityMetricsProvider = observabilityMetricsProvider;
+    this.instanceIdentityProvider = instanceIdentityProvider;
   }
 
   public GatewayActivationAttempt activateCandidate(StoredRuntimeSnapshot snapshot) {
@@ -46,6 +58,7 @@ public class LocalGatewayConfigActivator {
     try {
       ActiveRuntimeBundle candidate =
           RemoteSnapshotAdapter.toActiveBundle(snapshot, gatewayProperties.apiId());
+      ActiveRuntimeBundle previous = activeRuntimeConfigHolder.getActive();
       targetHealthRegistry.ifAvailable(
           registry -> GatewayHealthReconciler.reconcile(registry, candidate));
       retryBudgetRegistry.ifAvailable(registry -> registry.reconcile(candidate));
@@ -53,6 +66,27 @@ public class LocalGatewayConfigActivator {
           registry -> TrafficSplitReconciler.reconcile(registry, candidate));
       activeRuntimeConfigHolder.activate(candidate);
       long durationMs = (System.nanoTime() - started) / 1_000_000L;
+      int targetCount = TrafficSplitReconciler.countTargets(candidate);
+      GatewayStructuredLogger structuredLogger = structuredLoggerProvider.getIfAvailable();
+      if (structuredLogger != null) {
+        GatewayInstanceIdentity identity = instanceIdentityProvider.getIfAvailable();
+        structuredLogger.runtimeSnapshotActivated(
+            identity == null ? "unknown" : identity.instanceId(),
+            previous == null ? "" : String.valueOf(previous.version()),
+            String.valueOf(candidate.version()),
+            candidate.version(),
+            candidate.runtimeConfig().routes().size(),
+            targetCount,
+            durationMs);
+      }
+      GatewayObservabilityMetrics metrics = observabilityMetricsProvider.getIfAvailable();
+      if (metrics != null) {
+        metrics.recordRuntimeSnapshotInfo(
+            String.valueOf(candidate.version()),
+            candidate.runtimeConfig().routes().size(),
+            targetCount,
+            candidate.version());
+      }
       log.info(
           "Activated gateway configuration apiId={} version={} contentHashPrefix={} routes={}"
               + " targets={} durationMs={}",

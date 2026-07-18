@@ -52,7 +52,8 @@ class RemoteSnapshotAdapterTest {
             "deadbeef",
             snapshot.gateway(),
             snapshot.routes(),
-            snapshot.apiKeys());
+            snapshot.apiKeys(),
+            null);
 
     RemoteSnapshotValidationException ex =
         assertThrows(
