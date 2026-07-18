@@ -14,8 +14,8 @@ import com.autoapi.config.RuntimeRetryPolicyConfig;
 import com.autoapi.config.UpstreamConfig;
 import com.autoapi.config.UpstreamTargetReference;
 import com.autoapi.gateway.GatewayProperties;
+import com.autoapi.gateway.circuitbreaker.GatewayTargetSelector;
 import com.autoapi.gateway.config.ActiveRuntimeBundle;
-import com.autoapi.gateway.health.HealthAwareTargetSelector;
 import com.autoapi.gateway.health.SelectedTarget;
 import com.autoapi.gateway.health.TargetKey;
 import com.autoapi.support.ControllableClock;
@@ -49,7 +49,7 @@ class RetryingProxyExecutorTerminationTest {
   private static final UUID POLICY_ID = UUID.fromString("00000000-0000-0000-0000-000000000040");
 
   private RetryBudgetRegistry budgetRegistry;
-  private HealthAwareTargetSelector targetSelector;
+  private GatewayTargetSelector targetSelector;
   private ErrorResponseWriter errorWriter;
   private GatewayProperties gatewayProperties;
   private AtomicInteger attemptCounter;
@@ -58,7 +58,7 @@ class RetryingProxyExecutorTerminationTest {
   void setUp() {
     budgetRegistry =
         new RetryBudgetRegistry(ControllableClock.fixed(Instant.parse("2026-01-01T00:00:00Z")));
-    targetSelector = mock(HealthAwareTargetSelector.class);
+    targetSelector = mock(GatewayTargetSelector.class);
     errorWriter = new ErrorResponseWriter(new ObjectMapper());
     gatewayProperties = new GatewayProperties();
     attemptCounter = new AtomicInteger();
@@ -68,7 +68,8 @@ class RetryingProxyExecutorTerminationTest {
   void connectFailureThenRetrySuccessTerminates() {
     UpstreamAttemptExecutor attemptExecutor = mock(UpstreamAttemptExecutor.class);
     when(attemptExecutor.execute(
-            any(), any(), any(), any(), any(), any(), any(), anyInt(), any(), any(), any()))
+            any(), any(), any(), any(), any(), any(), any(), anyInt(), any(), any(), any(), any(),
+            any()))
         .thenAnswer(
             invocation -> {
               int attempt = attemptCounter.incrementAndGet();
@@ -110,7 +111,8 @@ class RetryingProxyExecutorTerminationTest {
   void maxAttemptsReachedTerminatesWithBadGateway() {
     UpstreamAttemptExecutor attemptExecutor = mock(UpstreamAttemptExecutor.class);
     when(attemptExecutor.execute(
-            any(), any(), any(), any(), any(), any(), any(), anyInt(), any(), any(), any()))
+            any(), any(), any(), any(), any(), any(), any(), anyInt(), any(), any(), any(), any(),
+            any()))
         .thenAnswer(
             invocation -> {
               attemptCounter.incrementAndGet();
@@ -154,7 +156,8 @@ class RetryingProxyExecutorTerminationTest {
 
     UpstreamAttemptExecutor attemptExecutor = mock(UpstreamAttemptExecutor.class);
     when(attemptExecutor.execute(
-            any(), any(), any(), any(), any(), any(), any(), anyInt(), any(), any(), any()))
+            any(), any(), any(), any(), any(), any(), any(), anyInt(), any(), any(), any(), any(),
+            any()))
         .thenAnswer(
             invocation -> {
               attemptCounter.incrementAndGet();
@@ -190,7 +193,8 @@ class RetryingProxyExecutorTerminationTest {
   void unsafeMethodWithoutIdempotencyKeyTerminatesAfterOneAttempt() {
     UpstreamAttemptExecutor attemptExecutor = mock(UpstreamAttemptExecutor.class);
     when(attemptExecutor.execute(
-            any(), any(), any(), any(), any(), any(), any(), anyInt(), any(), any(), any()))
+            any(), any(), any(), any(), any(), any(), any(), anyInt(), any(), any(), any(), any(),
+            any()))
         .thenAnswer(
             invocation -> {
               attemptCounter.incrementAndGet();
@@ -224,13 +228,13 @@ class RetryingProxyExecutorTerminationTest {
 
   private RetryingProxyExecutor executor(UpstreamAttemptExecutor attemptExecutor) {
     @SuppressWarnings("unchecked")
-    ObjectProvider<HealthAwareTargetSelector> selectorProvider = mock(ObjectProvider.class);
+    ObjectProvider<GatewayTargetSelector> selectorProvider = mock(ObjectProvider.class);
     when(selectorProvider.getIfAvailable()).thenReturn(targetSelector);
     @SuppressWarnings("unchecked")
     ObjectProvider<GatewayRetryMetrics> metricsProvider = mock(ObjectProvider.class);
     when(metricsProvider.getIfAvailable()).thenReturn(null);
 
-    when(targetSelector.select(any(), any(), anyList(), any()))
+    when(targetSelector.select(any(), any(), anyList(), any(), any(), any(), any()))
         .thenReturn(new SelectedTarget(targetRef(TARGET_V1), false))
         .thenReturn(new SelectedTarget(targetRef(TARGET_V2), false));
 

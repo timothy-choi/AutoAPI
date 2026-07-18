@@ -38,6 +38,8 @@ public class GatewayRetryAutoConfiguration {
       FailureClassifier failureClassifier,
       ObjectProvider<com.autoapi.gateway.health.TargetHealthRegistry> healthRegistryProvider,
       ObjectProvider<com.autoapi.gateway.health.GatewayUpstreamHealthMetrics> healthMetricsProvider,
+      ObjectProvider<com.autoapi.gateway.circuitbreaker.CircuitBreakerRegistry>
+          circuitBreakerRegistryProvider,
       GatewayProperties gatewayProperties) {
     Duration connectTimeout =
         Duration.ofMillis(gatewayProperties.retry().upstreamConnectTimeoutMs());
@@ -50,14 +52,20 @@ public class GatewayRetryAutoConfiguration {
     String gatewayId =
         gatewayProperties.gatewayId() == null ? "unknown" : gatewayProperties.gatewayId();
     return new UpstreamAttemptExecutor(
-        webClient, failureClassifier, healthRegistryProvider, healthMetricsProvider, gatewayId);
+        webClient,
+        failureClassifier,
+        healthRegistryProvider,
+        healthMetricsProvider,
+        circuitBreakerRegistryProvider,
+        gatewayId);
   }
 
   @Bean
   @ConditionalOnMissingBean
   RetryingProxyExecutor retryingProxyExecutor(
       UpstreamAttemptExecutor upstreamAttemptExecutor,
-      ObjectProvider<com.autoapi.gateway.health.HealthAwareTargetSelector> targetSelectorProvider,
+      ObjectProvider<com.autoapi.gateway.circuitbreaker.GatewayTargetSelector>
+          targetSelectorProvider,
       RetryBudgetRegistry retryBudgetRegistry,
       ObjectProvider<GatewayRetryMetrics> retryMetricsProvider,
       ErrorResponseWriter errorResponseWriter,

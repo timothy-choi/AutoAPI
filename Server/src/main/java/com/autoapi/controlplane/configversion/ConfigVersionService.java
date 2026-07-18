@@ -3,6 +3,7 @@ package com.autoapi.controlplane.configversion;
 import com.autoapi.controlplane.DraftGraphService;
 import com.autoapi.controlplane.api.ControlPlaneException;
 import com.autoapi.controlplane.persistence.BackendHealthPolicyEntity;
+import com.autoapi.controlplane.persistence.CircuitBreakerPolicyEntity;
 import com.autoapi.controlplane.persistence.ConfigVersionEntity;
 import com.autoapi.controlplane.persistence.ConfigVersionRepository;
 import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
@@ -122,6 +123,11 @@ public class ConfigVersionService {
                                   .collect(
                                       java.util.stream.Collectors.toMap(
                                           RetryPolicyEntity::id, p -> p));
+                          java.util.Map<UUID, CircuitBreakerPolicyEntity> circuitBreakerPolicyById =
+                              graph.circuitBreakerPolicies().stream()
+                                  .collect(
+                                      java.util.stream.Collectors.toMap(
+                                          CircuitBreakerPolicyEntity::id, p -> p));
                           java.util.Map<UUID, TrafficSplitPolicyEntity> trafficSplitPolicyById =
                               graph.trafficSplitPolicies().stream()
                                   .collect(
@@ -158,6 +164,7 @@ public class ConfigVersionService {
                                   policyById,
                                   healthPolicyById,
                                   retryPolicyById,
+                                  circuitBreakerPolicyById,
                                   trafficSplitPolicyById,
                                   destinationsByPolicyId,
                                   graph.apiKeys(),

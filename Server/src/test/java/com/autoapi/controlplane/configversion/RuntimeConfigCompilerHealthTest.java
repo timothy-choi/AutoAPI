@@ -115,6 +115,7 @@ class RuntimeConfigCompilerHealthTest {
         Map.of(),
         Map.of(),
         Map.of(),
+        Map.of(),
         List.of(),
         NOW);
   }

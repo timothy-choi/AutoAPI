@@ -12,6 +12,7 @@ import java.util.UUID;
   "authentication",
   "rateLimit",
   "retry",
+  "circuitBreaker",
   "trafficSplit",
   "upstreamPool"
 })
@@ -23,5 +24,6 @@ public record CompiledRouteSection(
     CompiledAuthenticationSection authentication,
     CompiledRateLimitSection rateLimit,
     CompiledRetrySection retry,
+    CompiledCircuitBreakerSection circuitBreaker,
     CompiledTrafficSplitSection trafficSplit,
     CompiledUpstreamPoolSection upstreamPool) {}

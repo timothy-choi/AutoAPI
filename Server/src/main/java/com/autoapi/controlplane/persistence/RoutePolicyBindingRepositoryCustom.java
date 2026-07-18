@@ -14,6 +14,13 @@ import reactor.core.publisher.Mono;
     matchIfMissing = true)
 public class RoutePolicyBindingRepositoryCustom {
 
+  private static final String RETURNING_CLAUSE =
+      """
+      RETURNING route_id, authentication_required, rate_limit_policy_id,
+                retry_policy_id, traffic_split_policy_id, circuit_breaker_policy_id,
+                created_at, updated_at
+      """;
+
   private final DatabaseClient databaseClient;
 
   public RoutePolicyBindingRepositoryCustom(DatabaseClient databaseClient) {
@@ -34,9 +41,8 @@ public class RoutePolicyBindingRepositoryCustom {
                     rate_limit_policy_id = :rateLimitPolicyId,
                     updated_at = :updatedAt
                 WHERE route_id = :routeId
-                RETURNING route_id, authentication_required, rate_limit_policy_id,
-                          retry_policy_id, traffic_split_policy_id, created_at, updated_at
-                """)
+                """
+                    + RETURNING_CLAUSE)
             .bind("routeId", routeId)
             .bind("authenticationRequired", authenticationRequired)
             .bind("updatedAt", updatedAt);
@@ -57,9 +63,8 @@ public class RoutePolicyBindingRepositoryCustom {
             SET retry_policy_id = :retryPolicyId,
                 updated_at = :updatedAt
             WHERE route_id = :routeId
-            RETURNING route_id, authentication_required, rate_limit_policy_id,
-                      retry_policy_id, traffic_split_policy_id, created_at, updated_at
-            """)
+            """
+                + RETURNING_CLAUSE)
         .bind("routeId", routeId)
         .bind("retryPolicyId", retryPolicyId)
         .bind("updatedAt", updatedAt)
@@ -75,9 +80,8 @@ public class RoutePolicyBindingRepositoryCustom {
             SET retry_policy_id = NULL,
                 updated_at = :updatedAt
             WHERE route_id = :routeId
-            RETURNING route_id, authentication_required, rate_limit_policy_id,
-                      retry_policy_id, traffic_split_policy_id, created_at, updated_at
-            """)
+            """
+                + RETURNING_CLAUSE)
         .bind("routeId", routeId)
         .bind("updatedAt", updatedAt)
         .map(this::mapRow)
@@ -93,9 +97,8 @@ public class RoutePolicyBindingRepositoryCustom {
             SET traffic_split_policy_id = :trafficSplitPolicyId,
                 updated_at = :updatedAt
             WHERE route_id = :routeId
-            RETURNING route_id, authentication_required, rate_limit_policy_id,
-                      retry_policy_id, traffic_split_policy_id, created_at, updated_at
-            """)
+            """
+                + RETURNING_CLAUSE)
         .bind("routeId", routeId)
         .bind("trafficSplitPolicyId", trafficSplitPolicyId)
         .bind("updatedAt", updatedAt)
@@ -112,9 +115,43 @@ public class RoutePolicyBindingRepositoryCustom {
             SET traffic_split_policy_id = NULL,
                 updated_at = :updatedAt
             WHERE route_id = :routeId
-            RETURNING route_id, authentication_required, rate_limit_policy_id,
-                      retry_policy_id, traffic_split_policy_id, created_at, updated_at
-            """)
+            """
+                + RETURNING_CLAUSE)
+        .bind("routeId", routeId)
+        .bind("updatedAt", updatedAt)
+        .map(this::mapRow)
+        .one();
+  }
+
+  public Mono<RoutePolicyBindingEntity> bindCircuitBreakerPolicy(
+      UUID routeId, UUID circuitBreakerPolicyId, OffsetDateTime updatedAt) {
+    return databaseClient
+        .sql(
+            """
+            UPDATE route_policy_bindings
+            SET circuit_breaker_policy_id = :circuitBreakerPolicyId,
+                updated_at = :updatedAt
+            WHERE route_id = :routeId
+            """
+                + RETURNING_CLAUSE)
+        .bind("routeId", routeId)
+        .bind("circuitBreakerPolicyId", circuitBreakerPolicyId)
+        .bind("updatedAt", updatedAt)
+        .map(this::mapRow)
+        .one();
+  }
+
+  public Mono<RoutePolicyBindingEntity> clearCircuitBreakerPolicy(
+      UUID routeId, OffsetDateTime updatedAt) {
+    return databaseClient
+        .sql(
+            """
+            UPDATE route_policy_bindings
+            SET circuit_breaker_policy_id = NULL,
+                updated_at = :updatedAt
+            WHERE route_id = :routeId
+            """
+                + RETURNING_CLAUSE)
         .bind("routeId", routeId)
         .bind("updatedAt", updatedAt)
         .map(this::mapRow)
@@ -130,6 +167,7 @@ public class RoutePolicyBindingRepositoryCustom {
         row.get("created_at", OffsetDateTime.class),
         row.get("updated_at", OffsetDateTime.class),
         row.get("retry_policy_id", UUID.class),
-        row.get("traffic_split_policy_id", UUID.class));
+        row.get("traffic_split_policy_id", UUID.class),
+        row.get("circuit_breaker_policy_id", UUID.class));
   }
 }

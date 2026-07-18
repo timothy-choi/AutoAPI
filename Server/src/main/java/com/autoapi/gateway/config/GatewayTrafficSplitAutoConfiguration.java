@@ -1,6 +1,6 @@
 package com.autoapi.gateway.config;
 
-import com.autoapi.gateway.health.HealthAwareTargetSelector;
+import com.autoapi.gateway.circuitbreaker.GatewayTargetSelector;
 import com.autoapi.gateway.traffic.GatewayTrafficSplitMetrics;
 import com.autoapi.gateway.traffic.TrafficSplitRegistry;
 import com.autoapi.gateway.traffic.TrafficSplitSelector;
@@ -25,7 +25,7 @@ public class GatewayTrafficSplitAutoConfiguration {
   @Bean
   @ConditionalOnMissingBean
   TrafficSplitSelector trafficSplitSelector(
-      HealthAwareTargetSelector targetSelector,
+      GatewayTargetSelector targetSelector,
       TrafficSplitRegistry registry,
       ObjectProvider<GatewayTrafficSplitMetrics> metricsProvider) {
     return new TrafficSplitSelector(targetSelector, registry, metricsProvider);

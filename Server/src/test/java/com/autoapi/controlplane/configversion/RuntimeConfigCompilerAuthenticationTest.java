@@ -91,7 +91,8 @@ public class RuntimeConfigCompilerAuthenticationTest {
             NOW,
             NOW,
             null,
-            graph.trafficSplitPolicyId());
+            graph.trafficSplitPolicyId(),
+            null);
     RouteEntity publishedRoute =
         graph.trafficSplitPolicyId() == null
             ? graph.route()
@@ -116,6 +117,7 @@ public class RuntimeConfigCompilerAuthenticationTest {
             graph.canaryPoolId(), List.of(graph.canaryTarget())),
         Map.of(graph.routeId(), binding),
         Map.of(graph.rateLimitPolicyId(), graph.rateLimitPolicy()),
+        Map.of(),
         Map.of(),
         Map.of(),
         graph.trafficSplitPolicyId() == null

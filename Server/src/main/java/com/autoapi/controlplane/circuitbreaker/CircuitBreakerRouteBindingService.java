@@ -1,7 +1,7 @@
-package com.autoapi.controlplane.retry;
+package com.autoapi.controlplane.circuitbreaker;
 
 import com.autoapi.controlplane.api.ControlPlaneException;
-import com.autoapi.controlplane.persistence.RetryPolicyRepository;
+import com.autoapi.controlplane.persistence.CircuitBreakerPolicyRepository;
 import com.autoapi.controlplane.persistence.RouteEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingRepository;
@@ -19,37 +19,39 @@ import reactor.core.publisher.Mono;
     name = "autoapi.controlplane.enabled",
     havingValue = "true",
     matchIfMissing = true)
-public class RetryRouteBindingService {
+public class CircuitBreakerRouteBindingService {
 
   private final RouteRepository routeRepository;
   private final RoutePolicyBindingRepository bindingRepository;
   private final RoutePolicyBindingRepositoryCustom bindingRepositoryCustom;
-  private final RetryPolicyRepository retryPolicyRepository;
+  private final CircuitBreakerPolicyRepository circuitBreakerPolicyRepository;
 
-  public RetryRouteBindingService(
+  public CircuitBreakerRouteBindingService(
       RouteRepository routeRepository,
       RoutePolicyBindingRepository bindingRepository,
       RoutePolicyBindingRepositoryCustom bindingRepositoryCustom,
-      RetryPolicyRepository retryPolicyRepository) {
+      CircuitBreakerPolicyRepository circuitBreakerPolicyRepository) {
     this.routeRepository = routeRepository;
     this.bindingRepository = bindingRepository;
     this.bindingRepositoryCustom = bindingRepositoryCustom;
-    this.retryPolicyRepository = retryPolicyRepository;
+    this.circuitBreakerPolicyRepository = circuitBreakerPolicyRepository;
   }
 
-  public Mono<RoutePolicyBindingEntity> bindRetryPolicy(UUID routeId, UUID retryPolicyId) {
-    if (retryPolicyId == null) {
-      return Mono.error(ControlPlaneException.invalidRequest("retryPolicyId is required"));
+  public Mono<RoutePolicyBindingEntity> bindCircuitBreakerPolicy(
+      UUID routeId, UUID circuitBreakerPolicyId) {
+    if (circuitBreakerPolicyId == null) {
+      return Mono.error(ControlPlaneException.invalidRequest("circuitBreakerPolicyId is required"));
     }
     return routeRepository
         .findById(routeId)
         .switchIfEmpty(Mono.error(ControlPlaneException.notFound("Route was not found")))
         .flatMap(
             route ->
-                validatePolicy(route, retryPolicyId).then(upsertBinding(route, retryPolicyId)));
+                validatePolicy(route, circuitBreakerPolicyId)
+                    .then(upsertBinding(route, circuitBreakerPolicyId)));
   }
 
-  public Mono<RoutePolicyBindingEntity> clearRetryPolicy(UUID routeId) {
+  public Mono<RoutePolicyBindingEntity> clearCircuitBreakerPolicy(UUID routeId) {
     return routeRepository
         .findById(routeId)
         .switchIfEmpty(Mono.error(ControlPlaneException.notFound("Route was not found")))
@@ -61,10 +63,10 @@ public class RetryRouteBindingService {
                         Mono.error(ControlPlaneException.notFound("Route has no policy binding")))
                     .flatMap(
                         existing -> {
-                          if (existing.retryPolicyId() == null) {
+                          if (existing.circuitBreakerPolicyId() == null) {
                             return Mono.error(
                                 ControlPlaneException.notFound(
-                                    "Route has no retry policy binding"));
+                                    "Route has no circuit breaker policy binding"));
                           }
                           OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
                           RoutePolicyBindingEntity cleared =
@@ -74,46 +76,50 @@ public class RetryRouteBindingService {
                                   existing.rateLimitPolicyId(),
                                   existing.createdAt(),
                                   now,
-                                  null,
+                                  existing.retryPolicyId(),
                                   existing.trafficSplitPolicyId(),
-                                  existing.circuitBreakerPolicyId());
+                                  null);
                           if (!existing.authenticationRequired()
                               && existing.rateLimitPolicyId() == null
-                              && existing.trafficSplitPolicyId() == null
-                              && existing.circuitBreakerPolicyId() == null) {
+                              && existing.retryPolicyId() == null
+                              && existing.trafficSplitPolicyId() == null) {
                             return bindingRepository.deleteById(routeId).thenReturn(cleared);
                           }
-                          return bindingRepositoryCustom.clearRetryPolicy(routeId, now);
+                          return bindingRepositoryCustom.clearCircuitBreakerPolicy(routeId, now);
                         }));
   }
 
-  private Mono<Void> validatePolicy(RouteEntity route, UUID retryPolicyId) {
-    return retryPolicyRepository
-        .findById(retryPolicyId)
-        .switchIfEmpty(Mono.error(ControlPlaneException.notFound("Retry policy was not found")))
+  private Mono<Void> validatePolicy(RouteEntity route, UUID circuitBreakerPolicyId) {
+    return circuitBreakerPolicyRepository
+        .findById(circuitBreakerPolicyId)
+        .switchIfEmpty(
+            Mono.error(ControlPlaneException.notFound("Circuit breaker policy was not found")))
         .flatMap(
             policy -> {
               if (!policy.apiId().equals(route.apiId())) {
                 return Mono.error(
-                    ControlPlaneException.invalidRequest("Retry policy belongs to another API"));
+                    ControlPlaneException.invalidRequest(
+                        "Circuit breaker policy belongs to another API"));
               }
               if (!policy.enabled()) {
                 return Mono.error(
-                    ControlPlaneException.invalidRequest("Disabled retry policy cannot be bound"));
+                    ControlPlaneException.invalidRequest(
+                        "Disabled circuit breaker policy cannot be bound"));
               }
               try {
-                RetryPolicyService.validateFields(
-                    policy.maxAttempts(),
-                    policy.perAttemptTimeoutMs(),
-                    policy.retryOnConnectFailure(),
-                    policy.retryOnConnectionReset(),
-                    policy.retryOnDnsFailure(),
-                    policy.retryOnResponseTimeout(),
-                    policy.retryableMethods(),
-                    policy.requireIdempotencyKeyForUnsafeMethods(),
-                    policy.budgetPercent(),
-                    policy.budgetMinRetriesPerSecond(),
-                    policy.budgetWindowSeconds());
+                CircuitBreakerPolicyService.validateFields(
+                    policy.failureThreshold(),
+                    policy.rollingWindowSeconds(),
+                    policy.openDurationSeconds(),
+                    policy.halfOpenMaxRequests(),
+                    policy.successThreshold(),
+                    policy.predicateCountHttp5xx(),
+                    policy.predicateCountConnectFailure(),
+                    policy.predicateCountConnectTimeout(),
+                    policy.predicateCountReadTimeout(),
+                    policy.predicateCountTlsFailure(),
+                    policy.predicateCountTransportException(),
+                    policy.predicateCountHttp429());
               } catch (ControlPlaneException ex) {
                 return Mono.error(ex);
               }
@@ -121,17 +127,27 @@ public class RetryRouteBindingService {
             });
   }
 
-  private Mono<RoutePolicyBindingEntity> upsertBinding(RouteEntity route, UUID retryPolicyId) {
+  private Mono<RoutePolicyBindingEntity> upsertBinding(
+      RouteEntity route, UUID circuitBreakerPolicyId) {
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
     return bindingRepository
         .findById(route.id())
         .flatMap(
-            existing -> bindingRepositoryCustom.bindRetryPolicy(route.id(), retryPolicyId, now))
+            existing ->
+                bindingRepositoryCustom.bindCircuitBreakerPolicy(
+                    route.id(), circuitBreakerPolicyId, now))
         .switchIfEmpty(
             Mono.defer(
                 () ->
                     bindingRepository.save(
                         new RoutePolicyBindingEntity(
-                            route.id(), false, null, now, now, retryPolicyId, null, null))));
+                            route.id(),
+                            false,
+                            null,
+                            now,
+                            now,
+                            null,
+                            null,
+                            circuitBreakerPolicyId))));
   }
 }

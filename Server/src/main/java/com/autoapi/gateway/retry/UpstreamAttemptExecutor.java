@@ -1,5 +1,8 @@
 package com.autoapi.gateway.retry;
 
+import com.autoapi.config.RuntimeCircuitBreakerPolicyConfig;
+import com.autoapi.gateway.circuitbreaker.CircuitBreakerFailureEvaluator;
+import com.autoapi.gateway.circuitbreaker.CircuitBreakerRegistry;
 import com.autoapi.gateway.health.FailureCategory;
 import com.autoapi.gateway.health.FailureClassifier;
 import com.autoapi.gateway.health.GatewayUpstreamHealthMetrics;
@@ -15,12 +18,14 @@ import com.autoapi.proxy.ProxyHandler;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Optional;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -37,6 +42,7 @@ public final class UpstreamAttemptExecutor {
   private final FailureClassifier failureClassifier;
   private final ObjectProvider<TargetHealthRegistry> healthRegistryProvider;
   private final ObjectProvider<GatewayUpstreamHealthMetrics> healthMetricsProvider;
+  private final ObjectProvider<CircuitBreakerRegistry> circuitBreakerRegistryProvider;
   private final String gatewayId;
 
   public UpstreamAttemptExecutor(
@@ -44,11 +50,13 @@ public final class UpstreamAttemptExecutor {
       FailureClassifier failureClassifier,
       ObjectProvider<TargetHealthRegistry> healthRegistryProvider,
       ObjectProvider<GatewayUpstreamHealthMetrics> healthMetricsProvider,
+      ObjectProvider<CircuitBreakerRegistry> circuitBreakerRegistryProvider,
       String gatewayId) {
     this.webClient = webClient;
     this.failureClassifier = failureClassifier;
     this.healthRegistryProvider = healthRegistryProvider;
     this.healthMetricsProvider = healthMetricsProvider;
+    this.circuitBreakerRegistryProvider = circuitBreakerRegistryProvider;
     this.gatewayId = gatewayId;
   }
 
@@ -62,6 +70,8 @@ public final class UpstreamAttemptExecutor {
       PassiveHealthPolicy healthPolicy,
       int poolTargetCount,
       String routeId,
+      UUID apiId,
+      RuntimeCircuitBreakerPolicyConfig circuitPolicy,
       ReplayableRequest replayableRequest,
       Duration attemptTimeout) {
     ProxyAttemptOutcome outcome = new ProxyAttemptOutcome();
@@ -104,16 +114,17 @@ public final class UpstreamAttemptExecutor {
         .body(BodyInserters.fromDataBuffers(body))
         .exchangeToMono(
             response -> {
+              HttpStatusCode statusCode = response.statusCode();
               recordSuccess(outcome, targetKey, routeId, requestId, healthPolicy, poolTargetCount);
-              // Buffer the body here: WebClient releases unconsumed response bodies when
-              // exchangeToMono completes, so deferring bodyToFlux to the caller hangs clients.
+              recordCircuitOutcome(
+                  targetKey, routeId, apiId, circuitPolicy, statusCode, null, requestId);
               return response
                   .bodyToFlux(DataBuffer.class)
                   .collectList()
                   .<AttemptResult>map(
                       responseBody ->
                           AttemptResult.success(
-                              response.statusCode(),
+                              statusCode,
                               response.headers().asHttpHeaders(),
                               responseBody,
                               targetKey));
@@ -142,12 +153,56 @@ public final class UpstreamAttemptExecutor {
               if (retryCategory.isEmpty() && RetryFailureMapper.isResponseTimeout(error)) {
                 retryCategory = Optional.of(RetryFailureCategory.RESPONSE_TIMEOUT);
               }
+              recordCircuitOutcome(
+                  targetKey,
+                  routeId,
+                  apiId,
+                  circuitPolicy,
+                  null,
+                  retryCategory.orElse(null),
+                  requestId);
               boolean responseTimeout =
                   retryCategory.orElse(null) == RetryFailureCategory.RESPONSE_TIMEOUT;
               return Mono.<AttemptResult>just(
                   AttemptResult.failure(
                       error, retryCategory.orElse(null), responseTimeout, targetKey));
             });
+  }
+
+  private void recordCircuitOutcome(
+      TargetKey targetKey,
+      String routeId,
+      UUID apiId,
+      RuntimeCircuitBreakerPolicyConfig circuitPolicy,
+      HttpStatusCode statusCode,
+      RetryFailureCategory retryCategory,
+      String requestId) {
+    CircuitBreakerRegistry registry = circuitBreakerRegistryProvider.getIfAvailable();
+    if (registry == null || circuitPolicy == null || !circuitPolicy.circuitBreakerEnabled()) {
+      return;
+    }
+    var predicate = circuitPolicy.failurePredicate();
+    boolean qualifyingFailure =
+        statusCode != null
+            ? CircuitBreakerFailureEvaluator.isQualifyingHttpStatus(statusCode, predicate)
+            : CircuitBreakerFailureEvaluator.isQualifyingRetryFailure(
+                retryCategory, predicate, circuitPolicy);
+    if (qualifyingFailure) {
+      String reason =
+          statusCode != null
+              ? "http_" + statusCode.value()
+              : retryCategory == null ? "transport_failure" : retryCategory.name();
+      registry.recordFailure(targetKey, circuitPolicy, apiId, routeId, reason);
+      log.debug(
+          "Circuit breaker recorded failure requestId={} gatewayId={} routeId={} targetId={} reason={}",
+          requestId,
+          gatewayId,
+          routeId,
+          targetKey.targetId(),
+          reason);
+      return;
+    }
+    registry.recordSuccess(targetKey, circuitPolicy, apiId, routeId);
   }
 
   private void recordSuccess(

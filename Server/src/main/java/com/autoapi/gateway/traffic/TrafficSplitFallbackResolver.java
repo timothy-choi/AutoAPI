@@ -1,11 +1,12 @@
 package com.autoapi.gateway.traffic;
 
+import com.autoapi.config.RuntimeCircuitBreakerPolicyConfig;
 import com.autoapi.config.RuntimeTrafficSplitConfig;
 import com.autoapi.config.RuntimeTrafficSplitDestination;
 import com.autoapi.config.UpstreamConfig;
 import com.autoapi.config.UpstreamTargetReference;
+import com.autoapi.gateway.circuitbreaker.GatewayTargetSelector;
 import com.autoapi.gateway.config.ActiveRuntimeBundle;
-import com.autoapi.gateway.health.HealthAwareTargetSelector;
 import com.autoapi.gateway.health.PassiveHealthPolicy;
 import com.autoapi.gateway.health.SelectedTarget;
 import java.util.Comparator;
@@ -26,15 +27,18 @@ public final class TrafficSplitFallbackResolver {
       RuntimeTrafficSplitConfig config,
       RuntimeTrafficSplitDestination nominal,
       ActiveRuntimeBundle bundle,
-      HealthAwareTargetSelector targetSelector) {
-    if (hasEligibleTarget(bundle, targetSelector, nominal)) {
+      GatewayTargetSelector targetSelector,
+      RuntimeCircuitBreakerPolicyConfig circuitPolicy,
+      String routeId) {
+    if (hasEligibleTarget(bundle, targetSelector, nominal, circuitPolicy, routeId)) {
       return Optional.of(nominal);
     }
     return switch (config.fallbackMode()) {
       case "STRICT" -> Optional.empty();
-      case "FALLBACK_TO_PRIMARY" -> findPrimary(config, bundle, targetSelector);
+      case "FALLBACK_TO_PRIMARY" ->
+          findPrimary(config, bundle, targetSelector, circuitPolicy, routeId);
       case "FALLBACK_TO_ANY_HEALTHY_SPLIT" ->
-          findAnyHealthy(config, nominal, bundle, targetSelector);
+          findAnyHealthy(config, nominal, bundle, targetSelector, circuitPolicy, routeId);
       default -> Optional.empty();
     };
   }
@@ -55,10 +59,14 @@ public final class TrafficSplitFallbackResolver {
   private static Optional<RuntimeTrafficSplitDestination> findPrimary(
       RuntimeTrafficSplitConfig config,
       ActiveRuntimeBundle bundle,
-      HealthAwareTargetSelector targetSelector) {
+      GatewayTargetSelector targetSelector,
+      RuntimeCircuitBreakerPolicyConfig circuitPolicy,
+      String routeId) {
     return config.destinations().stream()
         .filter(RuntimeTrafficSplitDestination::primary)
-        .filter(destination -> hasEligibleTarget(bundle, targetSelector, destination))
+        .filter(
+            destination ->
+                hasEligibleTarget(bundle, targetSelector, destination, circuitPolicy, routeId))
         .findFirst();
   }
 
@@ -66,20 +74,26 @@ public final class TrafficSplitFallbackResolver {
       RuntimeTrafficSplitConfig config,
       RuntimeTrafficSplitDestination nominal,
       ActiveRuntimeBundle bundle,
-      HealthAwareTargetSelector targetSelector) {
+      GatewayTargetSelector targetSelector,
+      RuntimeCircuitBreakerPolicyConfig circuitPolicy,
+      String routeId) {
     return config.destinations().stream()
         .filter(destination -> !destination.destinationId().equals(nominal.destinationId()))
         .sorted(
             Comparator.comparing(RuntimeTrafficSplitDestination::priority)
                 .thenComparing(RuntimeTrafficSplitDestination::destinationId))
-        .filter(destination -> hasEligibleTarget(bundle, targetSelector, destination))
+        .filter(
+            destination ->
+                hasEligibleTarget(bundle, targetSelector, destination, circuitPolicy, routeId))
         .findFirst();
   }
 
   private static boolean hasEligibleTarget(
       ActiveRuntimeBundle bundle,
-      HealthAwareTargetSelector targetSelector,
-      RuntimeTrafficSplitDestination destination) {
+      GatewayTargetSelector targetSelector,
+      RuntimeTrafficSplitDestination destination,
+      RuntimeCircuitBreakerPolicyConfig circuitPolicy,
+      String routeId) {
     UpstreamConfig upstream = destination.upstreamPool();
     List<UpstreamTargetReference> targets = upstream.targets();
     if (targets.isEmpty()) {
@@ -91,9 +105,11 @@ public final class TrafficSplitFallbackResolver {
             : null;
     try {
       SelectedTarget selected =
-          targetSelector.select(bundle.apiId(), upstream.poolId(), targets, policy);
+          targetSelector.select(
+              bundle.apiId(), upstream.poolId(), targets, policy, circuitPolicy, routeId);
       return selected != null && selected.target() != null && !selected.forcedSelection();
-    } catch (IllegalArgumentException ex) {
+    } catch (IllegalArgumentException
+        | com.autoapi.gateway.circuitbreaker.CircuitBreakerOpenException ex) {
       return false;
     }
   }

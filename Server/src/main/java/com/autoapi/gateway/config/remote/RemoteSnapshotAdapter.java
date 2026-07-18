@@ -5,6 +5,8 @@ import com.autoapi.config.GatewayConfig;
 import com.autoapi.config.RouteConfig;
 import com.autoapi.config.RuntimeApiKey;
 import com.autoapi.config.RuntimeAuthentication;
+import com.autoapi.config.RuntimeCircuitBreakerFailurePredicate;
+import com.autoapi.config.RuntimeCircuitBreakerPolicyConfig;
 import com.autoapi.config.RuntimeConfig;
 import com.autoapi.config.RuntimeRateLimit;
 import com.autoapi.config.RuntimeRetryPolicyConfig;
@@ -142,6 +144,10 @@ public final class RemoteSnapshotAdapter {
     if (route.retry() != null) {
       retry = toRuntimeRetry(route.retry());
     }
+    RuntimeCircuitBreakerPolicyConfig circuitBreaker = null;
+    if (route.circuitBreaker() != null) {
+      circuitBreaker = toRuntimeCircuitBreaker(route.circuitBreaker());
+    }
     return new RouteConfig(
         route.id().toString(),
         route.host(),
@@ -151,7 +157,8 @@ public final class RemoteSnapshotAdapter {
         trafficSplit,
         authentication,
         rateLimit,
-        retry);
+        retry,
+        circuitBreaker);
   }
 
   private static RuntimeTrafficSplitConfig toTrafficSplitConfig(
@@ -197,6 +204,27 @@ public final class RemoteSnapshotAdapter {
         section.fingerprint(),
         totalWeight,
         destinations);
+  }
+
+  private static RuntimeCircuitBreakerPolicyConfig toRuntimeCircuitBreaker(
+      com.autoapi.controlplane.configversion.CompiledCircuitBreakerSection section) {
+    RuntimeCircuitBreakerFailurePredicate predicate =
+        new RuntimeCircuitBreakerFailurePredicate(
+            section.failurePredicate().countHttp5xx(),
+            section.failurePredicate().countConnectFailure(),
+            section.failurePredicate().countConnectTimeout(),
+            section.failurePredicate().countReadTimeout(),
+            section.failurePredicate().countTlsFailure(),
+            section.failurePredicate().countTransportException(),
+            section.failurePredicate().countHttp429());
+    return new RuntimeCircuitBreakerPolicyConfig(
+        section.policyId(),
+        section.failureThreshold(),
+        section.rollingWindowSeconds(),
+        section.openDurationSeconds(),
+        section.halfOpenMaxRequests(),
+        section.successThreshold(),
+        predicate);
   }
 
   private static RuntimeRetryPolicyConfig toRuntimeRetry(

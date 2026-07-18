@@ -25,7 +25,7 @@ class RuntimeConfigCompilerRetryTest {
     UUID policyId = UUID.fromString("00000000-0000-0000-0000-0000000000b1");
     RetryPolicyEntity policy = policy(policyId, 2, 1000, true);
     RoutePolicyBindingEntity binding =
-        new RoutePolicyBindingEntity(graph.routeId(), false, null, NOW, NOW, policyId, null);
+        new RoutePolicyBindingEntity(graph.routeId(), false, null, NOW, NOW, policyId, null, null);
 
     HashableRuntimePayload payload = compile(graph, binding, Map.of(policyId, policy));
 
@@ -41,7 +41,7 @@ class RuntimeConfigCompilerRetryTest {
     UUID policyId = UUID.fromString("00000000-0000-0000-0000-0000000000b2");
     RetryPolicyEntity disabled = policy(policyId, 2, 1000, false);
     RoutePolicyBindingEntity binding =
-        new RoutePolicyBindingEntity(graph.routeId(), false, null, NOW, NOW, policyId, null);
+        new RoutePolicyBindingEntity(graph.routeId(), false, null, NOW, NOW, policyId, null, null);
 
     HashableRuntimePayload disabledPayload = compile(graph, binding, Map.of(policyId, disabled));
     assertNull(disabledPayload.routes().getFirst().retry());
@@ -57,7 +57,7 @@ class RuntimeConfigCompilerRetryTest {
     RetryPolicyEntity original = policy(policyId, 2, 1000, true);
     RetryPolicyEntity updated = policy(policyId, 3, 1000, true);
     RoutePolicyBindingEntity binding =
-        new RoutePolicyBindingEntity(graph.routeId(), false, null, NOW, NOW, policyId, null);
+        new RoutePolicyBindingEntity(graph.routeId(), false, null, NOW, NOW, policyId, null, null);
 
     String originalHash = hash(compile(graph, binding, Map.of(policyId, original)));
     String updatedHash = hash(compile(graph, binding, Map.of(policyId, updated)));
@@ -85,6 +85,7 @@ class RuntimeConfigCompilerRetryTest {
         Map.of(),
         Map.of(),
         retryPolicies,
+        Map.of(),
         Map.of(),
         Map.of(),
         List.of(),
