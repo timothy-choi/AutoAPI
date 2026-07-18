@@ -10,6 +10,10 @@ public final class ControlPlaneDatabaseCleaner {
   private ControlPlaneDatabaseCleaner() {}
 
   public static void cleanAll(DatabaseClient databaseClient) {
+    databaseClient.sql("DELETE FROM webhook_delivery_attempts").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM webhook_deliveries").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM webhook_subscriptions").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM platform_events").fetch().rowsUpdated().block();
     databaseClient.sql("DELETE FROM service_instances").fetch().rowsUpdated().block();
     databaseClient
         .sql("DELETE FROM service_registration_credentials")

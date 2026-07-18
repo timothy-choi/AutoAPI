@@ -1,0 +1,104 @@
+package com.autoapi.controlplane.events;
+
+import java.util.Set;
+
+/** Central registry of versioned platform event type names. */
+public final class PlatformEventTypes {
+
+  public static final String PROJECT_CREATED = "project.created.v1";
+  public static final String PROJECT_UPDATED = "project.updated.v1";
+  public static final String PROJECT_DELETED = "project.deleted.v1";
+
+  public static final String API_CREATED = "api.created.v1";
+  public static final String API_UPDATED = "api.updated.v1";
+  public static final String API_DELETED = "api.deleted.v1";
+
+  public static final String ROUTE_CREATED = "route.created.v1";
+  public static final String ROUTE_UPDATED = "route.updated.v1";
+  public static final String ROUTE_DELETED = "route.deleted.v1";
+
+  public static final String CONFIGURATION_VERSION_CREATED = "configuration.version.created.v1";
+  public static final String CONFIGURATION_ACTIVATED = "configuration.activated.v1";
+
+  public static final String RUNTIME_SNAPSHOT_PUBLISHED = "runtime.snapshot.published.v1";
+
+  public static final String SERVICE_CREATED = "service.created.v1";
+  public static final String SERVICE_UPDATED = "service.updated.v1";
+  public static final String SERVICE_DELETED = "service.deleted.v1";
+
+  public static final String SERVICE_INSTANCE_REGISTERED = "service.instance.registered.v1";
+  public static final String SERVICE_INSTANCE_DRAINING = "service.instance.draining.v1";
+  public static final String SERVICE_INSTANCE_STALE = "service.instance.stale.v1";
+  public static final String SERVICE_INSTANCE_RECOVERED = "service.instance.recovered.v1";
+  public static final String SERVICE_INSTANCE_DEREGISTERED = "service.instance.deregistered.v1";
+
+  public static final String API_KEY_CREATED = "api_key.created.v1";
+  public static final String API_KEY_REVOKED = "api_key.revoked.v1";
+
+  public static final String WEBHOOK_SUBSCRIPTION_CREATED = "webhook.subscription.created.v1";
+  public static final String WEBHOOK_SUBSCRIPTION_UPDATED = "webhook.subscription.updated.v1";
+  public static final String WEBHOOK_SUBSCRIPTION_DISABLED = "webhook.subscription.disabled.v1";
+  public static final String WEBHOOK_SECRET_ROTATED = "webhook.secret.rotated.v1";
+
+  public static final String WEBHOOK_DELIVERY_SUCCEEDED = "webhook.delivery.succeeded.v1";
+  public static final String WEBHOOK_DELIVERY_FAILED = "webhook.delivery.failed.v1";
+  public static final String WEBHOOK_DELIVERY_DEAD_LETTERED = "webhook.delivery.dead_lettered.v1";
+
+  public static final String WEBHOOK_TEST = "webhook.test.v1";
+
+  /** Event types excluded from default webhook fan-out to prevent recursion. */
+  public static final Set<String> NON_DELIVERABLE_EVENT_TYPES =
+      Set.of(
+          WEBHOOK_DELIVERY_SUCCEEDED,
+          WEBHOOK_DELIVERY_FAILED,
+          WEBHOOK_DELIVERY_DEAD_LETTERED,
+          WEBHOOK_TEST);
+
+  private static final Set<String> KNOWN_EVENT_TYPES =
+      Set.of(
+          PROJECT_CREATED,
+          PROJECT_UPDATED,
+          PROJECT_DELETED,
+          API_CREATED,
+          API_UPDATED,
+          API_DELETED,
+          ROUTE_CREATED,
+          ROUTE_UPDATED,
+          ROUTE_DELETED,
+          CONFIGURATION_VERSION_CREATED,
+          CONFIGURATION_ACTIVATED,
+          RUNTIME_SNAPSHOT_PUBLISHED,
+          SERVICE_CREATED,
+          SERVICE_UPDATED,
+          SERVICE_DELETED,
+          SERVICE_INSTANCE_REGISTERED,
+          SERVICE_INSTANCE_DRAINING,
+          SERVICE_INSTANCE_STALE,
+          SERVICE_INSTANCE_RECOVERED,
+          SERVICE_INSTANCE_DEREGISTERED,
+          API_KEY_CREATED,
+          API_KEY_REVOKED,
+          WEBHOOK_SUBSCRIPTION_CREATED,
+          WEBHOOK_SUBSCRIPTION_UPDATED,
+          WEBHOOK_SUBSCRIPTION_DISABLED,
+          WEBHOOK_SECRET_ROTATED,
+          WEBHOOK_DELIVERY_SUCCEEDED,
+          WEBHOOK_DELIVERY_FAILED,
+          WEBHOOK_DELIVERY_DEAD_LETTERED,
+          WEBHOOK_TEST);
+
+  private PlatformEventTypes() {}
+
+  public static boolean isKnown(String eventType) {
+    return KNOWN_EVENT_TYPES.contains(eventType);
+  }
+
+  public static void validateFilterType(String eventType) {
+    if (eventType == null || eventType.isBlank()) {
+      throw new IllegalArgumentException("event type filter must not be blank");
+    }
+    if (!isKnown(eventType) && !eventType.endsWith(".*")) {
+      throw new IllegalArgumentException("Unknown event type filter: " + eventType);
+    }
+  }
+}
