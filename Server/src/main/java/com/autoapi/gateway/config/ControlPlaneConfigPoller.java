@@ -20,7 +20,6 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import reactor.core.Disposable;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -63,10 +62,16 @@ public class ControlPlaneConfigPoller {
     validateStartupConfiguration();
     Duration interval = gatewayProperties.pollInterval();
     pollingSubscription =
-        Flux.concat(
-                Mono.defer(this::serializedPoll),
-                Flux.interval(interval).concatMap(tick -> serializedPoll()))
-            .subscribe();
+        Mono.defer(this::serializedPoll)
+            .repeatWhen(completed -> completed.delayElements(interval))
+            .subscribe(
+                null,
+                ex ->
+                    log.error(
+                        "Control-plane config polling terminated apiId={} message={}",
+                        gatewayProperties.apiId(),
+                        safeMessage(ex.getMessage()),
+                        ex));
   }
 
   @PreDestroy

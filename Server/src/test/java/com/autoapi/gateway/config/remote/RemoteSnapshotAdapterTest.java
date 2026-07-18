@@ -130,7 +130,7 @@ class RemoteSnapshotAdapterTest {
             now,
             now);
     RoutePolicyBindingEntity binding =
-        new RoutePolicyBindingEntity(routeId, false, null, policyId, now, now);
+        new RoutePolicyBindingEntity(routeId, false, null, now, now, policyId, null);
 
     HashableRuntimePayload payload =
         RuntimeConfigCompiler.compile(
@@ -143,6 +143,8 @@ class RemoteSnapshotAdapterTest {
             Map.of(),
             Map.of(),
             Map.of(policyId, policy),
+            Map.of(),
+            Map.of(),
             List.of(),
             now);
     String hash = RuntimeContentHasher.sha256Hex(RuntimeContentHasher.canonicalJson(payload));

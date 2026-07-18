@@ -11,9 +11,10 @@ public record RoutePolicyBindingEntity(
     @Id @Column("route_id") UUID routeId,
     @Column("authentication_required") boolean authenticationRequired,
     @Column("rate_limit_policy_id") UUID rateLimitPolicyId,
-    @Column("retry_policy_id") UUID retryPolicyId,
     @Column("created_at") OffsetDateTime createdAt,
-    @Column("updated_at") OffsetDateTime updatedAt)
+    @Column("updated_at") OffsetDateTime updatedAt,
+    @Column("retry_policy_id") UUID retryPolicyId,
+    @Column("traffic_split_policy_id") UUID trafficSplitPolicyId)
     implements NewEntity {
 
   @Override

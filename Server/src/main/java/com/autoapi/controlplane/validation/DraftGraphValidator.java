@@ -14,9 +14,12 @@ import com.autoapi.controlplane.persistence.RateLimitPolicyEntity;
 import com.autoapi.controlplane.persistence.RetryPolicyEntity;
 import com.autoapi.controlplane.persistence.RouteEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
+import com.autoapi.controlplane.persistence.TrafficSplitDestinationEntity;
+import com.autoapi.controlplane.persistence.TrafficSplitPolicyEntity;
 import com.autoapi.controlplane.persistence.UpstreamPoolEntity;
 import com.autoapi.controlplane.persistence.UpstreamTargetEntity;
 import com.autoapi.controlplane.retry.RetryPolicyService;
+import com.autoapi.controlplane.traffic.TrafficSplitPolicyService;
 import com.autoapi.security.ApiKeyDigestService;
 import com.autoapi.validation.UpstreamUriValidator;
 import java.net.URI;
@@ -49,6 +52,8 @@ public final class DraftGraphValidator {
         graph.rateLimitPolicies(),
         graph.backendHealthPolicies(),
         graph.retryPolicies(),
+        graph.trafficSplitPolicies(),
+        graph.trafficSplitDestinations(),
         graph.routePolicyBindings(),
         graph.gatewayDefaults());
   }
@@ -62,6 +67,8 @@ public final class DraftGraphValidator {
       List<RateLimitPolicyEntity> rateLimitPolicies,
       List<BackendHealthPolicyEntity> backendHealthPolicies,
       List<RetryPolicyEntity> retryPolicies,
+      List<TrafficSplitPolicyEntity> trafficSplitPolicies,
+      List<TrafficSplitDestinationEntity> trafficSplitDestinations,
       List<RoutePolicyBindingEntity> routePolicyBindings,
       CompiledGatewaySection gatewayDefaults) {
     List<ValidationError> errors = new ArrayList<>();
@@ -86,6 +93,12 @@ public final class DraftGraphValidator {
             .collect(Collectors.toMap(BackendHealthPolicyEntity::id, p -> p));
     Map<UUID, RetryPolicyEntity> retryPolicyById =
         retryPolicies.stream().collect(Collectors.toMap(RetryPolicyEntity::id, p -> p));
+    Map<UUID, TrafficSplitPolicyEntity> trafficSplitPolicyById =
+        trafficSplitPolicies.stream()
+            .collect(Collectors.toMap(TrafficSplitPolicyEntity::id, p -> p));
+    Map<UUID, List<TrafficSplitDestinationEntity>> destinationsByPolicyId =
+        trafficSplitDestinations.stream()
+            .collect(Collectors.groupingBy(TrafficSplitDestinationEntity::trafficSplitPolicyId));
     Map<UUID, RoutePolicyBindingEntity> bindingByRouteId =
         routePolicyBindings.stream()
             .collect(Collectors.toMap(RoutePolicyBindingEntity::routeId, b -> b));
@@ -107,6 +120,15 @@ public final class DraftGraphValidator {
       validateRoute(route, api.id(), poolById, errors);
       validateRoutePolicyBinding(route, api.id(), bindingByRouteId, policyById, errors);
       validateRetryPolicyBinding(route, api.id(), bindingByRouteId, retryPolicyById, errors);
+      validateTrafficSplitBinding(
+          route,
+          api.id(),
+          bindingByRouteId,
+          trafficSplitPolicyById,
+          destinationsByPolicyId,
+          poolById,
+          targetsByPool,
+          errors);
     }
 
     validateRouteAmbiguity(enabledRoutes, errors);
@@ -142,6 +164,8 @@ public final class DraftGraphValidator {
             policyById,
             healthPolicyById,
             retryPolicyById,
+            trafficSplitPolicyById,
+            destinationsByPolicyId,
             apiKeys,
             publishInstant);
     validateCompiledPayload(payload, errors);
@@ -176,7 +200,115 @@ public final class DraftGraphValidator {
         List.of(),
         List.of(),
         List.of(),
+        List.of(),
+        List.of(),
         gatewayDefaults);
+  }
+
+  private static void validateTrafficSplitBinding(
+      RouteEntity route,
+      UUID apiId,
+      Map<UUID, RoutePolicyBindingEntity> bindingByRouteId,
+      Map<UUID, TrafficSplitPolicyEntity> trafficSplitPolicyById,
+      Map<UUID, List<TrafficSplitDestinationEntity>> destinationsByPolicyId,
+      Map<UUID, UpstreamPoolEntity> poolById,
+      Map<UUID, List<UpstreamTargetEntity>> targetsByPool,
+      List<ValidationError> errors) {
+    RoutePolicyBindingEntity binding = bindingByRouteId.get(route.id());
+    if (binding == null || binding.trafficSplitPolicyId() == null) {
+      if (route.upstreamPoolId() == null) {
+        errors.add(
+            new ValidationError(
+                "ROUTE_UPSTREAM_REQUIRED",
+                route.id(),
+                "Route must bind either an upstream pool or a traffic split policy"));
+      }
+      return;
+    }
+    if (route.upstreamPoolId() != null) {
+      errors.add(
+          new ValidationError(
+              "ROUTE_TRAFFIC_SPLIT_CONFLICT",
+              route.id(),
+              "Route cannot bind both a direct upstream pool and a traffic split policy"));
+    }
+    TrafficSplitPolicyEntity policy = trafficSplitPolicyById.get(binding.trafficSplitPolicyId());
+    if (policy == null || !policy.apiId().equals(apiId)) {
+      errors.add(
+          new ValidationError(
+              "TRAFFIC_SPLIT_POLICY_NOT_FOUND",
+              route.id(),
+              "Traffic split policy was not found for this API"));
+      return;
+    }
+    if (!policy.enabled()) {
+      errors.add(
+          new ValidationError(
+              "TRAFFIC_SPLIT_POLICY_DISABLED",
+              route.id(),
+              "Disabled traffic split policy cannot be published"));
+    }
+    List<TrafficSplitDestinationEntity> destinations =
+        destinationsByPolicyId.getOrDefault(binding.trafficSplitPolicyId(), List.of());
+    if (destinations.size() < 2) {
+      errors.add(
+          new ValidationError(
+              "TRAFFIC_SPLIT_DESTINATION_COUNT",
+              route.id(),
+              "Traffic split policy requires at least two destinations"));
+    }
+    int totalWeight = destinations.stream().mapToInt(TrafficSplitDestinationEntity::weight).sum();
+    if (totalWeight <= 0) {
+      errors.add(
+          new ValidationError(
+              "TRAFFIC_SPLIT_TOTAL_WEIGHT",
+              route.id(),
+              "Traffic split destination weights must sum to more than zero"));
+    }
+    long primaryCount =
+        destinations.stream().filter(TrafficSplitDestinationEntity::primary).count();
+    if ("FALLBACK_TO_PRIMARY".equals(policy.fallbackMode()) && primaryCount != 1) {
+      errors.add(
+          new ValidationError(
+              "TRAFFIC_SPLIT_PRIMARY_REQUIRED",
+              route.id(),
+              "FALLBACK_TO_PRIMARY requires exactly one primary destination"));
+    }
+    if (primaryCount > 1) {
+      errors.add(
+          new ValidationError(
+              "TRAFFIC_SPLIT_PRIMARY_AMBIGUOUS",
+              route.id(),
+              "Traffic split policy has multiple primary destinations"));
+    }
+    try {
+      TrafficSplitPolicyService.validatePolicyFields(
+          policy.selectionKey(), policy.selectionKeyName(), policy.fallbackMode());
+    } catch (com.autoapi.controlplane.api.ControlPlaneException ex) {
+      errors.add(new ValidationError("TRAFFIC_SPLIT_POLICY_INVALID", route.id(), ex.getMessage()));
+    }
+    for (TrafficSplitDestinationEntity destination : destinations) {
+      UpstreamPoolEntity pool = poolById.get(destination.upstreamPoolId());
+      if (pool == null || !pool.apiId().equals(apiId)) {
+        errors.add(
+            new ValidationError(
+                "TRAFFIC_SPLIT_POOL_NOT_FOUND",
+                destination.id(),
+                "Traffic split destination pool was not found for this API"));
+        continue;
+      }
+      long enabledTargets =
+          targetsByPool.getOrDefault(destination.upstreamPoolId(), List.of()).stream()
+              .filter(UpstreamTargetEntity::enabled)
+              .count();
+      if (enabledTargets == 0) {
+        errors.add(
+            new ValidationError(
+                "TRAFFIC_SPLIT_POOL_NO_TARGETS",
+                destination.id(),
+                "Traffic split destination pool must contain enabled targets"));
+      }
+    }
   }
 
   private static void validateCompiledPayload(
@@ -446,17 +578,19 @@ public final class DraftGraphValidator {
       }
     }
 
-    UpstreamPoolEntity pool = poolById.get(route.upstreamPoolId());
-    if (pool == null) {
-      errors.add(
-          new ValidationError(
-              "ROUTE_POOL_NOT_FOUND", route.id(), "Route references missing upstream pool"));
-    } else if (!pool.apiId().equals(apiId)) {
-      errors.add(
-          new ValidationError(
-              "ROUTE_POOL_WRONG_API",
-              route.id(),
-              "Route references upstream pool from another API"));
+    if (route.upstreamPoolId() != null) {
+      UpstreamPoolEntity pool = poolById.get(route.upstreamPoolId());
+      if (pool == null) {
+        errors.add(
+            new ValidationError(
+                "ROUTE_POOL_NOT_FOUND", route.id(), "Route references missing upstream pool"));
+      } else if (!pool.apiId().equals(apiId)) {
+        errors.add(
+            new ValidationError(
+                "ROUTE_POOL_WRONG_API",
+                route.id(),
+                "Route references upstream pool from another API"));
+      }
     }
   }
 

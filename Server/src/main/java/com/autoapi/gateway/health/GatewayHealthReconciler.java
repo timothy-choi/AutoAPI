@@ -2,6 +2,7 @@ package com.autoapi.gateway.health;
 
 import com.autoapi.config.RouteConfig;
 import com.autoapi.config.RuntimeConfig;
+import com.autoapi.config.RuntimeTrafficSplitConfig;
 import com.autoapi.config.UpstreamConfig;
 import com.autoapi.config.UpstreamTargetReference;
 import com.autoapi.gateway.config.ActiveRuntimeBundle;
@@ -20,27 +21,38 @@ public final class GatewayHealthReconciler {
     RuntimeConfig config = bundle.runtimeConfig();
     Map<UUID, List<TargetFingerprint>> targetsByPool = new HashMap<>();
     for (RouteConfig route : config.routes()) {
-      UpstreamConfig upstream = route.upstream();
-      if (upstream.poolId() == null || upstream.targets().isEmpty()) {
-        continue;
+      if (route.trafficSplitEnabled()) {
+        RuntimeTrafficSplitConfig split = route.trafficSplit();
+        for (var destination : split.destinations()) {
+          accumulatePoolTargets(targetsByPool, destination.upstreamPool());
+        }
+      } else if (route.upstream() != null) {
+        accumulatePoolTargets(targetsByPool, route.upstream());
       }
-      List<TargetFingerprint> fingerprints = new ArrayList<>();
-      for (UpstreamTargetReference target : upstream.targets()) {
-        fingerprints.add(TargetFingerprint.of(target.targetId(), target.url()));
-      }
-      targetsByPool.merge(
-          upstream.poolId(),
-          fingerprints,
-          (existing, added) -> {
-            List<TargetFingerprint> merged = new ArrayList<>(existing);
-            for (TargetFingerprint fingerprint : added) {
-              if (!merged.contains(fingerprint)) {
-                merged.add(fingerprint);
-              }
-            }
-            return merged;
-          });
     }
     registry.reconcile(bundle.apiId(), targetsByPool);
+  }
+
+  private static void accumulatePoolTargets(
+      Map<UUID, List<TargetFingerprint>> targetsByPool, UpstreamConfig upstream) {
+    if (upstream.poolId() == null || upstream.targets().isEmpty()) {
+      return;
+    }
+    List<TargetFingerprint> fingerprints = new ArrayList<>();
+    for (UpstreamTargetReference target : upstream.targets()) {
+      fingerprints.add(TargetFingerprint.of(target.targetId(), target.url()));
+    }
+    targetsByPool.merge(
+        upstream.poolId(),
+        fingerprints,
+        (existing, added) -> {
+          List<TargetFingerprint> merged = new ArrayList<>(existing);
+          for (TargetFingerprint fingerprint : added) {
+            if (!merged.contains(fingerprint)) {
+              merged.add(fingerprint);
+            }
+          }
+          return merged;
+        });
   }
 }

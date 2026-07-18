@@ -1,5 +1,6 @@
 package com.autoapi.gateway.health;
 
+import com.autoapi.config.RuntimeTrafficSplitConfig;
 import com.autoapi.config.UpstreamConfig;
 import com.autoapi.config.UpstreamTargetReference;
 import com.autoapi.gateway.GatewayProperties;
@@ -59,21 +60,13 @@ public class GatewayInternalHealthHandler {
         .routes()
         .forEach(
             route -> {
-              UpstreamConfig upstream = route.upstream();
-              if (upstream.poolId() == null || upstream.targets().isEmpty()) {
-                return;
-              }
-              PoolAccumulator pool =
-                  pools.computeIfAbsent(
-                      upstream.poolId(),
-                      ignored -> new PoolAccumulator(bundle.apiId(), upstream.poolId()));
-              for (UpstreamTargetReference target : upstream.targets()) {
-                if (pool.targetIds.add(target.targetId())) {
-                  TargetKey key =
-                      new TargetKey(bundle.apiId(), upstream.poolId(), target.targetId());
-                  TargetHealthState state = registry.getState(key);
-                  pool.targets.add(toTargetView(target, state, now));
+              if (route.trafficSplitEnabled()) {
+                RuntimeTrafficSplitConfig split = route.trafficSplit();
+                for (var destination : split.destinations()) {
+                  accumulatePool(bundle.apiId(), destination.upstreamPool(), pools, now);
                 }
+              } else if (route.upstream() != null) {
+                accumulatePool(bundle.apiId(), route.upstream(), pools, now);
               }
             });
 
@@ -94,6 +87,23 @@ public class GatewayInternalHealthHandler {
                 gatewayProperties.gatewayId() == null ? "unknown" : gatewayProperties.gatewayId(),
                 "pools",
                 poolViews));
+  }
+
+  private void accumulatePool(
+      UUID apiId, UpstreamConfig upstream, Map<UUID, PoolAccumulator> pools, Instant now) {
+    if (upstream.poolId() == null || upstream.targets().isEmpty()) {
+      return;
+    }
+    PoolAccumulator pool =
+        pools.computeIfAbsent(
+            upstream.poolId(), ignored -> new PoolAccumulator(apiId, upstream.poolId()));
+    for (UpstreamTargetReference target : upstream.targets()) {
+      if (pool.targetIds.add(target.targetId())) {
+        TargetKey key = new TargetKey(apiId, upstream.poolId(), target.targetId());
+        TargetHealthState state = registry.getState(key);
+        pool.targets.add(toTargetView(target, state, now));
+      }
+    }
   }
 
   private static Map<String, Object> toTargetView(

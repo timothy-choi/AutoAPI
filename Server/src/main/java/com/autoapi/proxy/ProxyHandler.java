@@ -19,6 +19,8 @@ import com.autoapi.gateway.health.TargetHealthState;
 import com.autoapi.gateway.health.TargetKey;
 import com.autoapi.gateway.retry.RetryingProxyExecutor;
 import com.autoapi.gateway.security.GatewaySecurityEnforcer;
+import com.autoapi.gateway.traffic.TrafficSplitDecision;
+import com.autoapi.gateway.traffic.TrafficSplitSelector;
 import com.autoapi.middleware.RequestIdSupport;
 import com.autoapi.routing.RouteMatchResult;
 import com.autoapi.routing.RouteMatcher;
@@ -59,6 +61,7 @@ public class ProxyHandler {
   private final FailureClassifier failureClassifier;
   private final ObjectProvider<GatewayUpstreamHealthMetrics> healthMetricsProvider;
   private final ObjectProvider<RetryingProxyExecutor> retryingProxyExecutorProvider;
+  private final ObjectProvider<TrafficSplitSelector> trafficSplitSelectorProvider;
   private final String gatewayId;
 
   public ProxyHandler(
@@ -69,7 +72,8 @@ public class ProxyHandler {
       ObjectProvider<FailureClassifier> failureClassifier,
       ObjectProvider<GatewayUpstreamHealthMetrics> healthMetrics,
       ObjectProvider<GatewayProperties> gatewayProperties,
-      ObjectProvider<RetryingProxyExecutor> retryingProxyExecutor) {
+      ObjectProvider<RetryingProxyExecutor> retryingProxyExecutor,
+      ObjectProvider<TrafficSplitSelector> trafficSplitSelector) {
     this.errorWriter = errorWriter;
     this.securityPipeline = securityPipeline.getIfAvailable(() -> NOOP_SECURITY);
     this.targetSelectorProvider = targetSelector;
@@ -77,6 +81,7 @@ public class ProxyHandler {
     this.failureClassifier = failureClassifier.getIfAvailable(FailureClassifier::new);
     this.healthMetricsProvider = healthMetrics;
     this.retryingProxyExecutorProvider = retryingProxyExecutor;
+    this.trafficSplitSelectorProvider = trafficSplitSelector;
     GatewayProperties properties = gatewayProperties.getIfAvailable();
     this.gatewayId =
         properties == null || properties.gatewayId() == null ? "unknown" : properties.gatewayId();
@@ -136,7 +141,24 @@ public class ProxyHandler {
       RouteConfig route,
       ServerHttpRequest request,
       String requestId) {
-    UpstreamConfig upstream = route.upstream();
+    UpstreamConfig upstream;
+    if (route.trafficSplitEnabled()) {
+      TrafficSplitSelector selector = trafficSplitSelectorProvider.getIfAvailable();
+      if (selector == null) {
+        return errorWriter.trafficSplitConfigurationUnavailable(exchange);
+      }
+      Optional<TrafficSplitDecision> decision = selector.select(exchange, bundle, route);
+      if (decision.isEmpty()) {
+        return errorWriter.noAvailableTrafficDestination(exchange);
+      }
+      upstream = decision.get().upstreamPool();
+    } else {
+      upstream = route.upstream();
+      if (upstream == null) {
+        return errorWriter.trafficSplitConfigurationUnavailable(exchange);
+      }
+    }
+
     List<UpstreamTargetReference> targets = upstream.targets();
     if (targets.isEmpty()) {
       URI upstreamUri = upstream.url();

@@ -11,6 +11,7 @@ public final class GatewayAttributes {
   public static final String UPSTREAM_ATTEMPTS = "autoapi.upstream.attempts";
   public static final String REQUEST_START_NANOS = "autoapi.request.start.nanos";
   public static final String AUTHENTICATED_API_KEY = "autoapi.authenticated.api.key";
+  public static final String TRAFFIC_SPLIT_DECISION = "autoapi.traffic.split.decision";
 
   private GatewayAttributes() {}
 }

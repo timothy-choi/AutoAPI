@@ -7,6 +7,8 @@ import com.autoapi.gateway.config.remote.RemoteSnapshotValidationException;
 import com.autoapi.gateway.health.GatewayHealthReconciler;
 import com.autoapi.gateway.health.TargetHealthRegistry;
 import com.autoapi.gateway.retry.RetryBudgetRegistry;
+import com.autoapi.gateway.traffic.TrafficSplitReconciler;
+import com.autoapi.gateway.traffic.TrafficSplitRegistry;
 import com.autoapi.runtime.AutoApiRole;
 import com.autoapi.runtime.ConditionalOnAutoApiRole;
 import org.slf4j.Logger;
@@ -24,16 +26,19 @@ public class LocalGatewayConfigActivator {
   private final GatewayProperties gatewayProperties;
   private final ObjectProvider<TargetHealthRegistry> targetHealthRegistry;
   private final ObjectProvider<RetryBudgetRegistry> retryBudgetRegistry;
+  private final ObjectProvider<TrafficSplitRegistry> trafficSplitRegistry;
 
   public LocalGatewayConfigActivator(
       ActiveRuntimeConfigHolder activeRuntimeConfigHolder,
       GatewayProperties gatewayProperties,
       ObjectProvider<TargetHealthRegistry> targetHealthRegistry,
-      ObjectProvider<RetryBudgetRegistry> retryBudgetRegistry) {
+      ObjectProvider<RetryBudgetRegistry> retryBudgetRegistry,
+      ObjectProvider<TrafficSplitRegistry> trafficSplitRegistry) {
     this.activeRuntimeConfigHolder = activeRuntimeConfigHolder;
     this.gatewayProperties = gatewayProperties;
     this.targetHealthRegistry = targetHealthRegistry;
     this.retryBudgetRegistry = retryBudgetRegistry;
+    this.trafficSplitRegistry = trafficSplitRegistry;
   }
 
   public GatewayActivationAttempt activateCandidate(StoredRuntimeSnapshot snapshot) {
@@ -44,6 +49,8 @@ public class LocalGatewayConfigActivator {
       targetHealthRegistry.ifAvailable(
           registry -> GatewayHealthReconciler.reconcile(registry, candidate));
       retryBudgetRegistry.ifAvailable(registry -> registry.reconcile(candidate));
+      trafficSplitRegistry.ifAvailable(
+          registry -> TrafficSplitReconciler.reconcile(registry, candidate));
       activeRuntimeConfigHolder.activate(candidate);
       long durationMs = (System.nanoTime() - started) / 1_000_000L;
       log.info(
@@ -53,7 +60,7 @@ public class LocalGatewayConfigActivator {
           candidate.version(),
           hashPrefix(candidate.contentHash()),
           candidate.runtimeConfig().routes().size(),
-          countTargets(candidate),
+          TrafficSplitReconciler.countTargets(candidate),
           durationMs);
       return GatewayActivationAttempt.success(
           candidate.version(), candidate.contentHash(), durationMs);
@@ -88,12 +95,6 @@ public class LocalGatewayConfigActivator {
       return "Validation failed";
     }
     return message.length() > 1024 ? message.substring(0, 1024) : message;
-  }
-
-  private static int countTargets(ActiveRuntimeBundle bundle) {
-    return bundle.runtimeConfig().routes().stream()
-        .mapToInt(route -> Math.max(1, route.upstream().roundRobinTargets().size()))
-        .sum();
   }
 
   private static String hashPrefix(String hash) {

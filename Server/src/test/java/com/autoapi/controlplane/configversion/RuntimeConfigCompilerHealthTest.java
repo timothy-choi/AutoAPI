@@ -113,6 +113,8 @@ class RuntimeConfigCompilerHealthTest {
         Map.of(),
         healthPolicies,
         Map.of(),
+        Map.of(),
+        Map.of(),
         List.of(),
         NOW);
   }

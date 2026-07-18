@@ -5,6 +5,7 @@ import com.autoapi.controlplane.persistence.RateLimitPolicyRepository;
 import com.autoapi.controlplane.persistence.RouteEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingRepository;
+import com.autoapi.controlplane.persistence.RoutePolicyBindingRepositoryCustom;
 import com.autoapi.controlplane.persistence.RouteRepository;
 import com.autoapi.controlplane.ratelimit.RateLimitPolicyService;
 import java.time.OffsetDateTime;
@@ -23,14 +24,17 @@ public class RoutePolicyBindingService {
 
   private final RouteRepository routeRepository;
   private final RoutePolicyBindingRepository bindingRepository;
+  private final RoutePolicyBindingRepositoryCustom bindingRepositoryCustom;
   private final RateLimitPolicyRepository policyRepository;
 
   public RoutePolicyBindingService(
       RouteRepository routeRepository,
       RoutePolicyBindingRepository bindingRepository,
+      RoutePolicyBindingRepositoryCustom bindingRepositoryCustom,
       RateLimitPolicyRepository policyRepository) {
     this.routeRepository = routeRepository;
     this.bindingRepository = bindingRepository;
+    this.bindingRepositoryCustom = bindingRepositoryCustom;
     this.policyRepository = policyRepository;
   }
 
@@ -107,19 +111,19 @@ public class RoutePolicyBindingService {
         .findById(routeId)
         .flatMap(
             existing ->
-                bindingRepository.save(
-                    new RoutePolicyBindingEntity(
-                        routeId,
-                        authenticationRequired,
-                        rateLimitPolicyId,
-                        existing.retryPolicyId(),
-                        existing.createdAt(),
-                        now)))
+                bindingRepositoryCustom.bindAuthenticationAndRateLimit(
+                    routeId, authenticationRequired, rateLimitPolicyId, now))
         .switchIfEmpty(
             Mono.defer(
                 () ->
                     bindingRepository.save(
                         new RoutePolicyBindingEntity(
-                            routeId, authenticationRequired, rateLimitPolicyId, null, now, now))));
+                            routeId,
+                            authenticationRequired,
+                            rateLimitPolicyId,
+                            now,
+                            now,
+                            null,
+                            null))));
   }
 }

@@ -21,6 +21,7 @@ import com.autoapi.controlplane.persistence.UpstreamTargetEntity;
 import com.autoapi.gateway.GatewayProperties;
 import com.autoapi.gateway.health.HealthAwareTargetSelector;
 import com.autoapi.gateway.health.TargetHealthRegistry;
+import com.autoapi.gateway.traffic.TrafficSplitRegistry;
 import java.net.URI;
 import java.time.Clock;
 import java.time.OffsetDateTime;
@@ -58,7 +59,54 @@ class ActiveRuntimeConfigHolderTest {
             gatewayProperties,
             registryProvider(new TargetHealthRegistry(Clock.systemUTC())),
             retryBudgetProvider(
-                new com.autoapi.gateway.retry.RetryBudgetRegistry(Clock.systemUTC())));
+                new com.autoapi.gateway.retry.RetryBudgetRegistry(Clock.systemUTC())),
+            trafficSplitProvider(new TrafficSplitRegistry()));
+  }
+
+  private static ObjectProvider<TrafficSplitRegistry> trafficSplitProvider(
+      TrafficSplitRegistry registry) {
+    return new ObjectProvider<>() {
+      @Override
+      public TrafficSplitRegistry getObject() {
+        return registry;
+      }
+
+      @Override
+      public TrafficSplitRegistry getObject(Object... args) {
+        return registry;
+      }
+
+      @Override
+      public TrafficSplitRegistry getIfAvailable() {
+        return registry;
+      }
+
+      @Override
+      public TrafficSplitRegistry getIfAvailable(
+          java.util.function.Supplier<TrafficSplitRegistry> defaultSupplier) {
+        return registry;
+      }
+
+      @Override
+      public TrafficSplitRegistry getIfUnique() {
+        return registry;
+      }
+
+      @Override
+      public void ifAvailable(Consumer<TrafficSplitRegistry> dependencyConsumer) {
+        dependencyConsumer.accept(registry);
+      }
+
+      @Override
+      public java.util.stream.Stream<TrafficSplitRegistry> stream() {
+        return java.util.stream.Stream.of(registry);
+      }
+
+      @Override
+      public java.util.Iterator<TrafficSplitRegistry> iterator() {
+        return List.of(registry).iterator();
+      }
+    };
   }
 
   private static ObjectProvider<com.autoapi.gateway.retry.RetryBudgetRegistry> retryBudgetProvider(

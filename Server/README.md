@@ -1,6 +1,16 @@
 # AutoAPI Server
 
-Java 21 **Spring WebFlux** application with a nonblocking L7 gateway, PostgreSQL-backed control plane, immutable configuration compilation/activation, multi-gateway convergence, **API-key authentication**, **cross-gateway Redis rate limiting** (Phase 4), **passive backend health tracking with health-aware routing** (Phase 5), and **bounded idempotency-aware request retries with gateway-local retry budgets** (Phase 6).
+Java 21 **Spring WebFlux** application with a nonblocking L7 gateway, PostgreSQL-backed control plane, immutable configuration compilation/activation, multi-gateway convergence, **API-key authentication**, **cross-gateway Redis rate limiting** (Phase 4), **passive backend health tracking with health-aware routing** (Phase 5), **bounded idempotency-aware request retries with gateway-local retry budgets** (Phase 6), and **deterministic weighted traffic splitting for stable/canary releases** (Phase 7).
+
+## Phase 7 highlights
+
+- Weighted **traffic-split policies** with stable/canary upstream pool bindings
+- Deterministic **SHA-256 bucket** assignment (`routeId + policyId + fingerprint + selectionKey`)
+- Sticky keys: `API_KEY_ID`, `REQUEST_ID`, `HEADER`, `COOKIE` (missing header/cookie falls back to request ID)
+- Fallback modes: `STRICT`, `FALLBACK_TO_PRIMARY`, `FALLBACK_TO_ANY_HEALTHY_SPLIT`
+- Pipeline order: auth → rate limit → traffic split → health-aware target selection → bounded retries (retries stay in the effective split)
+- Internal visibility: `GET /internal/v1/traffic-splits` (gateway-local counters; reset on fingerprint change)
+- Terminal mapping when no split can serve: `503 NO_AVAILABLE_TRAFFIC_DESTINATION`
 
 ## Phase 6 highlights
 
@@ -54,10 +64,11 @@ docker compose up --build
 ./scripts/smoke-phase4.sh
 ./scripts/smoke-phase5.sh
 ./scripts/smoke-phase6.sh
+./scripts/smoke-phase7.sh
 docker compose down -v
 ```
 
-Services: `postgres`, `redis`, `control-plane`, `gateway-a`, `gateway-b`, `upstream-v1`, `upstream-v2`.
+Services: `postgres`, `redis`, `control-plane`, `gateway-a`, `gateway-b`, `upstream-v1`, `upstream-v2`, `stable-v1`, `stable-v2`, `canary-v1`.
 
 Development pepper (not production-safe) is supplied via Compose:
 

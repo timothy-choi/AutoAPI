@@ -41,9 +41,10 @@ public class GatewayRegistrationManager {
   @EventListener(ApplicationReadyEvent.class)
   public void startRegistrationLoop() {
     validateGatewayIdentity();
+    Duration retryInterval = Duration.ofSeconds(2);
     registrationSubscription =
-        Flux.interval(Duration.ZERO, Duration.ofSeconds(2))
-            .concatMap(tick -> attemptRegistration())
+        Mono.defer(this::attemptRegistration)
+            .repeatWhen(completed -> completed.delayElements(retryInterval))
             .subscribe();
   }
 
