@@ -92,7 +92,7 @@ public final class TrafficSplitFallbackResolver {
     try {
       SelectedTarget selected =
           targetSelector.select(bundle.apiId(), upstream.poolId(), targets, policy);
-      return selected != null && selected.target() != null;
+      return selected != null && selected.target() != null && !selected.forcedSelection();
     } catch (IllegalArgumentException ex) {
       return false;
     }
