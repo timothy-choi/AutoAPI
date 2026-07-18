@@ -1,6 +1,18 @@
 # AutoAPI Server
 
-Java 21 **Spring WebFlux** application with a nonblocking L7 gateway, PostgreSQL-backed control plane, immutable configuration compilation/activation, multi-gateway convergence, **API-key authentication**, **cross-gateway Redis rate limiting** (Phase 4), **passive backend health tracking with health-aware routing** (Phase 5), **bounded idempotency-aware request retries with gateway-local retry budgets** (Phase 6), **deterministic weighted traffic splitting for stable/canary releases** (Phase 7), and **per-target circuit breakers with rolling failure detection and half-open recovery** (Phase 8).
+Java 21 **Spring WebFlux** application with a nonblocking L7 gateway, PostgreSQL-backed control plane, immutable configuration compilation/activation, multi-gateway convergence, **API-key authentication**, **cross-gateway Redis rate limiting** (Phase 4), **passive backend health tracking with health-aware routing** (Phase 5), **bounded idempotency-aware request retries with gateway-local retry budgets** (Phase 6), **deterministic weighted traffic splitting for stable/canary releases** (Phase 7), **per-target circuit breakers with rolling failure detection and half-open recovery** (Phase 8), and **production-grade distributed observability with request correlation, tracing, structured logs, Prometheus metrics, and gateway status reporting** (Phase 9).
+
+## Phase 9 highlights
+
+- Stable **request IDs** (`X-Request-ID`) with validation, upstream propagation, and retry-safe correlation
+- **W3C trace context** (`traceparent` / `tracestate`) with OpenTelemetry-compatible spans
+- Structured JSON events (`gateway_request_completed`, `runtime_snapshot_activated`, …)
+- Unified Prometheus metrics (`autoapi_gateway_requests_total`, latency histograms, inflight gauge, retry/fallback/rejection counters)
+- Gateway **heartbeat instances** persisted in PostgreSQL with `READY` / `STALE` / `OFFLINE` derivation
+- Management APIs: `/api/v1/management/gateways`, `/instances`, `/observability/requests`
+- Internal gateway summaries: `GET /internal/v1/request-summaries`
+- Optional local stack: `docker-compose.observability.yml` (Prometheus, Grafana, OTel collector)
+- See [docs/OBSERVABILITY.md](../docs/OBSERVABILITY.md)
 
 ## Phase 8 highlights
 

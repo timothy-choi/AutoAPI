@@ -171,7 +171,7 @@ public class ConfigVersionService {
                                   publishInstant);
                           StoredRuntimeSnapshot snapshot =
                               RuntimeConfigCompiler.toStoredSnapshot(
-                                  payload, nextVersion, validation.contentHash());
+                                  payload, nextVersion, validation.contentHash(), publishInstant);
                           Json snapshotJson;
                           try {
                             snapshotJson =

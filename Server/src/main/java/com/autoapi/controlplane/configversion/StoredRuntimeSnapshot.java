@@ -4,11 +4,20 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.util.List;
 import java.util.UUID;
 
-@JsonPropertyOrder({"apiId", "version", "contentHash", "gateway", "routes", "apiKeys"})
+@JsonPropertyOrder({
+  "apiId",
+  "version",
+  "contentHash",
+  "gateway",
+  "routes",
+  "apiKeys",
+  "observabilityMetadata"
+})
 public record StoredRuntimeSnapshot(
     UUID apiId,
     long version,
     String contentHash,
     CompiledGatewaySection gateway,
     List<CompiledRouteSection> routes,
-    List<CompiledApiKeySection> apiKeys) {}
+    List<CompiledApiKeySection> apiKeys,
+    CompiledObservabilityMetadataSection observabilityMetadata) {}

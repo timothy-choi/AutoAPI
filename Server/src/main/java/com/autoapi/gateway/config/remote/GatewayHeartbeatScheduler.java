@@ -1,14 +1,16 @@
 package com.autoapi.gateway.config.remote;
 
 import com.autoapi.gateway.GatewayProperties;
-import com.autoapi.gateway.config.ActiveRuntimeBundle;
 import com.autoapi.gateway.config.ActiveRuntimeConfigHolder;
+import com.autoapi.gateway.observability.GatewayRuntimeStatusBuilder;
+import com.autoapi.gateway.observability.GatewayStructuredLogger;
 import com.autoapi.runtime.AutoApiRole;
 import com.autoapi.runtime.ConditionalOnAutoApiRole;
 import jakarta.annotation.PreDestroy;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -28,6 +30,8 @@ public class GatewayHeartbeatScheduler {
   private final GatewayRegistrationState registrationState;
   private final ActiveRuntimeConfigHolder activeRuntimeConfigHolder;
   private final GatewayProperties gatewayProperties;
+  private final GatewayRuntimeStatusBuilder runtimeStatusBuilder;
+  private final ObjectProvider<GatewayStructuredLogger> structuredLoggerProvider;
   private final AtomicBoolean heartbeatInProgress = new AtomicBoolean(false);
   private Disposable heartbeatSubscription;
 
@@ -35,11 +39,15 @@ public class GatewayHeartbeatScheduler {
       ControlPlaneGatewayClient gatewayClient,
       GatewayRegistrationState registrationState,
       ActiveRuntimeConfigHolder activeRuntimeConfigHolder,
-      GatewayProperties gatewayProperties) {
+      GatewayProperties gatewayProperties,
+      GatewayRuntimeStatusBuilder runtimeStatusBuilder,
+      ObjectProvider<GatewayStructuredLogger> structuredLoggerProvider) {
     this.gatewayClient = gatewayClient;
     this.registrationState = registrationState;
     this.activeRuntimeConfigHolder = activeRuntimeConfigHolder;
     this.gatewayProperties = gatewayProperties;
+    this.runtimeStatusBuilder = runtimeStatusBuilder;
+    this.structuredLoggerProvider = structuredLoggerProvider;
   }
 
   @EventListener(ApplicationReadyEvent.class)
@@ -64,12 +72,9 @@ public class GatewayHeartbeatScheduler {
     if (!heartbeatInProgress.compareAndSet(false, true)) {
       return Mono.empty();
     }
-    ActiveRuntimeBundle active = activeRuntimeConfigHolder.getActive();
+    GatewayRuntimeStatusBuilder.HeartbeatPayload payload = runtimeStatusBuilder.build();
     return gatewayClient
-        .heartbeat(
-            active == null ? null : active.apiId(),
-            active == null ? null : active.version(),
-            active == null ? null : active.contentHash())
+        .heartbeat(payload)
         .onErrorResume(
             ControlPlaneConfigClientException.class,
             ex -> {
@@ -77,6 +82,9 @@ public class GatewayHeartbeatScheduler {
                   "Gateway heartbeat failed gatewayId={} message={}",
                   gatewayProperties.gatewayId(),
                   ex.getMessage());
+              structuredLoggerProvider
+                  .getIfAvailable()
+                  .heartbeatFailed(payload.instanceId(), ex.getMessage());
               return Mono.empty();
             })
         .doFinally(signal -> heartbeatInProgress.set(false))

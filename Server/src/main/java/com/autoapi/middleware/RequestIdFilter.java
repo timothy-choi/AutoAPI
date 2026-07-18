@@ -1,8 +1,8 @@
 package com.autoapi.middleware;
 
+import com.autoapi.gateway.observability.RequestIdValidator;
 import com.autoapi.proxy.GatewayAttributes;
 import java.util.List;
-import java.util.UUID;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -11,11 +11,11 @@ import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
 @Component
-@Order(0)
+@Order(-1)
 public class RequestIdFilter implements WebFilter {
 
   public static final String HEADER = "X-Request-ID";
-  static final int MAX_REQUEST_ID_LENGTH = 128;
+  static final int MAX_REQUEST_ID_LENGTH = RequestIdValidator.MAX_REQUEST_ID_LENGTH;
 
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
@@ -26,17 +26,7 @@ public class RequestIdFilter implements WebFilter {
   }
 
   static String resolveRequestId(List<String> headerValues) {
-    if (headerValues != null) {
-      for (String value : headerValues) {
-        if (value != null) {
-          String trimmed = value.trim();
-          if (!trimmed.isEmpty()) {
-            return sanitize(trimmed);
-          }
-        }
-      }
-    }
-    return UUID.randomUUID().toString();
+    return RequestIdValidator.resolve(headerValues);
   }
 
   static String sanitize(String requestId) {
