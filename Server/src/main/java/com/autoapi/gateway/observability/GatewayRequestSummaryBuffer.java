@@ -4,10 +4,8 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
-import org.springframework.stereotype.Component;
 
 /** Bounded in-memory request summary ring buffer for gateway-local inspection. */
-@Component
 public class GatewayRequestSummaryBuffer {
 
   private final int capacity;

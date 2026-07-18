@@ -41,4 +41,10 @@ public class GatewayObservabilityAutoConfiguration {
       ObjectMapper objectMapper, GatewayInstanceIdentity identity) {
     return new GatewayStructuredLogger(objectMapper, identity.gatewayId());
   }
+
+  @Bean
+  GatewayRequestSummaryBuffer gatewayRequestSummaryBuffer(
+      GatewayObservabilityProperties properties) {
+    return new GatewayRequestSummaryBuffer(properties);
+  }
 }

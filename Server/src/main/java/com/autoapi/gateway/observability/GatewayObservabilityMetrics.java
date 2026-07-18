@@ -7,10 +7,8 @@ import io.micrometer.core.instrument.Timer;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.springframework.stereotype.Component;
 
 /** Unified gateway observability metrics with bounded-cardinality labels. */
-@Component
 public class GatewayObservabilityMetrics {
 
   private static final String GATEWAY_TAG = "gateway";
