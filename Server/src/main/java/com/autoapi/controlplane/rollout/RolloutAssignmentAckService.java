@@ -21,9 +21,9 @@ public class RolloutAssignmentAckService {
   private final Clock clock;
 
   public RolloutAssignmentAckService(
-      RuntimeRolloutRepositoryCustom rolloutRepository, Clock clock) {
+      RuntimeRolloutRepositoryCustom rolloutRepository, Clock eventsClock) {
     this.rolloutRepository = rolloutRepository;
-    this.clock = clock;
+    this.clock = eventsClock;
   }
 
   public Mono<Boolean> processReport(

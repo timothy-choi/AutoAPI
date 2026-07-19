@@ -60,7 +60,7 @@ public class GatewayGroupService {
       RolloutsProperties properties,
       ControlPlaneProperties controlPlaneProperties,
       ObjectMapper objectMapper,
-      Clock clock) {
+      Clock eventsClock) {
     this.repository = repository;
     this.rolloutRepository = rolloutRepository;
     this.projectService = projectService;
@@ -69,7 +69,7 @@ public class GatewayGroupService {
     this.properties = properties;
     this.controlPlaneProperties = controlPlaneProperties;
     this.objectMapper = objectMapper;
-    this.clock = clock;
+    this.clock = eventsClock;
   }
 
   @Transactional(transactionManager = "connectionFactoryTransactionManager")

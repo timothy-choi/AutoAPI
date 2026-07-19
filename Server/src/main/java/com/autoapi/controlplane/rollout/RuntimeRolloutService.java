@@ -73,7 +73,7 @@ public class RuntimeRolloutService {
       RolloutsProperties properties,
       ControlPlaneProperties controlPlaneProperties,
       ObjectMapper objectMapper,
-      Clock clock) {
+      Clock eventsClock) {
     this.rolloutRepository = rolloutRepository;
     this.gatewayGroupRepository = gatewayGroupRepository;
     this.configVersionRepository = configVersionRepository;
@@ -83,7 +83,7 @@ public class RuntimeRolloutService {
     this.properties = properties;
     this.controlPlaneProperties = controlPlaneProperties;
     this.objectMapper = objectMapper;
-    this.clock = clock;
+    this.clock = eventsClock;
   }
 
   @Transactional(transactionManager = "connectionFactoryTransactionManager")
