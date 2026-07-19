@@ -16,6 +16,7 @@ TEST_NETWORK="${TEST_NETWORK:-autoapi-container-startup-test}"
 CONTROL_PLANE_PORT="${CONTROL_PLANE_PORT:-18180}"
 POSTGRES_NAME="${POSTGRES_NAME:-autoapi-startup-test-postgres}"
 CONTROL_PLANE_NAME="${CONTROL_PLANE_NAME:-autoapi-startup-test-cp}"
+STARTUP_PEPPER_ERROR="Management token pepper must be configured with at least 16 characters"
 
 cleanup_test_stack() {
   docker rm -f "${CONTROL_PLANE_NAME}" "${POSTGRES_NAME}" >/dev/null 2>&1 || true
@@ -72,9 +73,79 @@ wait_for_container_exit_or_ready() {
   return 1
 }
 
+capture_container_logs() {
+  local container_name="$1"
+  local log_file="$2"
+  docker logs "${container_name}" >"${log_file}" 2>&1 || true
+}
+
+container_exit_code() {
+  local container_name="$1"
+  docker inspect --format '{{.State.ExitCode}}' "${container_name}" 2>/dev/null || echo 999
+}
+
+assert_container_exit_code() {
+  local container_name="$1"
+  local expected="$2"
+  local context="$3"
+  local actual
+
+  actual="$(container_exit_code "${container_name}")"
+  if [[ "${actual}" != "${expected}" ]]; then
+    echo "FAIL ${context}: expected exit code ${expected}, got ${actual}" >&2
+    return 1
+  fi
+  return 0
+}
+
 assert_logs_contain() {
-  local pattern="$1"
-  docker logs "${CONTROL_PLANE_NAME}" 2>&1 | smoke_redact_container_env | grep -q "${pattern}"
+  local container_name="$1"
+  local pattern="$2"
+  local log_file="$3"
+
+  if grep -Fq "${pattern}" "${log_file}"; then
+    return 0
+  fi
+
+  echo "FAIL ${container_name}: expected startup log message" >&2
+  smoke_redact_container_env <"${log_file}" | sed -n '1,200p' >&2
+  return 1
+}
+
+assert_startup_failure() {
+  local context="$1"
+  local log_file
+
+  log_file="$(mktemp)"
+  trap 'rm -f "${log_file}"' RETURN
+
+  if ! assert_container_exit_code "${CONTROL_PLANE_NAME}" "1" "${context}"; then
+    capture_container_logs "${CONTROL_PLANE_NAME}" "${log_file}"
+    assert_logs_contain "${CONTROL_PLANE_NAME}" "${STARTUP_PEPPER_ERROR}" "${log_file}" || true
+    return 1
+  fi
+
+  capture_container_logs "${CONTROL_PLANE_NAME}" "${log_file}"
+  assert_logs_contain "${CONTROL_PLANE_NAME}" "${STARTUP_PEPPER_ERROR}" "${log_file}"
+}
+
+assert_startup_diagnostics_redact_secrets() {
+  local log_file redacted_logs
+
+  log_file="$(mktemp)"
+  trap 'rm -f "${log_file}"' RETURN
+
+  capture_container_logs "${CONTROL_PLANE_NAME}" "${log_file}"
+  redacted_logs="$(smoke_redact_container_env <"${log_file}")"
+  if [[ "${redacted_logs}" == *"${SMOKE_MANAGEMENT_TOKEN_PEPPER}"* ]]; then
+    echo "FAIL startup diagnostics leaked configured management pepper" >&2
+    return 1
+  fi
+  if [[ "${redacted_logs}" == *"${SMOKE_BOOTSTRAP_ADMIN_TOKEN}"* ]]; then
+    echo "FAIL startup diagnostics leaked configured bootstrap token" >&2
+    return 1
+  fi
+  return 0
 }
 
 if ! docker info >/dev/null 2>&1; then
@@ -103,7 +174,7 @@ else
   echo "FAIL missing pepper: timed out without exit or readiness" >&2
   exit 1
 fi
-assert_logs_contain "Management token pepper must be configured" || {
+assert_startup_failure "missing pepper" || {
   echo "FAIL missing pepper: expected startup log message" >&2
   exit 1
 }
@@ -122,7 +193,7 @@ else
   echo "FAIL short pepper: timed out without exit or readiness" >&2
   exit 1
 fi
-assert_logs_contain "Management token pepper must be configured" || {
+assert_startup_failure "short pepper" || {
   echo "FAIL short pepper: expected startup log message" >&2
   exit 1
 }
@@ -138,12 +209,8 @@ if ! wait_until "startup-test control plane ready" 60 2 \
   echo "FAIL valid pepper: control plane did not become ready" >&2
   exit 1
 fi
-logs="$(docker logs "${CONTROL_PLANE_NAME}" 2>&1 | smoke_redact_container_env || true)"
-if [[ "${logs}" == *"${SMOKE_MANAGEMENT_TOKEN_PEPPER}"* ]]; then
-  echo "FAIL valid pepper: diagnostics leaked configured pepper" >&2
-  exit 1
-fi
-echo "PASS valid CI management token pepper starts successfully"
-echo "PASS failure diagnostics do not print configured pepper"
+echo "PASS valid management token pepper reaches readiness"
+assert_startup_diagnostics_redact_secrets || exit 1
+echo "PASS startup diagnostics redact secrets"
 
 echo "All container startup security tests passed"

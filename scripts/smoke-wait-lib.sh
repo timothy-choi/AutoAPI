@@ -50,11 +50,15 @@ assert_container_still_running() {
 
   exit_code="$(docker inspect --format '{{.State.ExitCode}}' "${container_name}" 2>/dev/null || echo 1)"
   echo "Container ${container_name} exited before readiness (exit=${exit_code})" >&2
+  local log_file
+  log_file="$(mktemp)"
+  docker logs "${container_name}" --tail 100 >"${log_file}" 2>&1 || true
   if declare -F smoke_redact_container_env >/dev/null; then
-    docker logs "${container_name}" --tail 100 2>&1 | smoke_redact_container_env >&2 || true
+    smoke_redact_container_env <"${log_file}" >&2 || true
   else
-    docker logs "${container_name}" --tail 100 >&2 || true
+    cat "${log_file}" >&2 || true
   fi
+  rm -f "${log_file}"
   return 1
 }
 

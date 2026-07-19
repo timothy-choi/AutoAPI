@@ -52,12 +52,12 @@ SMOKE_BOOTSTRAP_ADMIN_TOKEN="smoke-bootstrap-token-change-me-for-local-dev-only"
 assert_ok "valid security env loads" load_smoke_security_env
 
 env_output="$(control_plane_smoke_security_env_args)"
-echo "${env_output}" | grep -q 'AUTOAPI_MANAGEMENT_TOKEN_PEPPER=' || {
+[[ "${env_output}" == *"AUTOAPI_MANAGEMENT_TOKEN_PEPPER="* ]] || {
   echo "FAIL control-plane env args missing management pepper" >&2
   exit 1
 }
 echo "PASS control-plane env args include management pepper"
-echo "${env_output}" | grep -q 'AUTOAPI_BOOTSTRAP_ADMIN_TOKEN=' || {
+[[ "${env_output}" == *"AUTOAPI_BOOTSTRAP_ADMIN_TOKEN="* ]] || {
   echo "FAIL control-plane env args missing bootstrap token" >&2
   exit 1
 }
