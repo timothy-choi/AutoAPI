@@ -30,29 +30,6 @@ trap cleanup EXIT
 SMOKE_HEADERS_FILE="$(mktemp)"
 SMOKE_BODY_FILE="$(mktemp)"
 
-control_plane_json() {
-  local context="$1"
-  shift
-  local status curl_exit
-  set +e
-  status="$(
-    smoke_curl \
-      -D "${SMOKE_HEADERS_FILE}" \
-      -o "${SMOKE_BODY_FILE}" \
-      -w '%{http_code}' \
-      -H "$(smoke_management_auth_header)" \
-      "$@"
-  )"
-  curl_exit=$?
-  set -e
-  if [[ ${curl_exit} -ne 0 || "${status}" -lt 200 || "${status}" -ge 300 ]]; then
-    report_curl_failure "${context}" "${curl_exit}" "${status}"
-    smoke_redact_token "$(cat "${SMOKE_BODY_FILE}" 2>/dev/null || true)" >&2 || true
-    exit 1
-  fi
-  cat "${SMOKE_BODY_FILE}"
-}
-
 if [[ "${SMOKE_SKIP_UP}" != "true" ]]; then
   set_smoke_step "Starting compose stack"
   build_smoke_images_once

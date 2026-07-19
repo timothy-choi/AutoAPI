@@ -21,9 +21,9 @@ SMOKE_SNAPSHOT_FILE=""
 
 # shellcheck source=scripts/smoke-phase5-parser-lib.sh
 source "${ROOT}/scripts/smoke-phase5-parser-lib.sh"
+# shellcheck source=scripts/smoke-curl-lib.sh
+source "${ROOT}/scripts/smoke-curl-lib.sh"
 # shellcheck source=scripts/smoke-wait-lib.sh
-# shellcheck source=scripts/smoke-management-auth-lib.sh
-source "${ROOT}/scripts/smoke-management-auth-lib.sh"
 source "${ROOT}/scripts/smoke-wait-lib.sh"
 # shellcheck source=scripts/smoke-management-auth-lib.sh
 source "${ROOT}/scripts/smoke-management-auth-lib.sh"
@@ -71,38 +71,9 @@ print(payload.get("service", ""))
 PY
 }
 
-control_plane_mutate() {
-  local context="$1"
-  shift
-  local status curl_exit
-  set +e
-  status="$(
-    smoke_curl \
-      -D "${SMOKE_HEADERS_FILE}" \
-      -o "${SMOKE_BODY_FILE}" \
-      -w '%{http_code}' \
-      "$@"
-  )"
-  curl_exit=$?
-  set -e
-  if [[ ${curl_exit} -ne 0 || "${status}" -lt 200 || "${status}" -ge 300 ]]; then
-    report_curl_failure "${context}" "${curl_exit}" "${status}"
-    cat "${SMOKE_HEADERS_FILE}" >&2 || true
-    cat "${SMOKE_BODY_FILE}" >&2 || true
-    exit 1
-  fi
-}
-
-control_plane_json() {
-  local context="$1"
-  shift
-  control_plane_mutate "${context}" "$@"
-  cat "${SMOKE_BODY_FILE}"
-}
-
 convergence_converged() {
   local api_id="$1"
-  smoke_curl --fail "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/convergence" \
+  management_curl --fail "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/convergence" \
     | grep -q '"derivedState"[[:space:]]*:[[:space:]]*"CONVERGED"'
 }
 
@@ -120,7 +91,7 @@ assert_pre_failover_setup() {
   retry_json="$(fetch_retry_status)"
   assert_nonblank_gateway_id "${retry_json}"
 
-  snapshot_json="$(smoke_curl --fail "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/versions/1")"
+  snapshot_json="$(management_curl --fail "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/config/versions/1")"
   assert_published_retry_policy "${snapshot_json}"
 
   set_smoke_step "Priming retry budget with setup GET"
@@ -143,7 +114,6 @@ fetch_upstream_health() {
     smoke_curl \
       -o "${SMOKE_HEALTH_FILE}" \
       -w '%{http_code}' \
-      -H \"$(smoke_management_auth_header)\" \
       "${GATEWAY_A_URL}/internal/v1/upstream-health"
   )"
   curl_exit=$?
@@ -810,6 +780,8 @@ main() {
     wait_until "Control plane ready" 45 2 wait_http_ready "${CONTROL_PLANE_URL}"
     log_step "Control plane ready"
   fi
+
+  smoke_bootstrap_management "${CONTROL_PLANE_URL}"
 
   set_smoke_step "Creating project, API, pool, route"
   project_json="$(control_plane_json "create project" \

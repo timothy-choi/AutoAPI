@@ -105,16 +105,14 @@ set_smoke_step "Starting webhook receiver"
 start_webhook_receiver
 
 set_smoke_step "Creating project"
-PROJECT_JSON="$(smoke_curl -sf -X POST "${CONTROL_PLANE_URL}/api/v1/projects" \
-  -H "$(smoke_management_auth_header)" \
+PROJECT_JSON="$(management_curl -sf -X POST "${CONTROL_PLANE_URL}/api/v1/projects" \
   -H 'Content-Type: application/json' \
   -d '{"name":"phase11-smoke","description":"phase 11"}')"
 PROJECT_ID="$(json_field "${PROJECT_JSON}" id)"
 
 set_smoke_step "Creating webhook subscription"
-WEBHOOK_JSON="$(smoke_curl -sf -X POST \
+WEBHOOK_JSON="$(management_curl -sf -X POST \
   "${CONTROL_PLANE_URL}/api/v1/management/projects/${PROJECT_ID}/webhooks" \
-  -H "$(smoke_management_auth_header)" \
   -H 'Content-Type: application/json' \
   -d "{\"name\":\"smoke-hook\",\"url\":\"http://127.0.0.1:${WEBHOOK_PORT}/hook\",\"eventFilters\":[\"webhook.test.v1\"]}")"
 WEBHOOK_ID="$(python3 - "${WEBHOOK_JSON}" <<'PY'
@@ -129,9 +127,8 @@ PY
 )"
 
 set_smoke_step "Triggering test webhook delivery"
-smoke_curl -sf -X POST \
+management_curl -sf -X POST \
   "${CONTROL_PLANE_URL}/api/v1/management/projects/${PROJECT_ID}/webhooks/${WEBHOOK_ID}/test" \
-  -H "$(smoke_management_auth_header)" \
   -H 'Content-Type: application/json' -d '{}' >/dev/null
 
 set_smoke_step "Waiting for webhook delivery"
@@ -148,8 +145,7 @@ if [[ "${COUNT:-0}" -lt 1 ]]; then
 fi
 
 set_smoke_step "Verifying event API"
-EVENTS="$(smoke_curl -sf "${CONTROL_PLANE_URL}/api/v1/management/events?projectId=${PROJECT_ID}&eventType=project.created.v1" \
-  -H "$(smoke_management_auth_header)")"
+EVENTS="$(management_curl -sf "${CONTROL_PLANE_URL}/api/v1/management/events?projectId=${PROJECT_ID}&eventType=project.created.v1")"
 python3 - "${EVENTS}" <<'PY'
 import json, sys
 events = json.loads(sys.argv[1])
