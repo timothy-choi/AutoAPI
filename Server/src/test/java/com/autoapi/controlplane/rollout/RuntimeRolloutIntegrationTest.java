@@ -15,7 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.r2dbc.core.DatabaseClient;
+import org.springframework.test.context.TestPropertySource;
 
+@TestPropertySource(properties = "autoapi.rollouts.reconciler.poll-interval=1h")
 class RuntimeRolloutIntegrationTest extends ControlPlaneIntegrationTest {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();

@@ -373,7 +373,7 @@ public class RuntimeRolloutService {
         .flatMap(
             stage -> {
               if ("SUCCEEDED".equals(stage.status()) || "SKIPPED".equals(stage.status())) {
-                return Mono.just(rollout);
+                return rolloutRepository.findById(rollout.projectId(), rollout.id());
               }
               if ("PENDING".equals(stage.status())) {
                 return Mono.error(
@@ -384,29 +384,9 @@ public class RuntimeRolloutService {
                     ControlPlaneException.conflict("Current stage cannot be advanced"));
               }
               OffsetDateTime now = now();
-              return rolloutRepository
-                  .updateStageStatus(
-                      stage.id(),
-                      stage.status(),
-                      "SUCCEEDED",
-                      stage.version(),
-                      now,
-                      null,
-                      null,
-                      now,
-                      null,
-                      null,
-                      null)
-                  .switchIfEmpty(
-                      Mono.error(ControlPlaneException.conflict("Current stage advance conflict")))
+              return markCurrentStageSucceeded(rollout, stage, now, context)
                   .flatMap(
-                      ignored ->
-                          recordStageEvent(
-                                  rollout,
-                                  stage.stageIndex(),
-                                  PlatformEventTypes.RUNTIME_ROLLOUT_STAGE_SUCCEEDED,
-                                  context)
-                              .then(rolloutRepository.findById(rollout.projectId(), rollout.id())));
+                      ignored -> rolloutRepository.findById(rollout.projectId(), rollout.id()));
             })
         .switchIfEmpty(Mono.just(rollout));
   }
@@ -511,17 +491,23 @@ public class RuntimeRolloutService {
   }
 
   public Mono<Void> advanceToNextStage(RuntimeRolloutEntity rollout, EventContext context) {
-    int nextStageIndex = rollout.currentStageIndex() + 1;
     return rolloutRepository
-        .findStage(rollout.id(), nextStageIndex)
+        .findById(rollout.projectId(), rollout.id())
         .flatMap(
-            nextStage ->
-                rolloutRepository
-                    .listGatewaysByRollout(rollout.id(), 10_000, 0)
-                    .collectList()
-                    .flatMap(
-                        assignments -> activateStage(rollout, nextStage, assignments, context)))
-        .switchIfEmpty(finalizeSuccessfulRollout(rollout, context));
+            fresh -> {
+              int nextStageIndex = fresh.currentStageIndex() + 1;
+              return rolloutRepository
+                  .findStage(fresh.id(), nextStageIndex)
+                  .flatMap(
+                      nextStage ->
+                          rolloutRepository
+                              .listGatewaysByRollout(fresh.id(), 10_000, 0)
+                              .collectList()
+                              .flatMap(
+                                  assignments ->
+                                      activateStage(fresh, nextStage, assignments, context)))
+                  .switchIfEmpty(finalizeSuccessfulRollout(fresh, context));
+            });
   }
 
   Mono<Void> activateStage(
@@ -562,6 +548,39 @@ public class RuntimeRolloutService {
                                     null,
                                     null)))
             .then();
+    Mono<Void> ensureRolloutIndex =
+        rolloutRepository
+            .findById(rollout.projectId(), rollout.id())
+            .flatMap(
+                fresh -> {
+                  if (fresh.currentStageIndex() == stage.stageIndex()) {
+                    return Mono.just(fresh);
+                  }
+                  return rolloutRepository
+                      .updateRolloutFields(
+                          fresh.id(),
+                          fresh.version(),
+                          now,
+                          stage.stageIndex(),
+                          null,
+                          null,
+                          null,
+                          null)
+                      .switchIfEmpty(
+                          Mono.error(
+                              ControlPlaneException.conflict("Stage index update conflict")));
+                })
+            .then();
+    if ("RUNNING".equals(stage.status())) {
+      return ensureRolloutIndex
+          .then(assignGateways)
+          .then(
+              recordStageEvent(
+                  rollout,
+                  stage.stageIndex(),
+                  PlatformEventTypes.RUNTIME_ROLLOUT_STAGE_STARTED,
+                  context));
+    }
     return rolloutRepository
         .updateStageStatus(
             stage.id(),
@@ -576,9 +595,7 @@ public class RuntimeRolloutService {
             null,
             null)
         .switchIfEmpty(Mono.error(ControlPlaneException.conflict("Stage activation conflict")))
-        .then(
-            rolloutRepository.updateRolloutFields(
-                rollout.id(), rollout.version(), now, stage.stageIndex(), null, null, null, null))
+        .then(ensureRolloutIndex)
         .then(assignGateways)
         .then(
             recordStageEvent(
@@ -586,6 +603,61 @@ public class RuntimeRolloutService {
                 stage.stageIndex(),
                 PlatformEventTypes.RUNTIME_ROLLOUT_STAGE_STARTED,
                 context));
+  }
+
+  private Mono<Void> markCurrentStageSucceeded(
+      RuntimeRolloutEntity rollout,
+      RuntimeRolloutStageEntity stage,
+      OffsetDateTime now,
+      EventContext context) {
+    return rolloutRepository
+        .updateStageStatus(
+            stage.id(),
+            stage.status(),
+            "SUCCEEDED",
+            stage.version(),
+            now,
+            null,
+            null,
+            now,
+            null,
+            null,
+            null)
+        .switchIfEmpty(
+            rolloutRepository
+                .findStage(rollout.id(), stage.stageIndex())
+                .flatMap(
+                    reloaded -> {
+                      if ("SUCCEEDED".equals(reloaded.status())
+                          || "SKIPPED".equals(reloaded.status())) {
+                        return Mono.just(reloaded);
+                      }
+                      if (!Set.of("RUNNING", "OBSERVING").contains(reloaded.status())) {
+                        return Mono.error(
+                            ControlPlaneException.conflict("Current stage cannot be advanced"));
+                      }
+                      return rolloutRepository.updateStageStatus(
+                          reloaded.id(),
+                          reloaded.status(),
+                          "SUCCEEDED",
+                          reloaded.version(),
+                          now,
+                          null,
+                          null,
+                          now,
+                          null,
+                          null,
+                          null);
+                    })
+                .switchIfEmpty(
+                    Mono.error(ControlPlaneException.conflict("Current stage advance conflict"))))
+        .flatMap(
+            ignored ->
+                recordStageEvent(
+                    rollout,
+                    stage.stageIndex(),
+                    PlatformEventTypes.RUNTIME_ROLLOUT_STAGE_SUCCEEDED,
+                    context));
   }
 
   private Mono<Void> finalizeSuccessfulRollout(RuntimeRolloutEntity rollout, EventContext context) {
