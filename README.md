@@ -28,7 +28,7 @@ AutoAPI is being renovated into a **distributed API runtime and traffic-manageme
 - Management REST API at `/api/v1/**`
 - **Live gateway still uses static Phase 1 file config** — no polling or activation yet
 
-See [`Server/README.md`](Server/README.md) for build, run, management API, and configuration details. Phases 1–9 are implemented in `Server/` (traffic split, circuit breakers, observability). Run the matching smoke script under `scripts/` (e.g. `./scripts/smoke-phase9.sh`).
+See [`Server/README.md`](Server/README.md) for build, run, management API, and configuration details.
 
 **Phase 10 — dynamic service discovery**
 
@@ -37,13 +37,18 @@ See [`Server/README.md`](Server/README.md) for build, run, management API, and c
 - Membership changes auto-publish and activate runtime snapshots; gateways select eligible instances (round robin or consistent hash)
 - See [`docs/SERVICE_DISCOVERY.md`](docs/SERVICE_DISCOVERY.md) and run `./scripts/smoke-phase10.sh`
 
-## Roadmap (not yet implemented)
+**Phase 11 — platform events and webhooks**
 
-The following remain documented in `docs/` but are **not** implemented yet:
+- Durable platform events with transactional outbox and signed webhook delivery
+- See [`docs/EVENTS.md`](docs/EVENTS.md) and run `./scripts/smoke-phase11.sh`
 
-- Active health probes, hedged requests, HTTP-status retries
-- Kubernetes/AWS deployment automation
-- AWS deployment
+**Phase 12 — gateway groups and progressive rollouts**
+
+- Project-scoped gateway groups with label selectors and explicit membership
+- Progressive runtime configuration rollouts with deterministic cohorts, pause/resume, and rollback
+- See [`docs/ROLLOUTS.md`](docs/ROLLOUTS.md) and run `./scripts/smoke-phase12.sh`
+
+See [`Server/README.md`](Server/README.md) for build, run, management API, and configuration details. Phases 1–12 are implemented in `Server/`. Run the matching smoke script under `scripts/` (e.g. `./scripts/smoke-phase12.sh`).
 
 ## Quick start (Phase 1)
 

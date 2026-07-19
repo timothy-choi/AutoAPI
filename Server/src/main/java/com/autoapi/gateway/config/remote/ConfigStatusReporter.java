@@ -28,22 +28,32 @@ public class ConfigStatusReporter {
 
   private final ControlPlaneGatewayClient gatewayClient;
   private final GatewayProperties gatewayProperties;
+  private final RolloutAssignmentContextHolder rolloutAssignmentContextHolder;
   private final AtomicReference<PendingReport> pendingReport = new AtomicReference<>();
   private final AtomicBoolean deliveryInProgress = new AtomicBoolean(false);
   private Disposable retrySubscription;
 
   public ConfigStatusReporter(
-      ControlPlaneGatewayClient gatewayClient, GatewayProperties gatewayProperties) {
+      ControlPlaneGatewayClient gatewayClient,
+      GatewayProperties gatewayProperties,
+      RolloutAssignmentContextHolder rolloutAssignmentContextHolder) {
     this.gatewayClient = gatewayClient;
     this.gatewayProperties = gatewayProperties;
+    this.rolloutAssignmentContextHolder = rolloutAssignmentContextHolder;
   }
 
   public void submit(GatewayActivationAttempt attempt) {
     UUID reportId = UUID.randomUUID();
+    RolloutAssignmentContextHolder.RolloutAssignmentContext rolloutContext =
+        rolloutAssignmentContextHolder.get();
+    UUID rolloutId = rolloutContext == null ? null : rolloutContext.rolloutId();
+    Long assignmentGeneration =
+        rolloutContext == null ? null : rolloutContext.assignmentGeneration();
     PendingReport report =
         new PendingReport(
             reportId,
-            ConfigStatusPayload.fromAttempt(reportId, gatewayProperties.apiId(), attempt),
+            ConfigStatusPayload.fromAttempt(
+                reportId, gatewayProperties.apiId(), attempt, rolloutId, assignmentGeneration),
             0,
             0L);
     pendingReport.set(report);

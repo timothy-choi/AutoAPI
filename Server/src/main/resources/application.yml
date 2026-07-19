@@ -112,6 +112,24 @@ autoapi:
     retention:
       deliveries: 30d
       attempts: 30d
+  rollouts:
+    enabled: ${AUTOAPI_ROLLOUTS_ENABLED:true}
+    default-progression-mode: MANUAL
+    default-stage-timeout: 10m
+    default-observation-duration: 2m
+    default-required-converged-percentage: 100
+    default-auto-rollback: false
+    max-stages: 10
+    max-active-rollouts-per-project: 10
+    reconciler:
+      poll-interval: 1s
+      batch-size: 50
+    gateway-membership:
+      mode: SNAPSHOT_AT_START
+    labels:
+      max-labels: 32
+      max-key-length: 64
+      max-value-length: 128
 
 management:
   endpoints:

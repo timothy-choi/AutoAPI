@@ -184,6 +184,40 @@ services:
       retries: 20
       start_period: 60s
 
+  gateway-c:
+    image: autoapi-server:smoke
+    build:
+      context: ./Server
+    ports:
+      - "8083:8080"
+    environment:
+      AUTOAPI_ROLE: gateway
+      AUTOAPI_CONTROLPLANE_ENABLED: "false"
+      AUTOAPI_GATEWAY_CONFIG_SOURCE: control-plane
+      AUTOAPI_GATEWAY_ID: gateway-c
+      AUTOAPI_GATEWAY_GROUP: default
+      AUTOAPI_CONTROL_PLANE_BASE_URL: http://control-plane:8080
+      AUTOAPI_GATEWAY_API_ID: ${AUTOAPI_GATEWAY_API_ID:-}
+      AUTOAPI_GATEWAY_POLL_INTERVAL: 3s
+      AUTOAPI_GATEWAY_HEARTBEAT_INTERVAL: 5s
+      AUTOAPI_API_KEY_PEPPER: development-only-change-me-not-for-production-use
+      AUTOAPI_REDIS_URL: redis://redis:6379
+    depends_on:
+      control-plane:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      upstream-v1:
+        condition: service_healthy
+      upstream-v2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+      start_period: 60s
+
 volumes:
   autoapi-postgres-data:
 

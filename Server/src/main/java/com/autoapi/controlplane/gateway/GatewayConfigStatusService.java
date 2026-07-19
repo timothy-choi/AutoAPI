@@ -6,6 +6,8 @@ import com.autoapi.controlplane.gateway.GatewayConfigStatusService.ConfigStatusR
 import com.autoapi.controlplane.persistence.ConfigActivationEventEntity;
 import com.autoapi.controlplane.persistence.ConfigActivationEventRepository;
 import com.autoapi.controlplane.persistence.ConfigVersionRepository;
+import com.autoapi.controlplane.rollout.RolloutAssignmentAckService;
+import com.autoapi.controlplane.rollout.RolloutAssignmentAckService.RolloutConfigStatusReport;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
@@ -30,18 +32,23 @@ public class GatewayConfigStatusService {
   private final ConfigVersionRepository configVersionRepository;
   private final ConfigActivationEventRepository eventRepository;
   private final DatabaseClient databaseClient;
+  private final org.springframework.beans.factory.ObjectProvider<RolloutAssignmentAckService>
+      rolloutAssignmentAckService;
 
   public GatewayConfigStatusService(
       GatewayRegistrationService registrationService,
       ApiDefinitionService apiDefinitionService,
       ConfigVersionRepository configVersionRepository,
       ConfigActivationEventRepository eventRepository,
-      DatabaseClient databaseClient) {
+      DatabaseClient databaseClient,
+      org.springframework.beans.factory.ObjectProvider<RolloutAssignmentAckService>
+          rolloutAssignmentAckService) {
     this.registrationService = registrationService;
     this.apiDefinitionService = apiDefinitionService;
     this.configVersionRepository = configVersionRepository;
     this.eventRepository = eventRepository;
     this.databaseClient = databaseClient;
+    this.rolloutAssignmentAckService = rolloutAssignmentAckService;
   }
 
   @Transactional(transactionManager = "connectionFactoryTransactionManager")
@@ -73,8 +80,29 @@ public class GatewayConfigStatusService {
                                       : Mono.error(
                                           ControlPlaneException.reportIdConflict(
                                               "Report ID was already used with different content")))
-                          .switchIfEmpty(persistNewReport(gatewayId, request));
+                          .switchIfEmpty(persistNewReport(gatewayId, request))
+                          .flatMap(
+                              report -> processRolloutAck(gatewayId, request).thenReturn(report));
                     }));
+  }
+
+  private Mono<Void> processRolloutAck(String gatewayId, ConfigStatusRequest request) {
+    RolloutAssignmentAckService ackService = rolloutAssignmentAckService.getIfAvailable();
+    if (ackService == null || request.rolloutId() == null) {
+      return Mono.empty();
+    }
+    return ackService
+        .processReport(
+            gatewayId,
+            new RolloutConfigStatusReport(
+                request.rolloutId(),
+                request.assignmentGeneration(),
+                request.version(),
+                request.status()),
+            "ACK".equals(request.status()),
+            request.errorCode(),
+            request.diagnostic())
+        .then();
   }
 
   private Mono<ConfigStatusReport> persistNewReport(String gatewayId, ConfigStatusRequest request) {
@@ -273,7 +301,32 @@ public class GatewayConfigStatusService {
       String status,
       String errorCode,
       String diagnostic,
-      Long applyDurationMs) {}
+      Long applyDurationMs,
+      UUID rolloutId,
+      Long assignmentGeneration) {
+
+    public ConfigStatusRequest(
+        UUID reportId,
+        UUID apiId,
+        long version,
+        String contentHash,
+        String status,
+        String errorCode,
+        String diagnostic,
+        Long applyDurationMs) {
+      this(
+          reportId,
+          apiId,
+          version,
+          contentHash,
+          status,
+          errorCode,
+          diagnostic,
+          applyDurationMs,
+          null,
+          null);
+    }
+  }
 
   public record ConfigStatusReport(boolean idempotent, boolean accepted) {}
 }

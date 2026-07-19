@@ -182,12 +182,29 @@ public class ControlPlaneGatewayClient {
       String status,
       String errorCode,
       String diagnostic,
-      Long applyDurationMs) {
+      Long applyDurationMs,
+      UUID rolloutId,
+      Long assignmentGeneration) {
 
     public static ConfigStatusPayload ack(
-        UUID reportId, UUID apiId, long version, String contentHash, long applyDurationMs) {
+        UUID reportId,
+        UUID apiId,
+        long version,
+        String contentHash,
+        long applyDurationMs,
+        UUID rolloutId,
+        Long assignmentGeneration) {
       return new ConfigStatusPayload(
-          reportId, apiId, version, contentHash, "ACK", null, null, applyDurationMs);
+          reportId,
+          apiId,
+          version,
+          contentHash,
+          "ACK",
+          null,
+          null,
+          applyDurationMs,
+          rolloutId,
+          assignmentGeneration);
     }
 
     public static ConfigStatusPayload nack(
@@ -197,16 +214,37 @@ public class ControlPlaneGatewayClient {
         String contentHash,
         String errorCode,
         String diagnostic,
-        long applyDurationMs) {
+        long applyDurationMs,
+        UUID rolloutId,
+        Long assignmentGeneration) {
       return new ConfigStatusPayload(
-          reportId, apiId, version, contentHash, "NACK", errorCode, diagnostic, applyDurationMs);
+          reportId,
+          apiId,
+          version,
+          contentHash,
+          "NACK",
+          errorCode,
+          diagnostic,
+          applyDurationMs,
+          rolloutId,
+          assignmentGeneration);
     }
 
     public static ConfigStatusPayload fromAttempt(
-        UUID reportId, UUID apiId, GatewayActivationAttempt attempt) {
+        UUID reportId,
+        UUID apiId,
+        GatewayActivationAttempt attempt,
+        UUID rolloutId,
+        Long assignmentGeneration) {
       if (attempt.success()) {
         return ack(
-            reportId, apiId, attempt.version(), attempt.contentHash(), attempt.applyDurationMs());
+            reportId,
+            apiId,
+            attempt.version(),
+            attempt.contentHash(),
+            attempt.applyDurationMs(),
+            rolloutId,
+            assignmentGeneration);
       }
       return nack(
           reportId,
@@ -215,7 +253,9 @@ public class ControlPlaneGatewayClient {
           attempt.contentHash(),
           attempt.errorCode(),
           attempt.diagnostic(),
-          attempt.applyDurationMs());
+          attempt.applyDurationMs(),
+          rolloutId,
+          assignmentGeneration);
     }
   }
 }

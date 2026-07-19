@@ -197,7 +197,11 @@ class ControlPlaneConfigPollerTest {
                 API_ID,
                 SNAPSHOT.version(),
                 SNAPSHOT.contentHash(),
-                "/api/v1/gateway-config/" + API_ID + "/versions/" + SNAPSHOT.version()));
+                "/api/v1/gateway-config/" + API_ID + "/versions/" + SNAPSHOT.version(),
+                null,
+                null,
+                null,
+                "API_DEFAULT"));
     writeResponse(exchange, 200, "application/json", body);
   }
 

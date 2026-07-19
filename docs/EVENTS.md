@@ -24,3 +24,14 @@ Deliveries use HMAC-SHA256 over `timestamp + "." + rawJSONBody` with header `X-A
 ## Configuration
 
 See `autoapi.events.*` and `autoapi.webhooks.*` in `application.yml`. Set `AUTOAPI_WEBHOOK_SECRET_MASTER_KEY` to a Base64-encoded 32-byte key in production.
+
+## Phase 12 rollout events
+
+Gateway group and rollout lifecycle events are versioned and webhook-deliverable:
+
+- `gateway_group.created.v1`, `gateway_group.updated.v1`, `gateway_group.deleted.v1`, `gateway_group.membership_changed.v1`
+- `runtime_rollout.created.v1`, `runtime_rollout.started.v1`, `runtime_rollout.paused.v1`, `runtime_rollout.resumed.v1`, `runtime_rollout.cancelled.v1`, `runtime_rollout.failed.v1`, `runtime_rollout.succeeded.v1`
+- `runtime_rollout.stage.started.v1`, `runtime_rollout.stage.observing.v1`, `runtime_rollout.stage.succeeded.v1`, `runtime_rollout.stage.failed.v1`
+- `runtime_rollout.rollback.started.v1`, `runtime_rollout.rollback.succeeded.v1`, `runtime_rollout.rollback.failed.v1`
+
+See [`ROLLOUTS.md`](./ROLLOUTS.md) for rollout semantics and operator workflow.
