@@ -71,6 +71,27 @@ public final class PlatformEventTypes {
       "runtime_rollout.rollback.succeeded.v1";
   public static final String RUNTIME_ROLLOUT_ROLLBACK_FAILED = "runtime_rollout.rollback.failed.v1";
 
+  public static final String ORGANIZATION_CREATED = "organization.created.v1";
+  public static final String ORGANIZATION_UPDATED = "organization.updated.v1";
+  public static final String ORGANIZATION_SUSPENDED = "organization.suspended.v1";
+
+  public static final String PRINCIPAL_ROLE_BINDING_CREATED = "principal.role_binding.created.v1";
+  public static final String PRINCIPAL_ROLE_BINDING_REVOKED = "principal.role_binding.revoked.v1";
+
+  public static final String SERVICE_ACCOUNT_CREATED = "service_account.created.v1";
+  public static final String SERVICE_ACCOUNT_UPDATED = "service_account.updated.v1";
+  public static final String SERVICE_ACCOUNT_DISABLED = "service_account.disabled.v1";
+
+  public static final String MANAGEMENT_CREDENTIAL_CREATED = "management_credential.created.v1";
+  public static final String MANAGEMENT_CREDENTIAL_ROTATED = "management_credential.rotated.v1";
+  public static final String MANAGEMENT_CREDENTIAL_REVOKED = "management_credential.revoked.v1";
+  public static final String MANAGEMENT_CREDENTIAL_EXPIRED = "management_credential.expired.v1";
+
+  public static final String MANAGEMENT_AUTHENTICATION_FAILED =
+      "management_authentication.failed.v1";
+  public static final String MANAGEMENT_AUTHORIZATION_DENIED = "management_authorization.denied.v1";
+  public static final String MANAGEMENT_BOOTSTRAP_INITIALIZED = "bootstrap_admin_initialized.v1";
+
   /** Event types excluded from default webhook fan-out to prevent recursion. */
   public static final Set<String> NON_DELIVERABLE_EVENT_TYPES =
       Set.of(
@@ -128,7 +149,22 @@ public final class PlatformEventTypes {
           RUNTIME_ROLLOUT_STAGE_FAILED,
           RUNTIME_ROLLOUT_ROLLBACK_STARTED,
           RUNTIME_ROLLOUT_ROLLBACK_SUCCEEDED,
-          RUNTIME_ROLLOUT_ROLLBACK_FAILED);
+          RUNTIME_ROLLOUT_ROLLBACK_FAILED,
+          ORGANIZATION_CREATED,
+          ORGANIZATION_UPDATED,
+          ORGANIZATION_SUSPENDED,
+          PRINCIPAL_ROLE_BINDING_CREATED,
+          PRINCIPAL_ROLE_BINDING_REVOKED,
+          SERVICE_ACCOUNT_CREATED,
+          SERVICE_ACCOUNT_UPDATED,
+          SERVICE_ACCOUNT_DISABLED,
+          MANAGEMENT_CREDENTIAL_CREATED,
+          MANAGEMENT_CREDENTIAL_ROTATED,
+          MANAGEMENT_CREDENTIAL_REVOKED,
+          MANAGEMENT_CREDENTIAL_EXPIRED,
+          MANAGEMENT_AUTHENTICATION_FAILED,
+          MANAGEMENT_AUTHORIZATION_DENIED,
+          MANAGEMENT_BOOTSTRAP_INITIALIZED);
 
   private PlatformEventTypes() {}
 

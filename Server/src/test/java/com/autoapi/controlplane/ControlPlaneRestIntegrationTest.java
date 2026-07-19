@@ -182,10 +182,10 @@ class ControlPlaneRestIntegrationTest extends ControlPlaneIntegrationTest {
         .header("Host", "api.autoapi.local")
         .exchange()
         .expectStatus()
-        .isNotFound()
+        .isForbidden()
         .expectBody()
-        .jsonPath("$.error.code")
-        .doesNotExist();
+        .jsonPath("$.code")
+        .isEqualTo("PERMISSION_DENIED");
 
     org.junit.jupiter.api.Assertions.assertEquals(
         upstreamPathBefore, upstream.lastPath(), "Unknown management paths must not be proxied");

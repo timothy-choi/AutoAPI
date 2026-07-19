@@ -22,7 +22,11 @@ SMOKE_SNAPSHOT_FILE=""
 # shellcheck source=scripts/smoke-phase5-parser-lib.sh
 source "${ROOT}/scripts/smoke-phase5-parser-lib.sh"
 # shellcheck source=scripts/smoke-wait-lib.sh
+# shellcheck source=scripts/smoke-management-auth-lib.sh
+source "${ROOT}/scripts/smoke-management-auth-lib.sh"
 source "${ROOT}/scripts/smoke-wait-lib.sh"
+# shellcheck source=scripts/smoke-management-auth-lib.sh
+source "${ROOT}/scripts/smoke-management-auth-lib.sh"
 # shellcheck source=scripts/smoke-retry-lib.sh
 source "${ROOT}/scripts/smoke-retry-lib.sh"
 # shellcheck source=scripts/smoke-compose-lib.sh
@@ -139,6 +143,7 @@ fetch_upstream_health() {
     smoke_curl \
       -o "${SMOKE_HEALTH_FILE}" \
       -w '%{http_code}' \
+      -H \"$(smoke_management_auth_header)\" \
       "${GATEWAY_A_URL}/internal/v1/upstream-health"
   )"
   curl_exit=$?

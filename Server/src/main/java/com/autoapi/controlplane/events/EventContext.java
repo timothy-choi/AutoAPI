@@ -16,6 +16,21 @@ public record EventContext(
         "MANAGEMENT_API");
   }
 
+  public static EventContext fromPrincipal(
+      String correlationId, com.autoapi.controlplane.managementauth.ManagementPrincipal principal) {
+    if (principal == null) {
+      return managementApi(correlationId);
+    }
+    return new EventContext(
+        correlationId == null || correlationId.isBlank()
+            ? UUID.randomUUID().toString()
+            : correlationId,
+        null,
+        principal.principalType().actorType(),
+        principal.principalId().toString(),
+        principal.authenticationMethod().name());
+  }
+
   public static EventContext system(String actorId, String source) {
     return new EventContext(UUID.randomUUID().toString(), null, "SYSTEM", actorId, source);
   }

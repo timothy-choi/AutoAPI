@@ -1,5 +1,6 @@
 package com.autoapi.controlplane;
 
+import com.autoapi.controlplane.managementauth.ManagementAuthProperties;
 import com.autoapi.runtime.AutoApiRole;
 import com.autoapi.runtime.ConditionalOnAutoApiRole;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -15,6 +16,6 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
     havingValue = "true",
     matchIfMissing = true)
 @EnableR2dbcRepositories(basePackages = "com.autoapi.controlplane.persistence")
-@EnableConfigurationProperties(ControlPlaneProperties.class)
+@EnableConfigurationProperties({ControlPlaneProperties.class, ManagementAuthProperties.class})
 @EnableTransactionManagement
 public class ControlPlaneConfiguration {}

@@ -131,6 +131,24 @@ autoapi:
       max-key-length: 64
       max-value-length: 128
 
+  management-auth:
+    enabled: ${AUTOAPI_MANAGEMENT_AUTH_ENABLED:true}
+    token:
+      prefix: aat
+      default-ttl: 30d
+      max-ttl: 365d
+      secret-bytes: 32
+      last-used-update-interval: 15m
+      pepper: ${AUTOAPI_MANAGEMENT_TOKEN_PEPPER:}
+    bootstrap:
+      enabled: ${AUTOAPI_BOOTSTRAP_ENABLED:true}
+      token: ${AUTOAPI_BOOTSTRAP_ADMIN_TOKEN:}
+      allow-after-initialization: false
+    authorization:
+      default-deny: true
+    security:
+      allow-unauthenticated-development: false
+
 management:
   endpoints:
     web:

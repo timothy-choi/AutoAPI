@@ -30,7 +30,11 @@ source "${ROOT}/scripts/smoke-curl-lib.sh"
 # shellcheck source=scripts/smoke-compose-lib.sh
 source "${ROOT}/scripts/smoke-compose-lib.sh"
 # shellcheck source=scripts/smoke-wait-lib.sh
+# shellcheck source=scripts/smoke-management-auth-lib.sh
+source "${ROOT}/scripts/smoke-management-auth-lib.sh"
 source "${ROOT}/scripts/smoke-wait-lib.sh"
+# shellcheck source=scripts/smoke-management-auth-lib.sh
+source "${ROOT}/scripts/smoke-management-auth-lib.sh"
 
 json_field() {
   python3 - "$1" "$2" <<'PY'
@@ -171,6 +175,7 @@ gateway_request() {
       -D "${SMOKE_HEADERS_FILE}" \
       -o "${SMOKE_BODY_FILE}" \
       -w '%{http_code}' \
+      -H \"$(smoke_management_auth_header)\" \
       -H 'Host: api.autoapi.local' \
       "${GATEWAY_A_URL}/v1/orders/${path_suffix}"
   )"

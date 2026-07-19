@@ -1,0 +1,259 @@
+package com.autoapi.controlplane.managementauth;
+
+import java.util.EnumSet;
+import java.util.Set;
+
+/** Built-in roles and their permission matrix (single source of truth). */
+public enum BuiltInRole {
+  ORGANIZATION_OWNER(
+      EnumSet.of(
+          ManagementPermission.ORGANIZATION_READ,
+          ManagementPermission.ORGANIZATION_MANAGE,
+          ManagementPermission.ORGANIZATION_MEMBERS_MANAGE,
+          ManagementPermission.PROJECT_CREATE,
+          ManagementPermission.PROJECT_READ,
+          ManagementPermission.PROJECT_UPDATE,
+          ManagementPermission.PROJECT_DELETE,
+          ManagementPermission.PROJECT_MEMBERS_MANAGE,
+          ManagementPermission.API_READ,
+          ManagementPermission.API_MANAGE,
+          ManagementPermission.ROUTE_READ,
+          ManagementPermission.ROUTE_MANAGE,
+          ManagementPermission.POLICY_READ,
+          ManagementPermission.POLICY_MANAGE,
+          ManagementPermission.CONFIGURATION_READ,
+          ManagementPermission.CONFIGURATION_CREATE,
+          ManagementPermission.CONFIGURATION_ACTIVATE,
+          ManagementPermission.CONFIGURATION_ROLLBACK,
+          ManagementPermission.GATEWAY_READ,
+          ManagementPermission.GATEWAY_MANAGE,
+          ManagementPermission.GATEWAY_GROUP_READ,
+          ManagementPermission.GATEWAY_GROUP_MANAGE,
+          ManagementPermission.ROLLOUT_READ,
+          ManagementPermission.ROLLOUT_CREATE,
+          ManagementPermission.ROLLOUT_START,
+          ManagementPermission.ROLLOUT_ADVANCE,
+          ManagementPermission.ROLLOUT_PAUSE,
+          ManagementPermission.ROLLOUT_RESUME,
+          ManagementPermission.ROLLOUT_CANCEL,
+          ManagementPermission.ROLLOUT_ROLLBACK,
+          ManagementPermission.SERVICE_READ,
+          ManagementPermission.SERVICE_MANAGE,
+          ManagementPermission.SERVICE_INSTANCE_READ,
+          ManagementPermission.SERVICE_INSTANCE_MANAGE,
+          ManagementPermission.EVENT_READ,
+          ManagementPermission.AUDIT_READ,
+          ManagementPermission.WEBHOOK_READ,
+          ManagementPermission.WEBHOOK_MANAGE,
+          ManagementPermission.WEBHOOK_DELIVERY_READ,
+          ManagementPermission.WEBHOOK_DELIVERY_REPLAY,
+          ManagementPermission.CREDENTIAL_READ,
+          ManagementPermission.CREDENTIAL_CREATE,
+          ManagementPermission.CREDENTIAL_ROTATE,
+          ManagementPermission.CREDENTIAL_REVOKE,
+          ManagementPermission.SERVICE_ACCOUNT_READ,
+          ManagementPermission.SERVICE_ACCOUNT_MANAGE)),
+
+  ORGANIZATION_ADMIN(
+      EnumSet.of(
+          ManagementPermission.ORGANIZATION_READ,
+          ManagementPermission.ORGANIZATION_MANAGE,
+          ManagementPermission.ORGANIZATION_MEMBERS_MANAGE,
+          ManagementPermission.PROJECT_CREATE,
+          ManagementPermission.PROJECT_READ,
+          ManagementPermission.PROJECT_UPDATE,
+          ManagementPermission.PROJECT_DELETE,
+          ManagementPermission.PROJECT_MEMBERS_MANAGE,
+          ManagementPermission.API_READ,
+          ManagementPermission.API_MANAGE,
+          ManagementPermission.ROUTE_READ,
+          ManagementPermission.ROUTE_MANAGE,
+          ManagementPermission.POLICY_READ,
+          ManagementPermission.POLICY_MANAGE,
+          ManagementPermission.CONFIGURATION_READ,
+          ManagementPermission.CONFIGURATION_CREATE,
+          ManagementPermission.CONFIGURATION_ACTIVATE,
+          ManagementPermission.CONFIGURATION_ROLLBACK,
+          ManagementPermission.GATEWAY_READ,
+          ManagementPermission.GATEWAY_MANAGE,
+          ManagementPermission.GATEWAY_GROUP_READ,
+          ManagementPermission.GATEWAY_GROUP_MANAGE,
+          ManagementPermission.ROLLOUT_READ,
+          ManagementPermission.ROLLOUT_CREATE,
+          ManagementPermission.ROLLOUT_START,
+          ManagementPermission.ROLLOUT_ADVANCE,
+          ManagementPermission.ROLLOUT_PAUSE,
+          ManagementPermission.ROLLOUT_RESUME,
+          ManagementPermission.ROLLOUT_CANCEL,
+          ManagementPermission.ROLLOUT_ROLLBACK,
+          ManagementPermission.SERVICE_READ,
+          ManagementPermission.SERVICE_MANAGE,
+          ManagementPermission.SERVICE_INSTANCE_READ,
+          ManagementPermission.SERVICE_INSTANCE_MANAGE,
+          ManagementPermission.EVENT_READ,
+          ManagementPermission.AUDIT_READ,
+          ManagementPermission.WEBHOOK_READ,
+          ManagementPermission.WEBHOOK_MANAGE,
+          ManagementPermission.WEBHOOK_DELIVERY_READ,
+          ManagementPermission.WEBHOOK_DELIVERY_REPLAY,
+          ManagementPermission.CREDENTIAL_READ,
+          ManagementPermission.CREDENTIAL_CREATE,
+          ManagementPermission.CREDENTIAL_ROTATE,
+          ManagementPermission.CREDENTIAL_REVOKE,
+          ManagementPermission.SERVICE_ACCOUNT_READ,
+          ManagementPermission.SERVICE_ACCOUNT_MANAGE)),
+
+  ORGANIZATION_AUDITOR(
+      EnumSet.of(
+          ManagementPermission.ORGANIZATION_READ,
+          ManagementPermission.PROJECT_READ,
+          ManagementPermission.EVENT_READ,
+          ManagementPermission.AUDIT_READ,
+          ManagementPermission.ROLLOUT_READ,
+          ManagementPermission.WEBHOOK_DELIVERY_READ)),
+
+  PROJECT_ADMIN(
+      EnumSet.of(
+          ManagementPermission.PROJECT_READ,
+          ManagementPermission.PROJECT_UPDATE,
+          ManagementPermission.PROJECT_MEMBERS_MANAGE,
+          ManagementPermission.API_READ,
+          ManagementPermission.API_MANAGE,
+          ManagementPermission.ROUTE_READ,
+          ManagementPermission.ROUTE_MANAGE,
+          ManagementPermission.POLICY_READ,
+          ManagementPermission.POLICY_MANAGE,
+          ManagementPermission.CONFIGURATION_READ,
+          ManagementPermission.CONFIGURATION_CREATE,
+          ManagementPermission.CONFIGURATION_ACTIVATE,
+          ManagementPermission.CONFIGURATION_ROLLBACK,
+          ManagementPermission.GATEWAY_READ,
+          ManagementPermission.GATEWAY_MANAGE,
+          ManagementPermission.GATEWAY_GROUP_READ,
+          ManagementPermission.GATEWAY_GROUP_MANAGE,
+          ManagementPermission.ROLLOUT_READ,
+          ManagementPermission.ROLLOUT_CREATE,
+          ManagementPermission.ROLLOUT_START,
+          ManagementPermission.ROLLOUT_ADVANCE,
+          ManagementPermission.ROLLOUT_PAUSE,
+          ManagementPermission.ROLLOUT_RESUME,
+          ManagementPermission.ROLLOUT_CANCEL,
+          ManagementPermission.ROLLOUT_ROLLBACK,
+          ManagementPermission.SERVICE_READ,
+          ManagementPermission.SERVICE_MANAGE,
+          ManagementPermission.SERVICE_INSTANCE_READ,
+          ManagementPermission.SERVICE_INSTANCE_MANAGE,
+          ManagementPermission.EVENT_READ,
+          ManagementPermission.AUDIT_READ,
+          ManagementPermission.WEBHOOK_READ,
+          ManagementPermission.WEBHOOK_MANAGE,
+          ManagementPermission.WEBHOOK_DELIVERY_READ,
+          ManagementPermission.WEBHOOK_DELIVERY_REPLAY,
+          ManagementPermission.CREDENTIAL_READ,
+          ManagementPermission.CREDENTIAL_CREATE,
+          ManagementPermission.CREDENTIAL_ROTATE,
+          ManagementPermission.CREDENTIAL_REVOKE,
+          ManagementPermission.SERVICE_ACCOUNT_READ,
+          ManagementPermission.SERVICE_ACCOUNT_MANAGE)),
+
+  PROJECT_OPERATOR(
+      EnumSet.of(
+          ManagementPermission.PROJECT_READ,
+          ManagementPermission.API_READ,
+          ManagementPermission.ROUTE_READ,
+          ManagementPermission.POLICY_READ,
+          ManagementPermission.CONFIGURATION_READ,
+          ManagementPermission.CONFIGURATION_CREATE,
+          ManagementPermission.CONFIGURATION_ACTIVATE,
+          ManagementPermission.CONFIGURATION_ROLLBACK,
+          ManagementPermission.GATEWAY_READ,
+          ManagementPermission.GATEWAY_MANAGE,
+          ManagementPermission.GATEWAY_GROUP_READ,
+          ManagementPermission.GATEWAY_GROUP_MANAGE,
+          ManagementPermission.ROLLOUT_READ,
+          ManagementPermission.ROLLOUT_CREATE,
+          ManagementPermission.ROLLOUT_START,
+          ManagementPermission.ROLLOUT_ADVANCE,
+          ManagementPermission.ROLLOUT_PAUSE,
+          ManagementPermission.ROLLOUT_RESUME,
+          ManagementPermission.ROLLOUT_CANCEL,
+          ManagementPermission.ROLLOUT_ROLLBACK,
+          ManagementPermission.SERVICE_READ,
+          ManagementPermission.SERVICE_MANAGE,
+          ManagementPermission.SERVICE_INSTANCE_READ,
+          ManagementPermission.SERVICE_INSTANCE_MANAGE,
+          ManagementPermission.EVENT_READ)),
+
+  PROJECT_DEVELOPER(
+      EnumSet.of(
+          ManagementPermission.PROJECT_READ,
+          ManagementPermission.API_READ,
+          ManagementPermission.API_MANAGE,
+          ManagementPermission.ROUTE_READ,
+          ManagementPermission.ROUTE_MANAGE,
+          ManagementPermission.POLICY_READ,
+          ManagementPermission.POLICY_MANAGE,
+          ManagementPermission.CONFIGURATION_READ,
+          ManagementPermission.CONFIGURATION_CREATE,
+          ManagementPermission.SERVICE_READ,
+          ManagementPermission.SERVICE_MANAGE,
+          ManagementPermission.EVENT_READ)),
+
+  PROJECT_VIEWER(
+      EnumSet.of(
+          ManagementPermission.PROJECT_READ,
+          ManagementPermission.API_READ,
+          ManagementPermission.ROUTE_READ,
+          ManagementPermission.POLICY_READ,
+          ManagementPermission.CONFIGURATION_READ,
+          ManagementPermission.GATEWAY_READ,
+          ManagementPermission.GATEWAY_GROUP_READ,
+          ManagementPermission.ROLLOUT_READ,
+          ManagementPermission.SERVICE_READ,
+          ManagementPermission.SERVICE_INSTANCE_READ,
+          ManagementPermission.EVENT_READ,
+          ManagementPermission.WEBHOOK_READ)),
+
+  PROJECT_AUDITOR(
+      EnumSet.of(
+          ManagementPermission.PROJECT_READ,
+          ManagementPermission.EVENT_READ,
+          ManagementPermission.AUDIT_READ,
+          ManagementPermission.ROLLOUT_READ,
+          ManagementPermission.WEBHOOK_DELIVERY_READ)),
+
+  ROLLOUT_OPERATOR(
+      EnumSet.of(
+          ManagementPermission.PROJECT_READ,
+          ManagementPermission.GATEWAY_GROUP_READ,
+          ManagementPermission.ROLLOUT_READ,
+          ManagementPermission.ROLLOUT_CREATE,
+          ManagementPermission.ROLLOUT_START,
+          ManagementPermission.ROLLOUT_ADVANCE,
+          ManagementPermission.ROLLOUT_PAUSE,
+          ManagementPermission.ROLLOUT_RESUME,
+          ManagementPermission.ROLLOUT_CANCEL,
+          ManagementPermission.ROLLOUT_ROLLBACK,
+          ManagementPermission.EVENT_READ));
+
+  private final Set<ManagementPermission> permissions;
+
+  BuiltInRole(Set<ManagementPermission> permissions) {
+    this.permissions = Set.copyOf(permissions);
+  }
+
+  public Set<ManagementPermission> permissions() {
+    return permissions;
+  }
+
+  public boolean isOrganizationScoped() {
+    return name().startsWith("ORGANIZATION_");
+  }
+
+  public static BuiltInRole parse(String raw) {
+    if (raw == null || raw.isBlank()) {
+      throw new IllegalArgumentException("Role must not be blank");
+    }
+    return BuiltInRole.valueOf(raw.trim().toUpperCase());
+  }
+}

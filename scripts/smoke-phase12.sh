@@ -22,6 +22,8 @@ source "${ROOT}/scripts/smoke-curl-lib.sh"
 source "${ROOT}/scripts/smoke-compose-lib.sh"
 # shellcheck source=scripts/smoke-wait-lib.sh
 source "${ROOT}/scripts/smoke-wait-lib.sh"
+# shellcheck source=scripts/smoke-management-auth-lib.sh
+source "${ROOT}/scripts/smoke-management-auth-lib.sh"
 
 cleanup() {
   rm -f "${SMOKE_HEADERS_FILE}" "${SMOKE_BODY_FILE}"
@@ -58,6 +60,7 @@ control_plane_json() {
       -D "${SMOKE_HEADERS_FILE}" \
       -o "${SMOKE_BODY_FILE}" \
       -w '%{http_code}' \
+      -H "$(smoke_management_auth_header)" \
       "$@"
   )"
   curl_exit=$?
@@ -104,6 +107,7 @@ fi
 
 set_smoke_step "Waiting for services"
 wait_until "control-plane ready" 60 2 smoke_curl --fail "${CONTROL_PLANE_URL}/readyz" >/dev/null
+smoke_bootstrap_management "${CONTROL_PLANE_URL}"
 wait_until "gateway-a ready" 60 2 smoke_curl --fail "${GATEWAY_A_URL}/readyz" >/dev/null
 wait_until "gateway-b ready" 60 2 smoke_curl --fail "${GATEWAY_B_URL}/readyz" >/dev/null
 wait_until "gateway-c ready" 60 2 smoke_curl --fail "${GATEWAY_C_URL}/readyz" >/dev/null

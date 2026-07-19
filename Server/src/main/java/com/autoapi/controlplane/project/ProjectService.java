@@ -35,9 +35,11 @@ public class ProjectService {
   }
 
   @Transactional(transactionManager = "connectionFactoryTransactionManager")
-  public Mono<ProjectEntity> create(String name, String description, EventContext context) {
+  public Mono<ProjectEntity> create(
+      UUID organizationId, String name, String description, EventContext context) {
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-    ProjectEntity entity = new ProjectEntity(UUID.randomUUID(), name, description, now, now);
+    ProjectEntity entity =
+        new ProjectEntity(UUID.randomUUID(), organizationId, name, description, now, now);
     EventContext eventContext = context != null ? context : EventContext.managementApi(null);
     return projectRepository
         .save(entity)
@@ -52,7 +54,8 @@ public class ProjectService {
                             "PROJECT",
                             saved.id().toString(),
                             eventContext,
-                            Map.of("name", saved.name())))
+                            Map.of(
+                                "name", saved.name(), "organizationId", organizationId.toString())))
                     .thenReturn(saved))
         .onErrorMap(
             DataIntegrityViolationException.class,
@@ -62,8 +65,9 @@ public class ProjectService {
             ex -> ControlPlaneException.internal("Failed to create project"));
   }
 
-  public Mono<ProjectEntity> create(String name, String description) {
-    return create(name, description, EventContext.managementApi(null));
+  public Mono<ProjectEntity> create(String name, String description, EventContext context) {
+    return create(
+        UUID.fromString("00000000-0000-0000-0000-000000000001"), name, description, context);
   }
 
   public Flux<ProjectEntity> list() {

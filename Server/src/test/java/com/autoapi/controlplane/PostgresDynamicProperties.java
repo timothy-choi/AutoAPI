@@ -22,5 +22,13 @@ public interface PostgresDynamicProperties {
     registry.add(
         "autoapi.security.api-key-pepper",
         () -> com.autoapi.support.SecurityTestFixtures.TEST_PEPPER);
+    registry.add(
+        "autoapi.management-auth.token.pepper",
+        () -> com.autoapi.support.ManagementAuthTestSupport.TEST_MANAGEMENT_PEPPER);
+    registry.add(
+        "autoapi.management-auth.bootstrap.token",
+        () -> com.autoapi.support.ManagementAuthTestSupport.TEST_BOOTSTRAP_TOKEN);
+    registry.add("autoapi.management-auth.enabled", () -> "true");
+    registry.add("autoapi.management-auth.bootstrap.enabled", () -> "true");
   }
 }

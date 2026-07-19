@@ -29,7 +29,11 @@ source "${ROOT}/scripts/smoke-curl-lib.sh"
 # shellcheck source=scripts/smoke-compose-lib.sh
 source "${ROOT}/scripts/smoke-compose-lib.sh"
 # shellcheck source=scripts/smoke-wait-lib.sh
+# shellcheck source=scripts/smoke-management-auth-lib.sh
+source "${ROOT}/scripts/smoke-management-auth-lib.sh"
 source "${ROOT}/scripts/smoke-wait-lib.sh"
+# shellcheck source=scripts/smoke-management-auth-lib.sh
+source "${ROOT}/scripts/smoke-management-auth-lib.sh"
 # shellcheck source=scripts/smoke-phase5-parser-lib.sh
 source "${ROOT}/scripts/smoke-phase5-parser-lib.sh"
 
@@ -227,6 +231,7 @@ control_plane_mutate() {
       -D "${SMOKE_HEADERS_FILE}" \
       -o "${SMOKE_BODY_FILE}" \
       -w '%{http_code}' \
+      -H \"$(smoke_management_auth_header)\" \
       "$@"
   )"
   curl_exit=$?

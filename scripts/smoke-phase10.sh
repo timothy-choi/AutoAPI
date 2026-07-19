@@ -28,7 +28,11 @@ source "${ROOT}/scripts/smoke-curl-lib.sh"
 # shellcheck source=scripts/smoke-compose-lib.sh
 source "${ROOT}/scripts/smoke-compose-lib.sh"
 # shellcheck source=scripts/smoke-wait-lib.sh
+# shellcheck source=scripts/smoke-management-auth-lib.sh
+source "${ROOT}/scripts/smoke-management-auth-lib.sh"
 source "${ROOT}/scripts/smoke-wait-lib.sh"
+# shellcheck source=scripts/smoke-management-auth-lib.sh
+source "${ROOT}/scripts/smoke-management-auth-lib.sh"
 
 cleanup() {
   stop_heartbeat "${HEARTBEAT_A_PID}"
@@ -175,6 +179,7 @@ gateway_get() {
       -D "${SMOKE_HEADERS_FILE}" \
       -o "${SMOKE_BODY_FILE}" \
       -w '%{http_code}' \
+      -H \"$(smoke_management_auth_header)\" \
       -H 'Host: api.autoapi.local' \
       "${GATEWAY_A_URL}/v1/orders/smoke"
   )"
@@ -234,6 +239,7 @@ main() {
     log_step "Starting postgres, redis, mock upstreams, control plane"
     docker compose up -d postgres redis upstream-v1 upstream-v2 control-plane
     wait_until "control-plane ready" 45 2 wait_http_ready "${CONTROL_PLANE_URL}"
+smoke_bootstrap_management \"${CONTROL_PLANE_URL}\"
   fi
 
   set_smoke_step "Creating project, API, route scaffold, discovered service"

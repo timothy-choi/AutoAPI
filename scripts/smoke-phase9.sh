@@ -18,7 +18,11 @@ source "${ROOT}/scripts/smoke-curl-lib.sh"
 # shellcheck source=scripts/smoke-compose-lib.sh
 source "${ROOT}/scripts/smoke-compose-lib.sh"
 # shellcheck source=scripts/smoke-wait-lib.sh
+# shellcheck source=scripts/smoke-management-auth-lib.sh
+source "${ROOT}/scripts/smoke-management-auth-lib.sh"
 source "${ROOT}/scripts/smoke-wait-lib.sh"
+# shellcheck source=scripts/smoke-management-auth-lib.sh
+source "${ROOT}/scripts/smoke-management-auth-lib.sh"
 
 cleanup() {
   rm -f "${SMOKE_HEADERS_FILE}" "${SMOKE_BODY_FILE}"
@@ -64,6 +68,7 @@ fi
 
 set_smoke_step "Waiting for services"
 wait_until "control-plane ready" 45 2 smoke_curl --fail "${CONTROL_PLANE_URL}/readyz" >/dev/null
+smoke_bootstrap_management "${CONTROL_PLANE_URL}"
 wait_until "gateway-a ready" 45 2 smoke_curl --fail "${GATEWAY_A_URL}/readyz" >/dev/null
 
 set_smoke_step "Bootstrap API"
