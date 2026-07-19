@@ -1,4 +1,13 @@
 autoapi:
+  security:
+    api-key-pepper: development-only-test-pepper-minimum-sixteen-characters
+  management-auth:
+    enabled: true
+    token:
+      pepper: development-only-test-management-pepper-minimum-sixteen
+    bootstrap:
+      enabled: true
+      token: test-bootstrap-admin-token-for-integration-tests-only
   gateway:
     observability:
       tracing-enabled: false

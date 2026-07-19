@@ -53,8 +53,8 @@ public class PlatformEventRepositoryCustom {
                 """)
             .bind("id", id)
             .bind("eventType", request.eventType())
-            .bind("eventVersion", request.eventVersion())
-            .bind("projectId", request.projectId());
+            .bind("eventVersion", request.eventVersion());
+    spec = bindNullableUuid(spec, "projectId", request.projectId());
     spec = bindNullableUuid(spec, "apiId", request.apiId());
     spec =
         spec.bind("resourceType", request.resourceType())

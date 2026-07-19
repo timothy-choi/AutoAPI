@@ -15,7 +15,11 @@ import org.testcontainers.containers.wait.strategy.Wait;
     properties = {
       "autoapi.role=control-plane",
       "autoapi.controlplane.enabled=true",
-      "spring.flyway.enabled=true"
+      "spring.flyway.enabled=true",
+      "autoapi.management-auth.enabled=true",
+      "autoapi.management-auth.token.pepper=development-only-test-management-pepper-minimum-sixteen",
+      "autoapi.management-auth.bootstrap.token=test-bootstrap-admin-token-for-integration-tests-only",
+      "autoapi.management-auth.bootstrap.enabled=true"
     })
 @AutoConfigureWebTestClient
 @ContextConfiguration(initializers = ControlPlaneIntegrationTest.Initializer.class)
@@ -58,6 +62,17 @@ public abstract class ControlPlaneIntegrationTest implements PostgresDynamicProp
   }
 
   @org.springframework.beans.factory.annotation.Autowired protected WebTestClient webTestClient;
+
+  @org.junit.jupiter.api.BeforeEach
+  void authorizeManagementRequests() {
+    webTestClient =
+        webTestClient
+            .mutate()
+            .defaultHeader(
+                org.springframework.http.HttpHeaders.AUTHORIZATION,
+                "Bearer " + com.autoapi.support.ManagementAuthTestSupport.TEST_BOOTSTRAP_TOKEN)
+            .build();
+  }
 
   @AfterAll
   static void shutdownUpstream() {

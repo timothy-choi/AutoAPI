@@ -9,6 +9,7 @@ import org.springframework.data.relational.core.mapping.Table;
 @Table("projects")
 public record ProjectEntity(
     @Id UUID id,
+    @Column("organization_id") UUID organizationId,
     String name,
     String description,
     @Column("created_at") OffsetDateTime createdAt,

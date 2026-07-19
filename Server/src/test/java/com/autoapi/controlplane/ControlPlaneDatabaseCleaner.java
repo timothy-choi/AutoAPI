@@ -44,6 +44,10 @@ public final class ControlPlaneDatabaseCleaner {
     databaseClient.sql("DELETE FROM upstream_pools").fetch().rowsUpdated().block();
     databaseClient.sql("DELETE FROM backend_health_policies").fetch().rowsUpdated().block();
     databaseClient.sql("DELETE FROM apis").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM management_access_credentials").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM role_bindings").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM service_accounts").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM management_users").fetch().rowsUpdated().block();
     databaseClient.sql("DELETE FROM projects").fetch().rowsUpdated().block();
   }
 }

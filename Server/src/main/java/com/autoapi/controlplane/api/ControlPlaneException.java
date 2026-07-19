@@ -44,6 +44,46 @@ public final class ControlPlaneException extends RuntimeException {
         "UNAUTHORIZED", message, HttpStatus.UNAUTHORIZED, List.of(), null);
   }
 
+  public static ControlPlaneException authenticationRequired(String message) {
+    return new ControlPlaneException(
+        "AUTHENTICATION_REQUIRED", message, HttpStatus.UNAUTHORIZED, List.of(), null);
+  }
+
+  public static ControlPlaneException invalidCredential(String message) {
+    return new ControlPlaneException(
+        "INVALID_CREDENTIAL", message, HttpStatus.UNAUTHORIZED, List.of(), null);
+  }
+
+  public static ControlPlaneException credentialExpired(String message) {
+    return new ControlPlaneException(
+        "CREDENTIAL_EXPIRED", message, HttpStatus.UNAUTHORIZED, List.of(), null);
+  }
+
+  public static ControlPlaneException credentialRevoked(String message) {
+    return new ControlPlaneException(
+        "CREDENTIAL_REVOKED", message, HttpStatus.UNAUTHORIZED, List.of(), null);
+  }
+
+  public static ControlPlaneException principalDisabled(String message) {
+    return new ControlPlaneException(
+        "PRINCIPAL_DISABLED", message, HttpStatus.UNAUTHORIZED, List.of(), null);
+  }
+
+  public static ControlPlaneException forbidden(String message) {
+    return new ControlPlaneException(
+        "PERMISSION_DENIED", message, HttpStatus.FORBIDDEN, List.of(), null);
+  }
+
+  public static ControlPlaneException resourceNotAccessible(String message) {
+    return new ControlPlaneException(
+        "RESOURCE_NOT_ACCESSIBLE", message, HttpStatus.NOT_FOUND, List.of(), null);
+  }
+
+  public static ControlPlaneException delegationDenied(String message) {
+    return new ControlPlaneException(
+        "DELEGATION_DENIED", message, HttpStatus.FORBIDDEN, List.of(), null);
+  }
+
   public static ControlPlaneException validationFailed(List<ValidationError> errors) {
     return new ControlPlaneException(
         "CONFIG_VALIDATION_FAILED",

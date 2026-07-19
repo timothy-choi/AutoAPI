@@ -24,6 +24,8 @@ UPSTREAM_V2_CONTAINER_ID=""
 source "${ROOT}/scripts/smoke-curl-lib.sh"
 # shellcheck source=scripts/smoke-wait-lib.sh
 source "${ROOT}/scripts/smoke-wait-lib.sh"
+# shellcheck source=scripts/smoke-management-auth-lib.sh
+source "${ROOT}/scripts/smoke-management-auth-lib.sh"
 # shellcheck source=scripts/smoke-compose-lib.sh
 source "${ROOT}/scripts/smoke-compose-lib.sh"
 
@@ -91,39 +93,10 @@ create_api_key() {
     "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/api-keys"
 }
 
-control_plane_mutate() {
-  local context="$1"
-  shift
-  local status curl_exit
-  set +e
-  status="$(
-    smoke_curl \
-      -D "${SMOKE_HEADERS_FILE}" \
-      -o "${SMOKE_BODY_FILE}" \
-      -w '%{http_code}' \
-      "$@"
-  )"
-  curl_exit=$?
-  set -e
-  if [[ ${curl_exit} -ne 0 || "${status}" -lt 200 || "${status}" -ge 300 ]]; then
-    report_curl_failure "${context}" "${curl_exit}" "${status}"
-    cat "${SMOKE_HEADERS_FILE}" >&2 || true
-    cat "${SMOKE_BODY_FILE}" >&2 || true
-    exit 1
-  fi
-}
-
-control_plane_json() {
-  local context="$1"
-  shift
-  control_plane_mutate "${context}" "$@"
-  cat "${SMOKE_BODY_FILE}"
-}
-
 convergence_reached() {
   local api_id="$1"
   local expected_state="$2"
-  smoke_curl --fail "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/convergence" \
+  management_curl --fail "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/convergence" \
     | grep -q "\"derivedState\"[[:space:]]*:[[:space:]]*\"${expected_state}\""
 }
 
@@ -245,6 +218,9 @@ main() {
     UPSTREAM_V1_CONTAINER_ID="$(compose_container_id upstream-v1)"
     UPSTREAM_V2_CONTAINER_ID="$(compose_container_id upstream-v2)"
   fi
+
+  set_smoke_step "Bootstrapping management auth"
+  smoke_bootstrap_management "${CONTROL_PLANE_URL}"
 
   set_smoke_step "Creating project, API, pool, route"
   project_json="$(control_plane_json "create project" \

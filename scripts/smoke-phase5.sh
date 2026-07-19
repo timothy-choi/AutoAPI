@@ -31,6 +31,8 @@ source "${ROOT}/scripts/smoke-curl-lib.sh"
 source "${ROOT}/scripts/smoke-compose-lib.sh"
 # shellcheck source=scripts/smoke-wait-lib.sh
 source "${ROOT}/scripts/smoke-wait-lib.sh"
+# shellcheck source=scripts/smoke-management-auth-lib.sh
+source "${ROOT}/scripts/smoke-management-auth-lib.sh"
 
 json_field() {
   python3 - "$1" "$2" <<'PY'
@@ -98,33 +100,6 @@ print_ejection_diagnostics() {
   fi
 }
 
-control_plane_mutate() {
-  local context="$1"
-  shift
-  local status
-  set +e
-  status="$(curl --silent --show-error \
-    -D "${SMOKE_HEADERS_FILE}" \
-    -o "${SMOKE_BODY_FILE}" \
-    -w '%{http_code}' \
-    "$@")"
-  local curl_exit=$?
-  set -e
-  if [[ ${curl_exit} -ne 0 || "${status}" -lt 200 || "${status}" -ge 300 ]]; then
-    echo "${context}: HTTP ${status:-unknown} (curl exit ${curl_exit})" >&2
-    cat "${SMOKE_HEADERS_FILE}" >&2
-    cat "${SMOKE_BODY_FILE}" >&2
-    exit 1
-  fi
-}
-
-control_plane_json() {
-  local context="$1"
-  shift
-  control_plane_mutate "${context}" "$@"
-  cat "${SMOKE_BODY_FILE}"
-}
-
 wait_ready() {
   local url="$1"
   local label="$2"
@@ -147,7 +122,7 @@ wait_convergence() {
   local converged=false
   local response=""
   for _ in $(seq 1 45); do
-    response="$(curl --fail --silent "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/convergence")"
+    response="$(management_curl --fail --silent "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/convergence")"
     state="$(json_field "${response}" derivedState)"
     if [[ "${state}" == "CONVERGED" ]]; then
       converged=true
@@ -167,7 +142,7 @@ gateway_request() {
   local status=""
   set +e
   status="$(
-    curl --silent --show-error \
+    smoke_curl \
       -D "${SMOKE_HEADERS_FILE}" \
       -o "${SMOKE_BODY_FILE}" \
       -w '%{http_code}' \
@@ -196,6 +171,8 @@ if [[ "${SMOKE_SKIP_UP}" != "true" ]]; then
   start_smoke_base_stack
   wait_ready "${CONTROL_PLANE_URL}" "Control plane"
 fi
+
+smoke_bootstrap_management "${CONTROL_PLANE_URL}"
 
 echo "== Creating project, API, pool, route =="
 project_json="$(control_plane_json "create project" \

@@ -136,7 +136,9 @@ jobs:
       - name: Smoke test built image
         timeout-minutes: 20
         run: |
-          chmod +x scripts/smoke-container-candidate.sh scripts/smoke-wait-lib.sh scripts/smoke-retry-lib.sh scripts/smoke-curl-lib.sh scripts/smoke-phase5-parser-lib.sh
+          chmod +x scripts/smoke-container-candidate.sh scripts/smoke-wait-lib.sh scripts/smoke-retry-lib.sh scripts/smoke-curl-lib.sh scripts/smoke-phase5-parser-lib.sh scripts/smoke-security-env-lib.sh scripts/smoke-management-auth-lib.sh scripts/test-smoke-security-env-lib.sh scripts/test-smoke-container-startup.sh
+          bash ./scripts/test-smoke-security-env-lib.sh
+          bash ./scripts/test-smoke-container-startup.sh
           timeout --signal=TERM --kill-after=15s 15m \
             env CANDIDATE_IMAGE=autoapi-server:ci MOCK_UPSTREAM_IMAGE=mock-upstream:ci \
             ./scripts/smoke-container-candidate.sh

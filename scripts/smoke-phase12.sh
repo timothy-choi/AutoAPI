@@ -22,6 +22,8 @@ source "${ROOT}/scripts/smoke-curl-lib.sh"
 source "${ROOT}/scripts/smoke-compose-lib.sh"
 # shellcheck source=scripts/smoke-wait-lib.sh
 source "${ROOT}/scripts/smoke-wait-lib.sh"
+# shellcheck source=scripts/smoke-management-auth-lib.sh
+source "${ROOT}/scripts/smoke-management-auth-lib.sh"
 
 cleanup() {
   rm -f "${SMOKE_HEADERS_FILE}" "${SMOKE_BODY_FILE}"
@@ -48,33 +50,10 @@ print(payload[sys.argv[2]])
 PY
 }
 
-control_plane_json() {
-  local context="$1"
-  shift
-  local status curl_exit
-  set +e
-  status="$(
-    smoke_curl \
-      -D "${SMOKE_HEADERS_FILE}" \
-      -o "${SMOKE_BODY_FILE}" \
-      -w '%{http_code}' \
-      "$@"
-  )"
-  curl_exit=$?
-  set -e
-  if [[ ${curl_exit} -ne 0 || "${status}" -lt 200 || "${status}" -ge 300 ]]; then
-    report_curl_failure "${context}" "${curl_exit}" "${status}"
-    cat "${SMOKE_HEADERS_FILE}" >&2 || true
-    cat "${SMOKE_BODY_FILE}" >&2 || true
-    exit 1
-  fi
-  cat "${SMOKE_BODY_FILE}"
-}
-
 rollout_status() {
   local project_id="$1"
   local rollout_id="$2"
-  smoke_curl --fail --silent \
+  management_curl --fail --silent \
     "${CONTROL_PLANE_URL}/api/v1/management/projects/${project_id}/rollouts/${rollout_id}" \
     | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])'
 }
@@ -82,7 +61,7 @@ rollout_status() {
 assigned_gateway_count() {
   local project_id="$1"
   local rollout_id="$2"
-  smoke_curl --fail --silent \
+  management_curl --fail --silent \
     "${CONTROL_PLANE_URL}/api/v1/management/projects/${project_id}/rollouts/${rollout_id}/assignments?limit=50" \
     | python3 -c 'import json,sys; print(sum(1 for a in json.load(sys.stdin) if a.get("status")=="ASSIGNED"))'
 }
@@ -95,6 +74,9 @@ label_gateways_for_rollout() {
 
 trap dump_diagnostics EXIT
 
+SMOKE_HEADERS_FILE="$(mktemp "${TMPDIR:-/tmp}/smoke-phase12-headers.XXXXXX")"
+SMOKE_BODY_FILE="$(mktemp "${TMPDIR:-/tmp}/smoke-phase12-body.XXXXXX")"
+
 if [[ "${SMOKE_SKIP_UP}" != "true" ]]; then
   set_smoke_step "Starting compose stack"
   build_smoke_images_once
@@ -104,6 +86,7 @@ fi
 
 set_smoke_step "Waiting for services"
 wait_until "control-plane ready" 60 2 smoke_curl --fail "${CONTROL_PLANE_URL}/readyz" >/dev/null
+smoke_bootstrap_management "${CONTROL_PLANE_URL}"
 wait_until "gateway-a ready" 60 2 smoke_curl --fail "${GATEWAY_A_URL}/readyz" >/dev/null
 wait_until "gateway-b ready" 60 2 smoke_curl --fail "${GATEWAY_B_URL}/readyz" >/dev/null
 wait_until "gateway-c ready" 60 2 smoke_curl --fail "${GATEWAY_C_URL}/readyz" >/dev/null
@@ -199,7 +182,7 @@ wait_until "rollout running" 30 0.5 test "$(rollout_status "${PHASE12_PROJECT_ID
 wait_until "first cohort assigned" 30 0.5 test "$(assigned_gateway_count "${PHASE12_PROJECT_ID}" "${ROLLOUT_ID}")" -ge 1
 
 set_smoke_step "Verifying desired config for assigned gateway"
-FIRST_ASSIGNED="$(smoke_curl --fail --silent \
+FIRST_ASSIGNED="$(management_curl --fail --silent \
   "${CONTROL_PLANE_URL}/api/v1/management/projects/${PHASE12_PROJECT_ID}/rollouts/${ROLLOUT_ID}/assignments?limit=50" \
   | python3 -c 'import json,sys; assigned=[a["gatewayId"] for a in json.load(sys.stdin) if a.get("status")=="ASSIGNED"]; print(assigned[0] if assigned else "")')"
 if [[ -z "${FIRST_ASSIGNED}" ]]; then
@@ -244,7 +227,7 @@ control_plane_json "complete rollout" \
 wait_until "rollout succeeded" 30 0.5 test "$(rollout_status "${PHASE12_PROJECT_ID}" "${ROLLOUT_ID}")" = "SUCCEEDED"
 
 set_smoke_step "Verifying group desired version"
-GROUP_DESIRED="$(smoke_curl --fail --silent \
+GROUP_DESIRED="$(management_curl --fail --silent \
   "${CONTROL_PLANE_URL}/api/v1/management/projects/${PHASE12_PROJECT_ID}/gateway-groups/${GROUP_ID}" \
   | python3 -c 'import json,sys; print(json.load(sys.stdin)["desiredConfigVersion"])')"
 if [[ "${GROUP_DESIRED}" != "2" ]]; then

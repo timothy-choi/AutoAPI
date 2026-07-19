@@ -10,7 +10,6 @@ SMOKE_NETWORK="${SMOKE_NETWORK:-autoapi-smoke}"
 GATEWAY_PORT="${GATEWAY_PORT:-18081}"
 CONTROL_PLANE_PORT="${CONTROL_PLANE_PORT:-18080}"
 GATEWAY_ID="${GATEWAY_ID:-container-smoke-gateway}"
-PEPPER="${AUTOAPI_API_KEY_PEPPER:-development-only-change-me-not-for-production-use}"
 RETRY_DRIVE_MAX="${SMOKE_RETRY_DRIVE_MAX:-25}"
 HEALTH_THRESHOLD="${SMOKE_HEALTH_THRESHOLD:-2}"
 POSITION_MAX="${SMOKE_POSITION_MAX:-4}"
@@ -25,10 +24,20 @@ SMOKE_RETRY_FILE=""
 SMOKE_SNAPSHOT_FILE=""
 CONTAINER_API_ID=""
 
+# shellcheck source=scripts/smoke-security-env-lib.sh
+source "${ROOT}/scripts/smoke-security-env-lib.sh"
+load_smoke_security_env
+
+PEPPER="${SMOKE_API_KEY_PEPPER}"
+
 # shellcheck source=scripts/smoke-phase5-parser-lib.sh
 source "${ROOT}/scripts/smoke-phase5-parser-lib.sh"
+# shellcheck source=scripts/smoke-curl-lib.sh
+source "${ROOT}/scripts/smoke-curl-lib.sh"
 # shellcheck source=scripts/smoke-wait-lib.sh
 source "${ROOT}/scripts/smoke-wait-lib.sh"
+# shellcheck source=scripts/smoke-management-auth-lib.sh
+source "${ROOT}/scripts/smoke-management-auth-lib.sh"
 # shellcheck source=scripts/smoke-retry-lib.sh
 source "${ROOT}/scripts/smoke-retry-lib.sh"
 
@@ -71,38 +80,9 @@ print(payload.get("service", ""))
 PY
 }
 
-control_plane_mutate() {
-  local context="$1"
-  shift
-  local status curl_exit
-  set +e
-  status="$(
-    smoke_curl \
-      -D "${SMOKE_HEADERS_FILE}" \
-      -o "${SMOKE_BODY_FILE}" \
-      -w '%{http_code}' \
-      "$@"
-  )"
-  curl_exit=$?
-  set -e
-  if [[ ${curl_exit} -ne 0 || "${status}" -lt 200 || "${status}" -ge 300 ]]; then
-    report_curl_failure "${context}" "${curl_exit}" "${status}"
-    cat "${SMOKE_HEADERS_FILE}" >&2 || true
-    cat "${SMOKE_BODY_FILE}" >&2 || true
-    exit 1
-  fi
-}
-
-control_plane_json() {
-  local context="$1"
-  shift
-  control_plane_mutate "${context}" "$@"
-  cat "${SMOKE_BODY_FILE}"
-}
-
 convergence_converged() {
   local api_id="$1"
-  smoke_curl --fail "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/convergence" \
+  management_curl --fail "${CONTROL_PLANE_URL}/api/v1/apis/${api_id}/convergence" \
     | grep -q '"derivedState"[[:space:]]*:[[:space:]]*"CONVERGED"'
 }
 
@@ -224,7 +204,7 @@ bootstrap_phase6_config() {
     -H 'Content-Type: application/json' \
     -d '{"expectedDesiredVersion":null}'
 
-  smoke_curl --fail "${CONTROL_PLANE_URL}/api/v1/apis/${API_ID}/config/versions/1" >"${SMOKE_SNAPSHOT_FILE}"
+  management_curl --fail "${CONTROL_PLANE_URL}/api/v1/apis/${API_ID}/config/versions/1" >"${SMOKE_SNAPSHOT_FILE}"
   assert_published_retry_policy "$(cat "${SMOKE_SNAPSHOT_FILE}")"
 }
 
@@ -404,10 +384,13 @@ main() {
   docker run -d --name upstream-v2 --network "${SMOKE_NETWORK}" \
     -e UPSTREAM_ID=upstream-v2 "${MOCK_UPSTREAM_IMAGE}"
 
+  { set +x; } 2>/dev/null
+  # shellcheck disable=SC2046
   docker run -d --name autoapi-control-plane --network "${SMOKE_NETWORK}" -p "${CONTROL_PLANE_PORT}:8080" \
     -e AUTOAPI_ROLE=control-plane \
     -e AUTOAPI_CONTROLPLANE_ENABLED=true \
     -e AUTOAPI_API_KEY_PEPPER="${PEPPER}" \
+    $(control_plane_smoke_security_env_args) \
     -e SPRING_DATASOURCE_URL=jdbc:postgresql://autoapi-postgres:5432/autoapi \
     -e SPRING_DATASOURCE_USERNAME=autoapi \
     -e SPRING_DATASOURCE_PASSWORD=autoapi \
@@ -416,8 +399,10 @@ main() {
     -e SPRING_R2DBC_PASSWORD=autoapi \
     "${CANDIDATE_IMAGE}"
 
-  wait_until "control-plane ready" 30 2 wait_http_ready "${CONTROL_PLANE_URL}"
+  wait_until "control-plane ready" 30 2 wait_http_ready_for_container "${CONTROL_PLANE_URL}" autoapi-control-plane
   log_step "Control plane ready"
+
+  smoke_bootstrap_management "${CONTROL_PLANE_URL}"
 
   bootstrap_phase6_config
 

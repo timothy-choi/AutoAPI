@@ -48,7 +48,16 @@ See [`Server/README.md`](Server/README.md) for build, run, management API, and c
 - Progressive runtime configuration rollouts with deterministic cohorts, pause/resume, and rollback
 - See [`docs/ROLLOUTS.md`](docs/ROLLOUTS.md) and run `./scripts/smoke-phase12.sh`
 
-See [`Server/README.md`](Server/README.md) for build, run, management API, and configuration details. Phases 1–12 are implemented in `Server/`. Run the matching smoke script under `scripts/` (e.g. `./scripts/smoke-phase12.sh`).
+**Phase 13 — management-plane identity, RBAC, and scoped credentials**
+
+- Organization-scoped tenant boundary with default organization migration for existing projects
+- Bearer management tokens (`aat_<publicId>_<secret>`) with HMAC-SHA256 digests
+- Bootstrap administrator initialization via `POST /api/v1/management/bootstrap`
+- Built-in roles, role bindings, service accounts, and scoped credentials
+- Management authentication filter protecting `/api/v1/**` (gateway and service-registration paths exempt)
+- See [`docs/MANAGEMENT_AUTH.md`](docs/MANAGEMENT_AUTH.md), [`docs/PHASE13_SECURITY_REVIEW.md`](docs/PHASE13_SECURITY_REVIEW.md), and run `./scripts/smoke-phase13.sh`
+
+See [`Server/README.md`](Server/README.md) for build, run, management API, and configuration details. Phases 1–13 are implemented in `Server/`. Run the matching smoke script under `scripts/` (e.g. `./scripts/smoke-phase13.sh`).
 
 ## Quick start (Phase 1)
 

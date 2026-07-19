@@ -15,6 +15,8 @@ source "${ROOT}/scripts/smoke-curl-lib.sh"
 source "${ROOT}/scripts/smoke-compose-lib.sh"
 # shellcheck source=scripts/smoke-wait-lib.sh
 source "${ROOT}/scripts/smoke-wait-lib.sh"
+# shellcheck source=scripts/smoke-management-auth-lib.sh
+source "${ROOT}/scripts/smoke-management-auth-lib.sh"
 
 cleanup() {
   if [[ -n "${WEBHOOK_PID}" ]]; then
@@ -92,19 +94,24 @@ if [[ "${SMOKE_SKIP_UP}" != "true" ]]; then
   set_smoke_step "Starting docker compose stack"
   docker compose up -d --build
   wait_for_http "${CONTROL_PLANE_URL}/actuator/health" "control-plane health" 180
+  smoke_bootstrap_management "${CONTROL_PLANE_URL}"
+fi
+
+if [[ "${SMOKE_SKIP_UP}" == "true" ]]; then
+  smoke_bootstrap_management "${CONTROL_PLANE_URL}"
 fi
 
 set_smoke_step "Starting webhook receiver"
 start_webhook_receiver
 
 set_smoke_step "Creating project"
-PROJECT_JSON="$(smoke_curl -sf -X POST "${CONTROL_PLANE_URL}/api/v1/projects" \
+PROJECT_JSON="$(management_curl -sf -X POST "${CONTROL_PLANE_URL}/api/v1/projects" \
   -H 'Content-Type: application/json' \
   -d '{"name":"phase11-smoke","description":"phase 11"}')"
 PROJECT_ID="$(json_field "${PROJECT_JSON}" id)"
 
 set_smoke_step "Creating webhook subscription"
-WEBHOOK_JSON="$(smoke_curl -sf -X POST \
+WEBHOOK_JSON="$(management_curl -sf -X POST \
   "${CONTROL_PLANE_URL}/api/v1/management/projects/${PROJECT_ID}/webhooks" \
   -H 'Content-Type: application/json' \
   -d "{\"name\":\"smoke-hook\",\"url\":\"http://127.0.0.1:${WEBHOOK_PORT}/hook\",\"eventFilters\":[\"webhook.test.v1\"]}")"
@@ -120,7 +127,7 @@ PY
 )"
 
 set_smoke_step "Triggering test webhook delivery"
-smoke_curl -sf -X POST \
+management_curl -sf -X POST \
   "${CONTROL_PLANE_URL}/api/v1/management/projects/${PROJECT_ID}/webhooks/${WEBHOOK_ID}/test" \
   -H 'Content-Type: application/json' -d '{}' >/dev/null
 
@@ -138,7 +145,7 @@ if [[ "${COUNT:-0}" -lt 1 ]]; then
 fi
 
 set_smoke_step "Verifying event API"
-EVENTS="$(smoke_curl -sf "${CONTROL_PLANE_URL}/api/v1/management/events?projectId=${PROJECT_ID}&eventType=project.created.v1")"
+EVENTS="$(management_curl -sf "${CONTROL_PLANE_URL}/api/v1/management/events?projectId=${PROJECT_ID}&eventType=project.created.v1")"
 python3 - "${EVENTS}" <<'PY'
 import json, sys
 events = json.loads(sys.argv[1])
