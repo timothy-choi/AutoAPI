@@ -112,6 +112,18 @@ Vertical-slice implementation plan (Phases 0–9).
 
 ---
 
+### [ROLLOUTS.md](./ROLLOUTS.md)
+
+Gateway groups and progressive runtime rollouts (Phase 12).
+
+**Read this to understand:**
+- Label-based gateway group membership and selector precedence
+- Progressive rollout stages, deterministic cohort ranking, and manual advance flow
+- Effective desired config precedence (rollout assignment vs group vs API default)
+- Local smoke script and test commands for Phase 12
+
+---
+
 ### [LEGACY_MIGRATION.md](./LEGACY_MIGRATION.md)
 
 File-level classification: KEEP, REFACTOR AS CONCEPT, REWRITE, DELETE FROM NEW ACTIVE ARCHITECTURE.

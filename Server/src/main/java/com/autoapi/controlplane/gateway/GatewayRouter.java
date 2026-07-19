@@ -197,7 +197,9 @@ public class GatewayRouter {
                           body.status(),
                           body.errorCode(),
                           body.diagnostic(),
-                          body.applyDurationMs())))
+                          body.applyDurationMs(),
+                          body.rolloutId(),
+                          body.assignmentGeneration())))
           .flatMap(
               result ->
                   ServerResponse.status(HttpStatus.ACCEPTED)
@@ -317,5 +319,7 @@ public class GatewayRouter {
       String status,
       String errorCode,
       String diagnostic,
-      Long applyDurationMs) {}
+      Long applyDurationMs,
+      UUID rolloutId,
+      Long assignmentGeneration) {}
 }

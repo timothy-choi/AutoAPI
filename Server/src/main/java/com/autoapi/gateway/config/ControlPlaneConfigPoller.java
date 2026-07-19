@@ -8,6 +8,7 @@ import com.autoapi.gateway.config.remote.ControlPlaneConfigClient.DesiredMetadat
 import com.autoapi.gateway.config.remote.ControlPlaneConfigClientException;
 import com.autoapi.gateway.config.remote.GatewayRegistrationManager;
 import com.autoapi.gateway.config.remote.GatewayRegistrationState;
+import com.autoapi.gateway.config.remote.RolloutAssignmentContextHolder;
 import com.autoapi.runtime.AutoApiRole;
 import com.autoapi.runtime.ConditionalOnAutoApiRole;
 import jakarta.annotation.PreDestroy;
@@ -36,6 +37,7 @@ public class ControlPlaneConfigPoller {
   private final GatewayRegistrationState registrationState;
   private final GatewayRegistrationManager registrationManager;
   private final ConfigStatusReporter configStatusReporter;
+  private final RolloutAssignmentContextHolder rolloutAssignmentContextHolder;
   private final AtomicBoolean pollInProgress = new AtomicBoolean(false);
   private final AtomicBoolean lastFailureLogged = new AtomicBoolean(false);
   private Disposable pollingSubscription;
@@ -47,7 +49,8 @@ public class ControlPlaneConfigPoller {
       GatewayProperties gatewayProperties,
       GatewayRegistrationState registrationState,
       GatewayRegistrationManager registrationManager,
-      ConfigStatusReporter configStatusReporter) {
+      ConfigStatusReporter configStatusReporter,
+      RolloutAssignmentContextHolder rolloutAssignmentContextHolder) {
     this.client = client;
     this.activator = activator;
     this.activeRuntimeConfigHolder = activeRuntimeConfigHolder;
@@ -55,6 +58,7 @@ public class ControlPlaneConfigPoller {
     this.registrationState = registrationState;
     this.registrationManager = registrationManager;
     this.configStatusReporter = configStatusReporter;
+    this.rolloutAssignmentContextHolder = rolloutAssignmentContextHolder;
   }
 
   @EventListener(ApplicationReadyEvent.class)
@@ -124,8 +128,10 @@ public class ControlPlaneConfigPoller {
         activeRuntimeConfigHolder.getActive() == null
             ? null
             : activeRuntimeConfigHolder.getActive().contentHash();
+    String currentEtag =
+        activeRuntimeConfigHolder.getActive() == null ? null : etagForActive(currentHash);
     return client
-        .fetchDesiredMetadata(currentHash == null ? null : "\"" + currentHash + "\"")
+        .fetchDesiredMetadata(currentEtag == null ? null : "\"" + currentEtag + "\"")
         .flatMap(
             optionalMetadata -> {
               if (optionalMetadata.isEmpty()) {
@@ -136,6 +142,10 @@ public class ControlPlaneConfigPoller {
                 return Mono.empty();
               }
               DesiredMetadataResponse metadata = optionalMetadata.get();
+              rolloutAssignmentContextHolder.update(
+                  metadata.rolloutId(),
+                  metadata.rolloutStageIndex(),
+                  metadata.assignmentGeneration());
               return client
                   .fetchSnapshot(metadata.version(), metadata.contentHash())
                   .flatMap(snapshot -> activateAndReport(snapshot, metadata));
@@ -212,5 +222,14 @@ public class ControlPlaneConfigPoller {
       return "unknown";
     }
     return message.length() > 200 ? message.substring(0, 200) : message;
+  }
+
+  private String etagForActive(String contentHash) {
+    RolloutAssignmentContextHolder.RolloutAssignmentContext context =
+        rolloutAssignmentContextHolder.get();
+    if (context != null) {
+      return contentHash + ":" + context.rolloutId() + ":" + context.assignmentGeneration();
+    }
+    return contentHash;
   }
 }

@@ -53,11 +53,16 @@ public class ControlPlaneConfigClient {
 
   public Mono<Optional<DesiredMetadataResponse>> fetchDesiredMetadata(String ifNoneMatch) {
     UUID apiId = gatewayProperties.apiId();
+    String gatewayId = gatewayProperties.gatewayId();
+    String uri =
+        gatewayProperties.controlPlaneBaseUrl()
+            + "/api/v1/gateway-config/"
+            + apiId
+            + "/desired?gatewayId="
+            + gatewayId;
     return webClient
         .get()
-        .uri(
-            gatewayProperties.controlPlaneBaseUrl() + "/api/v1/gateway-config/{apiId}/desired",
-            apiId)
+        .uri(uri)
         .headers(
             headers -> {
               if (ifNoneMatch != null && !ifNoneMatch.isBlank()) {
@@ -127,5 +132,20 @@ public class ControlPlaneConfigClient {
   }
 
   public record DesiredMetadataResponse(
-      UUID apiId, long version, String contentHash, String snapshotUrl) {}
+      UUID apiId,
+      long version,
+      String contentHash,
+      String snapshotUrl,
+      UUID rolloutId,
+      Integer rolloutStageIndex,
+      Long assignmentGeneration,
+      String desiredSource) {
+
+    public String etagToken() {
+      if (rolloutId != null && assignmentGeneration != null) {
+        return contentHash + ":" + rolloutId + ":" + assignmentGeneration;
+      }
+      return contentHash;
+    }
+  }
 }

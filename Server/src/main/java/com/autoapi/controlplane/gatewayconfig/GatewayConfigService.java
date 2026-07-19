@@ -6,8 +6,11 @@ import com.autoapi.controlplane.configversion.StoredRuntimeSnapshot;
 import com.autoapi.controlplane.persistence.ApiRepository;
 import com.autoapi.controlplane.persistence.ConfigVersionEntity;
 import com.autoapi.controlplane.persistence.ConfigVersionRepository;
+import com.autoapi.controlplane.rollout.EffectiveDesiredConfig;
+import com.autoapi.controlplane.rollout.EffectiveDesiredConfigService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -22,17 +25,30 @@ public class GatewayConfigService {
   private final ApiRepository apiRepository;
   private final ConfigVersionRepository configVersionRepository;
   private final ObjectMapper objectMapper;
+  private final ObjectProvider<EffectiveDesiredConfigService> effectiveDesiredConfigService;
 
   public GatewayConfigService(
       ApiRepository apiRepository,
       ConfigVersionRepository configVersionRepository,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      ObjectProvider<EffectiveDesiredConfigService> effectiveDesiredConfigService) {
     this.apiRepository = apiRepository;
     this.configVersionRepository = configVersionRepository;
     this.objectMapper = objectMapper;
+    this.effectiveDesiredConfigService = effectiveDesiredConfigService;
   }
 
   public Mono<DesiredConfigMetadata> getDesiredMetadata(UUID apiId) {
+    return getDesiredMetadata(apiId, null);
+  }
+
+  public Mono<DesiredConfigMetadata> getDesiredMetadata(UUID apiId, String gatewayId) {
+    if (gatewayId != null && !gatewayId.isBlank()) {
+      EffectiveDesiredConfigService resolver = effectiveDesiredConfigService.getIfAvailable();
+      if (resolver != null) {
+        return resolver.resolve(gatewayId, apiId).map(GatewayConfigService::fromEffectiveDesired);
+      }
+    }
     return apiRepository
         .findById(apiId)
         .switchIfEmpty(Mono.error(ControlPlaneException.notFound("API was not found")))
@@ -93,6 +109,37 @@ public class GatewayConfigService {
     return "/api/v1/gateway-config/" + apiId + "/versions/" + version;
   }
 
+  private static DesiredConfigMetadata fromEffectiveDesired(EffectiveDesiredConfig effective) {
+    return new DesiredConfigMetadata(
+        effective.apiId(),
+        effective.version(),
+        effective.contentHash(),
+        effective.snapshotUrl(),
+        effective.rolloutId(),
+        effective.rolloutStageIndex(),
+        effective.assignmentGeneration(),
+        effective.source().name());
+  }
+
   public record DesiredConfigMetadata(
-      UUID apiId, long version, String contentHash, String snapshotUrl) {}
+      UUID apiId,
+      long version,
+      String contentHash,
+      String snapshotUrl,
+      UUID rolloutId,
+      Integer rolloutStageIndex,
+      Long assignmentGeneration,
+      String desiredSource) {
+
+    public DesiredConfigMetadata(UUID apiId, long version, String contentHash, String snapshotUrl) {
+      this(apiId, version, contentHash, snapshotUrl, null, null, null, "API_DEFAULT");
+    }
+
+    public String etagToken() {
+      if (rolloutId != null && assignmentGeneration != null) {
+        return contentHash + ":" + rolloutId + ":" + assignmentGeneration;
+      }
+      return contentHash;
+    }
+  }
 }

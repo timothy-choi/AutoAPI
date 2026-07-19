@@ -47,13 +47,14 @@ public class GatewayConfigRouter {
 
     Mono<ServerResponse> getDesired(ServerRequest request) {
       UUID apiId = uuid(request, "apiId");
+      String gatewayId = request.queryParam("gatewayId").orElse(null);
       return gatewayConfigService
-          .getDesiredMetadata(apiId)
+          .getDesiredMetadata(apiId, gatewayId)
           .flatMap(
               metadata -> {
-                String etag = etag(metadata.contentHash());
+                String etag = etag(metadata.etagToken());
                 String ifNoneMatch = request.headers().firstHeader(HttpHeaders.IF_NONE_MATCH);
-                if (matchesEtag(ifNoneMatch, metadata.contentHash())) {
+                if (matchesEtag(ifNoneMatch, metadata.etagToken())) {
                   return ServerResponse.status(HttpStatus.NOT_MODIFIED).eTag(etag).build();
                 }
                 return ServerResponse.ok()
@@ -64,7 +65,11 @@ public class GatewayConfigRouter {
                             metadata.apiId(),
                             metadata.version(),
                             metadata.contentHash(),
-                            metadata.snapshotUrl()));
+                            metadata.snapshotUrl(),
+                            metadata.rolloutId(),
+                            metadata.rolloutStageIndex(),
+                            metadata.assignmentGeneration(),
+                            metadata.desiredSource()));
               })
           .onErrorResume(ControlPlaneException.class, this::error);
     }
@@ -136,6 +141,14 @@ public class GatewayConfigRouter {
       return false;
     }
 
-    record DesiredResponse(UUID apiId, long version, String contentHash, String snapshotUrl) {}
+    record DesiredResponse(
+        UUID apiId,
+        long version,
+        String contentHash,
+        String snapshotUrl,
+        UUID rolloutId,
+        Integer rolloutStageIndex,
+        Long assignmentGeneration,
+        String desiredSource) {}
   }
 }
