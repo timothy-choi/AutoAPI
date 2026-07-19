@@ -753,12 +753,24 @@ dump_container_smoke_diagnostics() {
 
   log_step "Collecting container smoke diagnostics"
   docker ps -a --filter "network=${SMOKE_NETWORK:-autoapi-smoke}" >&2 || true
-  docker logs autoapi-gateway --tail=200 >&2 || true
-  docker logs autoapi-control-plane --tail=100 >&2 || true
-  smoke_curl "${gateway_url}/internal/v1/retry-status" >&2 || true
-  echo >&2
-  smoke_curl "${gateway_url}/internal/v1/upstream-health" >&2 || true
-  echo >&2
+  if docker inspect autoapi-gateway >/dev/null 2>&1; then
+    if declare -F smoke_redact_container_env >/dev/null; then
+      docker logs autoapi-gateway --tail=200 2>&1 | smoke_redact_container_env >&2 || true
+    else
+      docker logs autoapi-gateway --tail=200 >&2 || true
+    fi
+    smoke_curl "${gateway_url}/internal/v1/retry-status" >&2 || true
+    echo >&2
+    smoke_curl "${gateway_url}/internal/v1/upstream-health" >&2 || true
+    echo >&2
+  fi
+  if docker inspect autoapi-control-plane >/dev/null 2>&1; then
+    if declare -F smoke_redact_container_env >/dev/null; then
+      docker logs autoapi-control-plane --tail=100 2>&1 | smoke_redact_container_env >&2 || true
+    else
+      docker logs autoapi-control-plane --tail=100 >&2 || true
+    fi
+  fi
   if [[ -n "${api_id}" ]]; then
     smoke_curl "${control_plane_url}/api/v1/apis/${api_id}/convergence" >&2 || true
     echo >&2
@@ -768,10 +780,19 @@ dump_container_smoke_diagnostics() {
 collect_gateway_thread_dump() {
   local container_name="${1:-autoapi-gateway}"
   local gateway_pid
+
+  if ! docker inspect "${container_name}" >/dev/null 2>&1; then
+    return 0
+  fi
+
   gateway_pid="$(docker inspect --format '{{.State.Pid}}' "${container_name}" 2>/dev/null || echo 0)"
   if [[ -n "${gateway_pid}" && "${gateway_pid}" != "0" ]]; then
     log_step "Sending SIGQUIT to ${container_name} for thread dump"
     docker kill --signal=QUIT "${container_name}" >/dev/null 2>&1 || true
-    docker logs "${container_name}" --tail=200 >&2 || true
+    if declare -F smoke_redact_container_env >/dev/null; then
+      docker logs "${container_name}" --tail=200 2>&1 | smoke_redact_container_env >&2 || true
+    else
+      docker logs "${container_name}" --tail=200 >&2 || true
+    fi
   fi
 }

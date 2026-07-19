@@ -10,7 +10,6 @@ SMOKE_NETWORK="${SMOKE_NETWORK:-autoapi-smoke}"
 GATEWAY_PORT="${GATEWAY_PORT:-18081}"
 CONTROL_PLANE_PORT="${CONTROL_PLANE_PORT:-18080}"
 GATEWAY_ID="${GATEWAY_ID:-container-smoke-gateway}"
-PEPPER="${AUTOAPI_API_KEY_PEPPER:-development-only-change-me-not-for-production-use}"
 RETRY_DRIVE_MAX="${SMOKE_RETRY_DRIVE_MAX:-25}"
 HEALTH_THRESHOLD="${SMOKE_HEALTH_THRESHOLD:-2}"
 POSITION_MAX="${SMOKE_POSITION_MAX:-4}"
@@ -24,6 +23,12 @@ SMOKE_HEALTH_FILE=""
 SMOKE_RETRY_FILE=""
 SMOKE_SNAPSHOT_FILE=""
 CONTAINER_API_ID=""
+
+# shellcheck source=scripts/smoke-security-env-lib.sh
+source "${ROOT}/scripts/smoke-security-env-lib.sh"
+load_smoke_security_env
+
+PEPPER="${SMOKE_API_KEY_PEPPER}"
 
 # shellcheck source=scripts/smoke-phase5-parser-lib.sh
 source "${ROOT}/scripts/smoke-phase5-parser-lib.sh"
@@ -379,10 +384,13 @@ main() {
   docker run -d --name upstream-v2 --network "${SMOKE_NETWORK}" \
     -e UPSTREAM_ID=upstream-v2 "${MOCK_UPSTREAM_IMAGE}"
 
+  { set +x; } 2>/dev/null
+  # shellcheck disable=SC2046
   docker run -d --name autoapi-control-plane --network "${SMOKE_NETWORK}" -p "${CONTROL_PLANE_PORT}:8080" \
     -e AUTOAPI_ROLE=control-plane \
     -e AUTOAPI_CONTROLPLANE_ENABLED=true \
     -e AUTOAPI_API_KEY_PEPPER="${PEPPER}" \
+    $(control_plane_smoke_security_env_args) \
     -e SPRING_DATASOURCE_URL=jdbc:postgresql://autoapi-postgres:5432/autoapi \
     -e SPRING_DATASOURCE_USERNAME=autoapi \
     -e SPRING_DATASOURCE_PASSWORD=autoapi \
@@ -391,7 +399,7 @@ main() {
     -e SPRING_R2DBC_PASSWORD=autoapi \
     "${CANDIDATE_IMAGE}"
 
-  wait_until "control-plane ready" 30 2 wait_http_ready "${CONTROL_PLANE_URL}"
+  wait_until "control-plane ready" 30 2 wait_http_ready_for_container "${CONTROL_PLANE_URL}" autoapi-control-plane
   log_step "Control plane ready"
 
   smoke_bootstrap_management "${CONTROL_PLANE_URL}"

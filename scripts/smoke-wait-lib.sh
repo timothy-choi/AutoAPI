@@ -34,6 +34,41 @@ wait_http_ready() {
   smoke_curl --fail "${url}/readyz" >/dev/null 2>&1
 }
 
+assert_container_still_running() {
+  local container_name="$1"
+  local running exit_code
+
+  if ! docker inspect "${container_name}" >/dev/null 2>&1; then
+    echo "Container ${container_name} does not exist" >&2
+    return 1
+  fi
+
+  running="$(docker inspect --format '{{.State.Running}}' "${container_name}" 2>/dev/null || echo false)"
+  if [[ "${running}" == "true" ]]; then
+    return 0
+  fi
+
+  exit_code="$(docker inspect --format '{{.State.ExitCode}}' "${container_name}" 2>/dev/null || echo 1)"
+  echo "Container ${container_name} exited before readiness (exit=${exit_code})" >&2
+  if declare -F smoke_redact_container_env >/dev/null; then
+    docker logs "${container_name}" --tail 100 2>&1 | smoke_redact_container_env >&2 || true
+  else
+    docker logs "${container_name}" --tail 100 >&2 || true
+  fi
+  return 1
+}
+
+wait_http_ready_for_container() {
+  local url="$1"
+  local container_name="${2:-}"
+
+  if [[ -n "${container_name}" ]] && ! assert_container_still_running "${container_name}"; then
+    return 1
+  fi
+
+  wait_http_ready "${url}"
+}
+
 resolve_compose_container_id() {
   local service="$1"
   docker compose ps -q "${service}" 2>/dev/null | head -n1 | tr -d '\r\n[:space:]'
