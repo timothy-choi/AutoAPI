@@ -70,6 +70,132 @@ _smoke_validate_http_status() {
   return 0
 }
 
+HTTP_CURL_EXIT=0
+HTTP_STATUS=""
+HTTP_BODY=""
+
+http_request_capture() {
+  local output_file="$1"
+  shift
+  local status curl_exit
+
+  _smoke_management_require_curl_lib
+
+  set +e
+  { set +x; } 2>/dev/null
+  status="$(
+    smoke_curl \
+      --output "${output_file}" \
+      --write-out '%{http_code}' \
+      "$@"
+  )"
+  curl_exit=$?
+  set -e
+
+  HTTP_CURL_EXIT="${curl_exit}"
+  HTTP_STATUS="${status}"
+  HTTP_BODY="$(cat "${output_file}")"
+
+  if ((HTTP_CURL_EXIT != 0)); then
+    return "${HTTP_CURL_EXIT}"
+  fi
+
+  if ! _smoke_validate_http_status "${HTTP_STATUS}"; then
+    return 1
+  fi
+
+  return 0
+}
+
+expect_http_success() {
+  local status="$1"
+
+  if ((status < 200 || status >= 300)); then
+    echo "Expected success, received HTTP ${status}" >&2
+    return 1
+  fi
+
+  return 0
+}
+
+expect_http_status() {
+  local actual="$1"
+  shift
+  local expected
+
+  for expected in "$@"; do
+    if [[ "${actual}" == "${expected}" ]]; then
+      return 0
+    fi
+  done
+
+  echo "Unexpected HTTP status: ${actual}; expected one of: $*" >&2
+  return 1
+}
+
+smoke_http_json_code() {
+  local body="$1"
+  python3 - "$body" <<'PY'
+import json
+import sys
+
+try:
+    document = json.loads(sys.argv[1])
+except json.JSONDecodeError:
+    print("", end="")
+    raise SystemExit(0)
+print(document.get("code", ""), end="")
+PY
+}
+
+smoke_redact_secrets() {
+  local text="$1"
+  shift
+  python3 - "$text" "$@" "${MANAGEMENT_TOKEN}" "${SMOKE_BOOTSTRAP_TOKEN}" <<'PY'
+import sys
+
+text = sys.argv[1]
+for secret in sys.argv[2:]:
+    if secret:
+        text = text.replace(secret, "[REDACTED]")
+print(text)
+PY
+}
+
+smoke_assert_http_rejection() {
+  local context="$1"
+  local expected_status="$2"
+  local expected_code="$3"
+  shift 3
+  local response_file error_code
+
+  response_file="$(mktemp)"
+  trap 'rm -f "${response_file:-}"' RETURN
+
+  if ! http_request_capture "${response_file}" "$@"; then
+    echo "${context}: transport failure curl_exit=${HTTP_CURL_EXIT}" >&2
+    return "${HTTP_CURL_EXIT}"
+  fi
+
+  echo "${context}: http_status=${HTTP_STATUS}" >&2
+
+  if ! expect_http_status "${HTTP_STATUS}" "${expected_status}"; then
+    smoke_redact_secrets "${HTTP_BODY}" >&2 || printf '%s\n' "${HTTP_BODY}" >&2
+    return 1
+  fi
+
+  error_code="$(smoke_http_json_code "${HTTP_BODY}")"
+  echo "${context}: error_code=${error_code}" >&2
+
+  if [[ -n "${expected_code}" && "${error_code}" != "${expected_code}" ]]; then
+    echo "${context}: unexpected error code '${error_code}', expected '${expected_code}'" >&2
+    smoke_redact_secrets "${HTTP_BODY}" >&2 || true
+    return 1
+  fi
+
+  return 0
+}
+
 control_plane_mutate() {
   local context="$1"
   shift
@@ -192,12 +318,5 @@ PY
 
 smoke_redact_token() {
   local text="$1"
-  python3 - "$text" "${MANAGEMENT_TOKEN}" "${SMOKE_BOOTSTRAP_TOKEN}" <<'PY'
-import sys
-text, token, bootstrap = sys.argv[1], sys.argv[2], sys.argv[3]
-for secret in (token, bootstrap):
-    if secret:
-        text = text.replace(secret, "[REDACTED]")
-print(text)
-PY
+  smoke_redact_secrets "${text}"
 }

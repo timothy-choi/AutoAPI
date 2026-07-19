@@ -59,7 +59,30 @@ class ManagementAuthIntegrationTest extends ControlPlaneIntegrationTest {
         .uri("/api/v1/projects")
         .exchange()
         .expectStatus()
-        .isUnauthorized();
+        .isUnauthorized()
+        .expectBody()
+        .jsonPath("$.code")
+        .isEqualTo("INVALID_CREDENTIAL");
+  }
+
+  @Test
+  void proxiedApiKeyCannotAccessManagementAuthMe() throws Exception {
+    String projectId = createProject("api-key-separation-" + UUID.randomUUID());
+    String apiId = createApi(projectId, "separation-api");
+    String apiKey = createApiKey(apiId, "gateway-client");
+
+    webTestClient
+        .mutate()
+        .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+        .build()
+        .get()
+        .uri("/api/v1/management/auth/me")
+        .exchange()
+        .expectStatus()
+        .isUnauthorized()
+        .expectBody()
+        .jsonPath("$.code")
+        .isEqualTo("INVALID_CREDENTIAL");
   }
 
   @Test
@@ -152,6 +175,43 @@ class ManagementAuthIntegrationTest extends ControlPlaneIntegrationTest {
             .returnResult()
             .getResponseBody();
     return extractField(body, "id");
+  }
+
+  private String createApi(String projectId, String name) {
+    byte[] body =
+        webTestClient
+            .post()
+            .uri("/api/v1/projects/" + projectId + "/apis")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(
+                "{\"name\":\""
+                    + name
+                    + "\",\"host\":\""
+                    + name
+                    + ".autoapi.local\",\"basePath\":\"/\"}")
+            .exchange()
+            .expectStatus()
+            .isCreated()
+            .expectBody()
+            .returnResult()
+            .getResponseBody();
+    return extractField(body, "id");
+  }
+
+  private String createApiKey(String apiId, String name) {
+    byte[] body =
+        webTestClient
+            .post()
+            .uri("/api/v1/apis/" + apiId + "/api-keys")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"name\":\"" + name + "\"}")
+            .exchange()
+            .expectStatus()
+            .isCreated()
+            .expectBody()
+            .returnResult()
+            .getResponseBody();
+    return extractField(body, "plaintextKey");
   }
 
   private String createServiceAccount(String projectId, String name) {

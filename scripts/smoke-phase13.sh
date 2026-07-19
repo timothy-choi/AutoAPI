@@ -8,6 +8,8 @@ CONTROL_PLANE_URL="${CONTROL_PLANE_URL:-http://localhost:8081}"
 SMOKE_SKIP_UP="${SMOKE_SKIP_UP:-false}"
 SMOKE_HEADERS_FILE=""
 SMOKE_BODY_FILE=""
+VIEWER_TOKEN=""
+API_KEY=""
 
 # shellcheck source=scripts/smoke-curl-lib.sh
 source "${ROOT}/scripts/smoke-curl-lib.sh"
@@ -74,37 +76,66 @@ VIEWER_TOKEN="$(control_plane_json "create viewer credential" \
   | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')"
 
 set_smoke_step "Viewer token can read but not mutate project"
-status="$(
-  smoke_curl -o /dev/null -w '%{http_code}' \
-    -H "Authorization: Bearer ${VIEWER_TOKEN}" \
-    "${CONTROL_PLANE_URL}/api/v1/projects/${PROJECT_ID}"
-)"
-[[ "${status}" == "200" ]]
+if ! http_request_capture "${SMOKE_BODY_FILE}" \
+  -H "Authorization: Bearer ${VIEWER_TOKEN}" \
+  "${CONTROL_PLANE_URL}/api/v1/projects/${PROJECT_ID}"; then
+  echo "Viewer read transport failure curl_exit=${HTTP_CURL_EXIT}" >&2
+  exit 1
+fi
+expect_http_success "${HTTP_STATUS}"
 
-status="$(
-  smoke_curl -o /dev/null -w '%{http_code}' \
-    -X PATCH \
-    -H "Authorization: Bearer ${VIEWER_TOKEN}" \
-    -H 'Content-Type: application/json' \
-    -d '{"description":"denied"}' \
-    "${CONTROL_PLANE_URL}/api/v1/projects/${PROJECT_ID}" 2>/dev/null || echo 000
-)"
-[[ "${status}" == "403" || "${status}" == "404" ]]
+if ! http_request_capture "${SMOKE_BODY_FILE}" \
+  -X PATCH \
+  -H "Authorization: Bearer ${VIEWER_TOKEN}" \
+  -H 'Content-Type: application/json' \
+  -d '{"description":"denied"}' \
+  "${CONTROL_PLANE_URL}/api/v1/projects/${PROJECT_ID}"; then
+  echo "Viewer mutate denial transport failure curl_exit=${HTTP_CURL_EXIT}" >&2
+  exit 1
+fi
+expect_http_status "${HTTP_STATUS}" 403 404
 
 set_smoke_step "Gateway credential cannot access management API"
-status="$(
-  smoke_curl -o /dev/null -w '%{http_code}' \
-    -X POST \
-    -H 'Content-Type: application/json' \
-    -d '{"gatewayId":"gateway-a","softwareVersion":"0.1.0"}' \
-    "${CONTROL_PLANE_URL}/api/v1/gateways/register" 2>/dev/null || echo 000
-)"
-[[ "${status}" == "200" || "${status}" == "201" || "${status}" == "409" ]]
+API_ID="$(control_plane_json "create api for proxied key" \
+  -X POST "${CONTROL_PLANE_URL}/api/v1/projects/${PROJECT_ID}/apis" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"phase13-api","host":"phase13.autoapi.local","basePath":"/"}' \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
 
-status="$(
-  smoke_curl -o /dev/null -w '%{http_code}' \
-    "${CONTROL_PLANE_URL}/api/v1/projects" 2>/dev/null || echo 000
-)"
-[[ "${status}" == "401" ]]
+API_KEY="$(control_plane_json "create proxied api key" \
+  -X POST "${CONTROL_PLANE_URL}/api/v1/apis/${API_ID}/api-keys" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"phase13-gateway-client"}' \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["plaintextKey"])')"
+
+smoke_assert_http_rejection \
+  "Proxied API key on management auth/me" \
+  401 \
+  INVALID_CREDENTIAL \
+  -H "Authorization: Bearer ${API_KEY}" \
+  "${CONTROL_PLANE_URL}/api/v1/management/auth/me"
+
+smoke_assert_http_rejection \
+  "Proxied API key on management projects list" \
+  401 \
+  INVALID_CREDENTIAL \
+  -H "Authorization: Bearer ${API_KEY}" \
+  "${CONTROL_PLANE_URL}/api/v1/projects"
+
+if ! http_request_capture "${SMOKE_BODY_FILE}" \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -d '{"gatewayId":"phase13-smoke-gateway","gatewayGroup":"default","softwareVersion":"0.1.0","startedAt":"2026-07-11T23:30:00Z"}' \
+  "${CONTROL_PLANE_URL}/api/v1/gateways/register"; then
+  echo "Gateway registration transport failure curl_exit=${HTTP_CURL_EXIT}" >&2
+  exit 1
+fi
+expect_http_status "${HTTP_STATUS}" 200 201
+
+smoke_assert_http_rejection \
+  "Unauthenticated management projects list" \
+  401 \
+  AUTHENTICATION_REQUIRED \
+  "${CONTROL_PLANE_URL}/api/v1/projects"
 
 log_step "Phase 13 smoke completed successfully"
