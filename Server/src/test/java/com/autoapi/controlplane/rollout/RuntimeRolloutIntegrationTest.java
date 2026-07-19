@@ -7,6 +7,7 @@ import com.autoapi.controlplane.ControlPlaneDatabaseCleaner;
 import com.autoapi.controlplane.ControlPlaneIntegrationTest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -41,7 +42,7 @@ class RuntimeRolloutIntegrationTest extends ControlPlaneIntegrationTest {
     String previewBody =
         postManagementJson(
             "/api/v1/management/projects/" + projectId + "/rollouts/preview",
-            rolloutBody(groupId, 2, stagesJson));
+            previewBody(groupId, 2, stagesJson));
     assertEquals(3, readJsonInt(previewBody, "eligibleGatewayCount"));
     assertStageCounts(previewBody, List.of(1, 2, 3));
 
@@ -82,6 +83,7 @@ class RuntimeRolloutIntegrationTest extends ControlPlaneIntegrationTest {
     postManagementJson(
         "/api/v1/management/projects/" + projectId + "/rollouts/" + rolloutId + "/resume", "{}");
     pollUntil("rollout resumed", () -> "RUNNING".equals(readRolloutStatus(projectId, rolloutId)));
+    refreshGatewayHeartbeats();
 
     postManagementJson(
         "/api/v1/management/projects/" + projectId + "/rollouts/" + rolloutId + "/advance", "{}");
@@ -151,10 +153,16 @@ class RuntimeRolloutIntegrationTest extends ControlPlaneIntegrationTest {
     for (String gatewayId : GATEWAY_IDS) {
       registerGateway(gatewayId);
       setGatewayRolloutMetadata(gatewayId);
-      sendHeartbeat(gatewayId);
     }
+    refreshGatewayHeartbeats();
 
     return new Bootstrap(projectId, apiId);
+  }
+
+  private void refreshGatewayHeartbeats() {
+    for (String gatewayId : GATEWAY_IDS) {
+      sendHeartbeat(gatewayId);
+    }
   }
 
   private String createGatewayGroup(String projectId, String apiId) {
@@ -211,6 +219,18 @@ class RuntimeRolloutIntegrationTest extends ControlPlaneIntegrationTest {
         """;
   }
 
+  private static String previewBody(String groupId, long targetVersion, String stagesJson) {
+    return """
+        {
+          "gatewayGroupId": "%s",
+          "targetVersion": %d,
+          "strategy": "PROGRESSIVE_PERCENTAGE",
+          "stages": %s
+        }
+        """
+        .formatted(groupId, targetVersion, stagesJson);
+  }
+
   private static String rolloutBody(String groupId, long targetVersion, String stagesJson) {
     return """
         {
@@ -263,11 +283,12 @@ class RuntimeRolloutIntegrationTest extends ControlPlaneIntegrationTest {
   }
 
   private void sendHeartbeat(String gatewayId) {
+    String sentAt = OffsetDateTime.now().toString();
     webTestClient
         .post()
         .uri("/api/v1/gateways/" + gatewayId + "/heartbeat")
         .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue("{\"sentAt\":\"2026-07-11T23:32:00Z\"}")
+        .bodyValue("{\"sentAt\":\"" + sentAt + "\"}")
         .exchange()
         .expectStatus()
         .isOk();
@@ -346,7 +367,12 @@ class RuntimeRolloutIntegrationTest extends ControlPlaneIntegrationTest {
             .expectBody()
             .returnResult()
             .getResponseBody();
-    return readJsonField(body, "status");
+    try {
+      return MAPPER.readTree(body).path("rollout").path("status").asText();
+    } catch (Exception e) {
+      fail(e);
+      return null;
+    }
   }
 
   private int countAssignmentsWithStatus(String projectId, String rolloutId, String status) {
@@ -453,19 +479,26 @@ class RuntimeRolloutIntegrationTest extends ControlPlaneIntegrationTest {
   }
 
   private String postManagementJson(String uri, String body) {
-    byte[] response =
+    org.springframework.test.web.reactive.server.EntityExchangeResult<byte[]> result =
         webTestClient
             .post()
             .uri(uri)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(body)
             .exchange()
-            .expectStatus()
-            .isOk()
             .expectBody()
-            .returnResult()
-            .getResponseBody();
-    return new String(response);
+            .returnResult();
+    if (!result.getStatus().is2xxSuccessful()) {
+      fail(
+          "POST "
+              + uri
+              + " expected 2xx but was "
+              + result.getStatus().value()
+              + ": "
+              + new String(
+                  result.getResponseBody() == null ? new byte[0] : result.getResponseBody()));
+    }
+    return new String(result.getResponseBody() == null ? new byte[0] : result.getResponseBody());
   }
 
   private static String readJsonField(byte[] body, String field) {

@@ -3,6 +3,7 @@ package com.autoapi.controlplane.rollout;
 import com.autoapi.controlplane.api.ControlPlaneException;
 import com.autoapi.controlplane.events.EventContext;
 import com.autoapi.controlplane.rollout.RolloutStageCalculator.StageDefinitionInput;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -219,6 +220,7 @@ public class RuntimeRolloutManagementRouter {
     }
   }
 
+  @JsonIgnoreProperties(ignoreUnknown = true)
   record CreateRolloutRequest(
       UUID gatewayGroupId,
       long targetVersion,
@@ -228,6 +230,7 @@ public class RuntimeRolloutManagementRouter {
       String cancelBehavior,
       List<StageDefinitionInput> stages) {}
 
+  @JsonIgnoreProperties(ignoreUnknown = true)
   record PreviewRolloutRequest(
       UUID gatewayGroupId,
       long targetVersion,

@@ -505,9 +505,12 @@ public class RuntimeRolloutService {
                               .collectList()
                               .flatMap(
                                   assignments ->
-                                      activateStage(fresh, nextStage, assignments, context)))
-                  .switchIfEmpty(finalizeSuccessfulRollout(fresh, context));
-            });
+                                      activateStage(fresh, nextStage, assignments, context)
+                                          .thenReturn(Boolean.TRUE)))
+                  .switchIfEmpty(
+                      finalizeSuccessfulRollout(fresh, context).thenReturn(Boolean.FALSE));
+            })
+        .then();
   }
 
   Mono<Void> activateStage(

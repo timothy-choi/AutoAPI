@@ -29,6 +29,12 @@ public record RolloutsProperties(
     if (defaultObservationDuration == null) {
       defaultObservationDuration = Duration.ofMinutes(2);
     }
+    if (maxStages <= 0) {
+      maxStages = 10;
+    }
+    if (maxActiveRolloutsPerProject <= 0) {
+      maxActiveRolloutsPerProject = 10;
+    }
     if (reconciler == null) {
       reconciler = new Reconciler(Duration.ofSeconds(1), 50);
     }

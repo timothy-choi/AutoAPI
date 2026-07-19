@@ -37,9 +37,10 @@ public class GatewayGroupRepositoryCustom {
       boolean enabled,
       OffsetDateTime now) {
     UUID id = UUID.randomUUID();
-    return databaseClient
-        .sql(
-            """
+    var spec =
+        databaseClient
+            .sql(
+                """
             INSERT INTO gateway_groups (
               id, project_id, api_id, name, description, region, zone, environment,
               selector, enabled, created_at, updated_at, version
@@ -51,15 +52,15 @@ public class GatewayGroupRepositoryCustom {
                       selector::text, enabled, desired_config_version, created_at, updated_at,
                       deleted_at, version
             """)
-        .bind("id", id)
-        .bind("projectId", projectId)
-        .bind("apiId", apiId)
-        .bind("name", name)
-        .bind("description", description)
-        .bind("region", region)
-        .bind("zone", zone)
-        .bind("environment", environment)
-        .bind("selector", selectorJson == null ? "{}" : selectorJson)
+            .bind("id", id)
+            .bind("projectId", projectId)
+            .bind("apiId", apiId)
+            .bind("name", name);
+    spec = bindNullableString(spec, "description", description);
+    spec = bindNullableString(spec, "region", region);
+    spec = bindNullableString(spec, "zone", zone);
+    spec = bindNullableString(spec, "environment", environment);
+    return spec.bind("selector", selectorJson == null ? "{}" : selectorJson)
         .bind("enabled", enabled)
         .bind("createdAt", now)
         .bind("updatedAt", now)
@@ -136,12 +137,12 @@ public class GatewayGroupRepositoryCustom {
                 """)
             .bind("id", groupId)
             .bind("projectId", projectId)
-            .bind("description", description)
-            .bind("region", region)
-            .bind("zone", zone)
-            .bind("environment", environment)
             .bind("updatedAt", now)
             .bind("expectedVersion", expectedVersion);
+    spec = bindNullableString(spec, "description", description);
+    spec = bindNullableString(spec, "region", region);
+    spec = bindNullableString(spec, "zone", zone);
+    spec = bindNullableString(spec, "environment", environment);
     spec = bindNullableJson(spec, "selector", selectorJson);
     spec = bindNullableBoolean(spec, "enabled", enabled);
     if (desiredConfigVersion == null) {
@@ -300,6 +301,11 @@ public class GatewayGroupRepositoryCustom {
         row.get("updated_at", OffsetDateTime.class),
         row.get("deleted_at", OffsetDateTime.class),
         row.get("version", Long.class));
+  }
+
+  private DatabaseClient.GenericExecuteSpec bindNullableString(
+      DatabaseClient.GenericExecuteSpec spec, String name, String value) {
+    return value == null ? spec.bindNull(name, String.class) : spec.bind(name, value);
   }
 
   private DatabaseClient.GenericExecuteSpec bindNullableJson(
