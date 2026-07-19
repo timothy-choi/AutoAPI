@@ -356,10 +356,59 @@ public class RuntimeRolloutService {
                     ControlPlaneException.invalidRequest(
                         "Advance is only supported for MANUAL progression mode"));
               }
-              return advanceToNextStage(rollout, context)
+              return completeCurrentStageForManualAdvance(rollout, context)
+                  .flatMap(updated -> advanceToNextStage(updated, context))
                   .then(rolloutRepository.findById(projectId, rolloutId))
                   .map(RuntimeRolloutView::from);
             });
+  }
+
+  private Mono<RuntimeRolloutEntity> completeCurrentStageForManualAdvance(
+      RuntimeRolloutEntity rollout, EventContext context) {
+    if (rollout.currentStageIndex() < 0) {
+      return Mono.just(rollout);
+    }
+    return rolloutRepository
+        .findStage(rollout.id(), rollout.currentStageIndex())
+        .flatMap(
+            stage -> {
+              if ("SUCCEEDED".equals(stage.status()) || "SKIPPED".equals(stage.status())) {
+                return Mono.just(rollout);
+              }
+              if ("PENDING".equals(stage.status())) {
+                return Mono.error(
+                    ControlPlaneException.conflict("Current stage has not been activated yet"));
+              }
+              if ("FAILED".equals(stage.status()) || "CANCELLED".equals(stage.status())) {
+                return Mono.error(
+                    ControlPlaneException.conflict("Current stage cannot be advanced"));
+              }
+              OffsetDateTime now = now();
+              return rolloutRepository
+                  .updateStageStatus(
+                      stage.id(),
+                      stage.status(),
+                      "SUCCEEDED",
+                      stage.version(),
+                      now,
+                      null,
+                      null,
+                      now,
+                      null,
+                      null,
+                      null)
+                  .switchIfEmpty(
+                      Mono.error(ControlPlaneException.conflict("Current stage advance conflict")))
+                  .flatMap(
+                      ignored ->
+                          recordStageEvent(
+                                  rollout,
+                                  stage.stageIndex(),
+                                  PlatformEventTypes.RUNTIME_ROLLOUT_STAGE_SUCCEEDED,
+                                  context)
+                              .then(rolloutRepository.findById(rollout.projectId(), rollout.id())));
+            })
+        .switchIfEmpty(Mono.just(rollout));
   }
 
   @Transactional(transactionManager = "connectionFactoryTransactionManager")
@@ -541,25 +590,35 @@ public class RuntimeRolloutService {
 
   private Mono<Void> finalizeSuccessfulRollout(RuntimeRolloutEntity rollout, EventContext context) {
     OffsetDateTime now = now();
-    return gatewayGroupRepository
-        .findById(rollout.projectId(), rollout.gatewayGroupId())
+    return rolloutRepository
+        .findById(rollout.projectId(), rollout.id())
         .flatMap(
-            group ->
+            fresh ->
                 gatewayGroupRepository
-                    .setDesiredConfigVersion(
-                        group.id(), rollout.targetVersion(), group.version(), now)
-                    .then(
-                        rolloutRepository.updateRolloutStatus(
-                            rollout.id(),
-                            "RUNNING",
-                            "SUCCEEDED",
-                            rollout.version(),
-                            now,
-                            null,
-                            null))
-                    .then(
-                        recordRolloutEvent(
-                            rollout, PlatformEventTypes.RUNTIME_ROLLOUT_SUCCEEDED, context)));
+                    .findById(fresh.projectId(), fresh.gatewayGroupId())
+                    .flatMap(
+                        group ->
+                            gatewayGroupRepository
+                                .setDesiredConfigVersion(
+                                    group.id(), fresh.targetVersion(), group.version(), now)
+                                .then(
+                                    rolloutRepository.updateRolloutStatus(
+                                        fresh.id(),
+                                        "RUNNING",
+                                        "SUCCEEDED",
+                                        fresh.version(),
+                                        now,
+                                        null,
+                                        null))
+                                .switchIfEmpty(
+                                    Mono.error(
+                                        ControlPlaneException.conflict(
+                                            "Rollout finalize conflict")))
+                                .then(
+                                    recordRolloutEvent(
+                                        fresh,
+                                        PlatformEventTypes.RUNTIME_ROLLOUT_SUCCEEDED,
+                                        context))));
   }
 
   public Mono<Void> initiateRollbackAssignments(RuntimeRolloutEntity rollout) {
