@@ -40,9 +40,18 @@ report_curl_failure() {
   local curl_exit="$2"
   local status="${3:-}"
 
-  log_step "curl failed during ${context} (exit=${curl_exit}, http=${status:-n/a}, step=${SMOKE_CURRENT_STEP})"
+  log_step "curl transport failure during ${context} (curl_exit=${curl_exit}, step=${SMOKE_CURRENT_STEP})"
 
   if [[ "${curl_exit}" -eq 28 ]]; then
     echo "curl timed out during ${context} at step: ${SMOKE_CURRENT_STEP}" >&2
   fi
+}
+
+report_unexpected_http_status() {
+  local context="$1"
+  local expected="$2"
+  local actual="$3"
+  local curl_exit="${4:-0}"
+
+  echo "Unexpected HTTP status during ${context}: expected=${expected} actual=${actual} curl_exit=${curl_exit}" >&2
 }

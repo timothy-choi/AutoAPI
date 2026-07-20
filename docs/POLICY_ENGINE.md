@@ -50,8 +50,9 @@ Reusable bundles contain multiple policy types. Each bundle supports immutable r
 1. Create bundle (`POST /management/organizations/{orgId}/policy-bundles`)
 2. Add revision (`POST .../policy-bundles/{bundleId}/revisions`)
 3. Assign revision at org/project/gateway-group/api/route scope
+4. Upgrade an existing assignment revision (`PATCH /management/policy-bundle-assignments/{assignmentId}`)
 
-Assignments reference a specific revision number. Updating bundle content creates a new revision; existing assignments continue using their pinned revision until upgraded.
+Assignments reference a specific revision number. Updating bundle content creates a new revision; existing assignments continue using their pinned revision until explicitly upgraded.
 
 ## Effective policy API
 
@@ -113,7 +114,7 @@ Micrometer metrics:
 
 ## Events and audit
 
-Platform events: `PolicyBundleCreated`, `PolicyBundleUpdated`, `PolicyBundleRevisionCreated`, `PolicyBundleAssigned`, `PolicyBundleDetached`, `PolicyEvaluated`, `EffectivePolicyChanged`.
+Platform events: `PolicyBundleCreated`, `PolicyBundleUpdated`, `PolicyBundleRevisionCreated`, `PolicyBundleAssigned`, `PolicyBundleAssignmentRevisionChanged`, `PolicyBundleDetached`, `PolicyEvaluated`, `EffectivePolicyChanged`.
 
 Audit log entries capture actor, scope, previous/new values, bundle revision, and reason.
 

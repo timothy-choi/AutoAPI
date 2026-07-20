@@ -224,12 +224,12 @@ control_plane_mutate() {
   fi
 
   if ! _smoke_validate_http_status "${status}"; then
-    report_curl_failure "${context}" "${curl_exit}" "${status}"
+    report_unexpected_http_status "${context}" "valid HTTP status" "${status}" "${curl_exit}"
     exit 1
   fi
 
   if ((status < 200 || status >= 300)); then
-    report_curl_failure "${context}" "${curl_exit}" "${status}"
+    report_unexpected_http_status "${context}" "2xx" "${status}" "${curl_exit}"
     if [[ -s "${SMOKE_BODY_FILE}" ]]; then
       smoke_redact_token "$(cat "${SMOKE_BODY_FILE}")" >&2 || cat "${SMOKE_BODY_FILE}" >&2
     fi

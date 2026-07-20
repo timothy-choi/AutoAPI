@@ -72,6 +72,7 @@ class ManagementEndpointPolicyInventoryTest {
                     + "/policy-bundles/"
                     + ID
                     + "/assignments"),
+            route(HttpMethod.PATCH, "/api/v1/management/policy-bundle-assignments/" + ID),
             route(
                 HttpMethod.POST,
                 "/api/v1/management/projects/" + ID + "/policy-bundles/" + ID + "/assignments"),

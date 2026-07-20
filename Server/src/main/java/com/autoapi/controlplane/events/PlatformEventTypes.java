@@ -96,6 +96,8 @@ public final class PlatformEventTypes {
   public static final String POLICY_BUNDLE_UPDATED = "policy_bundle.updated.v1";
   public static final String POLICY_BUNDLE_REVISION_CREATED = "policy_bundle.revision.created.v1";
   public static final String POLICY_BUNDLE_ASSIGNED = "policy_bundle.assigned.v1";
+  public static final String POLICY_BUNDLE_ASSIGNMENT_REVISION_CHANGED =
+      "policy_bundle.assignment.revision_changed.v1";
   public static final String POLICY_BUNDLE_DETACHED = "policy_bundle.detached.v1";
   public static final String POLICY_EVALUATED = "policy.evaluated.v1";
   public static final String EFFECTIVE_POLICY_CHANGED = "effective_policy.changed.v1";
@@ -177,6 +179,7 @@ public final class PlatformEventTypes {
           POLICY_BUNDLE_UPDATED,
           POLICY_BUNDLE_REVISION_CREATED,
           POLICY_BUNDLE_ASSIGNED,
+          POLICY_BUNDLE_ASSIGNMENT_REVISION_CHANGED,
           POLICY_BUNDLE_DETACHED,
           POLICY_EVALUATED,
           EFFECTIVE_POLICY_CHANGED);

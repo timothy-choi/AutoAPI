@@ -171,6 +171,38 @@ public class PolicyBundleAssignmentRepositoryCustom {
         .all();
   }
 
+  public Mono<PolicyBundleAssignmentEntity> findById(UUID assignmentId) {
+    return databaseClient
+        .sql(
+            """
+            SELECT id, bundle_id, revision_number, scope_level, organization_id, project_id,
+                   gateway_group_id, api_id, route_id, enabled, created_at, updated_at
+            FROM policy_bundle_assignments
+            WHERE id = :id
+            """)
+        .bind("id", assignmentId)
+        .map(this::mapAssignment)
+        .one();
+  }
+
+  public Mono<PolicyBundleAssignmentEntity> updateRevision(
+      UUID assignmentId, int revisionNumber, OffsetDateTime now) {
+    return databaseClient
+        .sql(
+            """
+            UPDATE policy_bundle_assignments
+            SET revision_number = :revisionNumber, updated_at = :updatedAt
+            WHERE id = :id AND enabled = true
+            RETURNING id, bundle_id, revision_number, scope_level, organization_id, project_id,
+                      gateway_group_id, api_id, route_id, enabled, created_at, updated_at
+            """)
+        .bind("id", assignmentId)
+        .bind("revisionNumber", revisionNumber)
+        .bind("updatedAt", now)
+        .map(this::mapAssignment)
+        .one();
+  }
+
   public Mono<PolicyBundleAssignmentEntity> findEnabledAssignment(
       UUID bundleId, String scopeLevel, UUID scopeResourceId) {
     String column = scopeColumn(scopeLevel);

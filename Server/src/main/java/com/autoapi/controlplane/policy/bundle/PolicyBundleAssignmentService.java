@@ -296,6 +296,100 @@ public class PolicyBundleAssignmentService {
         .map(PolicyBundleAssignmentView::from);
   }
 
+  public Mono<PolicyBundleAssignmentView> get(UUID assignmentId) {
+    return assignmentRepository
+        .findById(assignmentId)
+        .switchIfEmpty(
+            Mono.error(ControlPlaneException.notFound("Policy bundle assignment was not found")))
+        .map(PolicyBundleAssignmentView::from);
+  }
+
+  @Transactional(transactionManager = "connectionFactoryTransactionManager")
+  public Mono<PolicyBundleAssignmentView> upgradeRevision(
+      UUID assignmentId, Integer revisionNumber, EventContext context) {
+    if (revisionNumber == null || revisionNumber <= 0) {
+      return Mono.error(
+          ControlPlaneException.invalidRequest("revisionNumber must be a positive integer"));
+    }
+    return assignmentRepository
+        .findById(assignmentId)
+        .switchIfEmpty(
+            Mono.error(ControlPlaneException.notFound("Policy bundle assignment was not found")))
+        .flatMap(
+            existing -> {
+              if (!existing.enabled()) {
+                return Mono.error(
+                    ControlPlaneException.notFound("Policy bundle assignment was not found"));
+              }
+              if (existing.revisionNumber() == revisionNumber) {
+                return Mono.just(new RevisionUpgrade(existing.revisionNumber(), existing));
+              }
+              return bundleService
+                  .requireBundle(existing.organizationId(), existing.bundleId())
+                  .then(resolveRevisionNumber(existing.bundleId(), revisionNumber))
+                  .flatMap(
+                      resolvedRevision ->
+                          assignmentRepository.updateRevision(
+                              assignmentId, resolvedRevision, now()))
+                  .switchIfEmpty(
+                      Mono.error(
+                          ControlPlaneException.notFound("Policy bundle assignment was not found")))
+                  .map(updated -> new RevisionUpgrade(existing.revisionNumber(), updated));
+            })
+        .flatMap(
+            upgrade ->
+                upgrade.updated().revisionNumber() == upgrade.previousRevision()
+                    ? Mono.just(PolicyBundleAssignmentView.from(upgrade.updated()))
+                    : finalizeRevisionUpgrade(upgrade, context));
+  }
+
+  private Mono<PolicyBundleAssignmentView> finalizeRevisionUpgrade(
+      RevisionUpgrade upgrade, EventContext context) {
+    PolicyBundleAssignmentEntity updated = upgrade.updated();
+    UUID scopeResourceId = scopeResourceId(updated);
+    return recordRevisionChangedEvent(upgrade.previousRevision(), updated, context)
+        .then(
+            auditService.recordAssignmentRevisionUpgrade(
+                context,
+                updated,
+                upgrade.previousRevision(),
+                updated.scopeLevel(),
+                scopeResourceId))
+        .then(cacheInvalidator.invalidate())
+        .then(recordEffectivePolicyChanged(updated, context))
+        .thenReturn(PolicyBundleAssignmentView.from(updated));
+  }
+
+  private static UUID scopeResourceId(PolicyBundleAssignmentEntity assignment) {
+    return switch (assignment.scopeLevel()) {
+      case "ORGANIZATION" -> assignment.organizationId();
+      case "PROJECT" -> assignment.projectId();
+      case "GATEWAY_GROUP" -> assignment.gatewayGroupId();
+      case "API" -> assignment.apiId();
+      case "ROUTE" -> assignment.routeId();
+      default -> null;
+    };
+  }
+
+  private Mono<Void> recordRevisionChangedEvent(
+      int previousRevision, PolicyBundleAssignmentEntity assignment, EventContext context) {
+    Map<String, Object> payload = assignmentPayload(assignment);
+    payload.put("previousRevisionNumber", previousRevision);
+    return eventRecorder
+        .record(
+            RecordPlatformEventRequest.of(
+                PlatformEventTypes.POLICY_BUNDLE_ASSIGNMENT_REVISION_CHANGED,
+                null,
+                assignment.apiId(),
+                "POLICY_BUNDLE_ASSIGNMENT",
+                assignment.id().toString(),
+                context,
+                payload))
+        .then();
+  }
+
+  private record RevisionUpgrade(int previousRevision, PolicyBundleAssignmentEntity updated) {}
+
   private Mono<Integer> resolveRevisionNumber(UUID bundleId, Integer revisionNumber) {
     if (revisionNumber != null && revisionNumber > 0) {
       return bundleRepository

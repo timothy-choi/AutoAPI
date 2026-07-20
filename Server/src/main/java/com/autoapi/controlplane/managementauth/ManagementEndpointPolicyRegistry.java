@@ -335,6 +335,11 @@ public class ManagementEndpointPolicyRegistry {
         ManagementPermission.POLICY_BUNDLE_DETACH,
         true);
     register(
+        HttpMethod.PATCH,
+        "^/api/v1/management/policy-bundle-assignments/[^/]+$",
+        ManagementPermission.POLICY_BUNDLE_ASSIGN,
+        true);
+    register(
         HttpMethod.POST,
         "^/api/v1/management/organizations/[^/]+/policy-overrides$",
         ManagementPermission.POLICY_BUNDLE_MANAGE,

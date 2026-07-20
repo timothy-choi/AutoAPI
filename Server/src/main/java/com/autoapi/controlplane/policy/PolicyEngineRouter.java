@@ -96,6 +96,9 @@ public class PolicyEngineRouter {
         .GET("/api/v1/management/policy-overrides/{overrideId}", handler::getOverride)
         .PATCH("/api/v1/management/policy-overrides/{overrideId}", handler::updateOverride)
         .DELETE("/api/v1/management/policy-overrides/{overrideId}", handler::deleteOverride)
+        .PATCH(
+            "/api/v1/management/policy-bundle-assignments/{assignmentId}",
+            handler::upgradeAssignmentRevision)
         .GET("/api/v1/management/apis/{apiId}/effective-policy", handler::effectivePolicy)
         .POST("/api/v1/management/policies/evaluate", handler::evaluatePolicy)
         .build();
@@ -371,6 +374,18 @@ public class PolicyEngineRouter {
           .onErrorResume(ControlPlaneException.class, this::error);
     }
 
+    Mono<ServerResponse> upgradeAssignmentRevision(ServerRequest request) {
+      return request
+          .bodyToMono(UpgradePolicyBundleAssignmentRequest.class)
+          .flatMap(
+              body ->
+                  assignmentService
+                      .upgradeRevision(
+                          uuid(request, "assignmentId"), body.revisionNumber(), context(request))
+                      .flatMap(view -> ServerResponse.ok().bodyValue(view)))
+          .onErrorResume(ControlPlaneException.class, this::error);
+    }
+
     Mono<ServerResponse> effectivePolicy(ServerRequest request) {
       UUID apiId = uuid(request, "apiId");
       boolean explain = request.queryParam("explain").map(Boolean::parseBoolean).orElse(false);
@@ -478,6 +493,8 @@ public class PolicyEngineRouter {
   record CreatePolicyBundleRevisionRequest(JsonNode content, String message) {}
 
   record AssignPolicyBundleRequest(Integer revisionNumber) {}
+
+  record UpgradePolicyBundleAssignmentRequest(Integer revisionNumber) {}
 
   record CreatePolicyOverrideRequest(String policyType, String mode, JsonNode content) {}
 

@@ -82,6 +82,27 @@ public class PolicyAuditService {
         now());
   }
 
+  public Mono<PolicyAuditLogEntity> recordAssignmentRevisionUpgrade(
+      EventContext context,
+      PolicyBundleAssignmentEntity assignment,
+      int previousRevisionNumber,
+      String scopeLevel,
+      UUID scopeResourceId) {
+    return repository.insert(
+        actorType(context),
+        actorId(context),
+        "ASSIGNMENT_REVISION_UPGRADED",
+        scopeLevel,
+        scopeResourceId,
+        null,
+        assignment.bundleId(),
+        assignment.revisionNumber(),
+        "{\"revisionNumber\":" + previousRevisionNumber + "}",
+        "{\"revisionNumber\":" + assignment.revisionNumber() + "}",
+        null,
+        now());
+  }
+
   public Mono<PolicyAuditLogEntity> recordDetachAction(
       EventContext context, UUID bundleId, String scopeLevel, UUID scopeResourceId) {
     return repository.insert(
