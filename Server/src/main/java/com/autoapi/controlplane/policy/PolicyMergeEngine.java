@@ -90,7 +90,8 @@ public class PolicyMergeEngine {
     }
 
     boolean disabled =
-        contributions.stream().anyMatch(c -> c.value() == null || c.value().isNull());
+        contributions.stream()
+            .anyMatch(c -> c.override() && (c.value() == null || c.value().isNull()));
     if (disabled) {
       return new MergeResult(null, last);
     }

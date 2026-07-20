@@ -38,11 +38,11 @@ public class EffectivePolicyService {
   }
 
   public Mono<EffectivePolicyDocument> evaluateApi(UUID apiId, boolean explain) {
-    return evaluateScope(cacheKeyApi(apiId), apiId, null, explain);
+    return evaluateScope(cacheKeyApi(apiId, explain), apiId, null, explain);
   }
 
   public Mono<EffectivePolicyDocument> evaluateRoute(UUID apiId, UUID routeId, boolean explain) {
-    return evaluateScope(cacheKeyRoute(routeId), apiId, routeId, explain);
+    return evaluateScope(cacheKeyRoute(routeId, explain), apiId, routeId, explain);
   }
 
   public Mono<Map<UUID, EffectivePolicyDocument>> evaluateAllRoutes(UUID apiId, boolean explain) {
@@ -78,11 +78,11 @@ public class EffectivePolicyService {
     }
   }
 
-  public static String cacheKeyApi(UUID apiId) {
-    return "api:" + apiId;
+  public static String cacheKeyApi(UUID apiId, boolean explain) {
+    return explain ? "api:" + apiId + ":explain" : "api:" + apiId;
   }
 
-  public static String cacheKeyRoute(UUID routeId) {
-    return "route:" + routeId;
+  public static String cacheKeyRoute(UUID routeId, boolean explain) {
+    return explain ? "route:" + routeId + ":explain" : "route:" + routeId;
   }
 }

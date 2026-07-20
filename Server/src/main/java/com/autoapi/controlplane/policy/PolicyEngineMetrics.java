@@ -14,13 +14,26 @@ import org.springframework.stereotype.Component;
     matchIfMissing = true)
 public class PolicyEngineMetrics {
 
-  private final MeterRegistry meterRegistry;
+  private final Counter evaluateCounter;
+  private final Counter cacheHitCounter;
+  private final Counter cacheMissCounter;
   private final AtomicLong bundleAssignments = new AtomicLong(0);
   private final AtomicLong overrideCount = new AtomicLong(0);
   private final AtomicLong inheritanceDepth = new AtomicLong(0);
 
   public PolicyEngineMetrics(MeterRegistry meterRegistry) {
-    this.meterRegistry = meterRegistry;
+    this.evaluateCounter =
+        Counter.builder("policy.evaluate")
+            .description("Effective policy evaluations")
+            .register(meterRegistry);
+    this.cacheHitCounter =
+        Counter.builder("policy.cache.hit")
+            .description("Effective policy cache hits")
+            .register(meterRegistry);
+    this.cacheMissCounter =
+        Counter.builder("policy.cache.miss")
+            .description("Effective policy cache misses")
+            .register(meterRegistry);
     Gauge.builder("policy.bundle.assignments", bundleAssignments, AtomicLong::get)
         .description("Policy bundle assignments observed during evaluation")
         .register(meterRegistry);
@@ -33,15 +46,15 @@ public class PolicyEngineMetrics {
   }
 
   public void recordEvaluate() {
-    counter("policy.evaluate").increment();
+    evaluateCounter.increment();
   }
 
   public void recordCacheHit() {
-    counter("policy.cache.hit").increment();
+    cacheHitCounter.increment();
   }
 
   public void recordCacheMiss() {
-    counter("policy.cache.miss").increment();
+    cacheMissCounter.increment();
   }
 
   public void recordBundleAssignment() {
@@ -59,9 +72,5 @@ public class PolicyEngineMetrics {
   public void resetEvaluationCounters() {
     bundleAssignments.set(0);
     overrideCount.set(0);
-  }
-
-  private Counter counter(String name) {
-    return Counter.builder(name).register(meterRegistry);
   }
 }

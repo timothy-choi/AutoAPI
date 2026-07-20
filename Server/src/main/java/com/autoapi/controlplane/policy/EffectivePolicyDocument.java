@@ -1,13 +1,19 @@
 package com.autoapi.controlplane.policy;
 
-import com.fasterxml.jackson.annotation.JsonUnwrapped;
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
 
 /** Resolved effective policy for a scope. */
 public record EffectivePolicyDocument(
-    @JsonUnwrapped Map<String, JsonNode> policies, List<PolicyExplainEntry> explanations) {
+    @JsonIgnore Map<String, JsonNode> policies, List<PolicyExplainEntry> explanations) {
+
+  @JsonAnyGetter
+  public Map<String, JsonNode> flattenedPolicies() {
+    return policies == null ? Map.of() : policies;
+  }
 
   public static EffectivePolicyDocument ofPolicies(Map<String, JsonNode> policies) {
     return new EffectivePolicyDocument(policies, List.of());

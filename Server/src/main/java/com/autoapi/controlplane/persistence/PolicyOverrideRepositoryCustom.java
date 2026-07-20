@@ -48,7 +48,8 @@ public class PolicyOverrideRepositoryCustom {
                   :policyType, :mode, :contentJson::jsonb, :createdAt, :updatedAt
                 )
                 RETURNING id, scope_level, organization_id, project_id, gateway_group_id, api_id,
-                          route_id, policy_type, mode, content_json, created_at, updated_at
+                          route_id, policy_type, mode, content_json::text AS content_json,
+                          created_at, updated_at
                 """)
             .bind("id", id)
             .bind("scopeLevel", scopeLevel)
@@ -81,7 +82,8 @@ public class PolicyOverrideRepositoryCustom {
                     updated_at = :updatedAt
                 WHERE id = :id
                 RETURNING id, scope_level, organization_id, project_id, gateway_group_id, api_id,
-                          route_id, policy_type, mode, content_json, created_at, updated_at
+                          route_id, policy_type, mode, content_json::text AS content_json,
+                          created_at, updated_at
                 """)
             .bind("id", overrideId)
             .bind("updatedAt", now);
@@ -108,7 +110,7 @@ public class PolicyOverrideRepositoryCustom {
         .sql(
             """
             SELECT id, scope_level, organization_id, project_id, gateway_group_id, api_id, route_id,
-                   policy_type, mode, content_json, created_at, updated_at
+                   policy_type, mode, content_json::text AS content_json, created_at, updated_at
             FROM policy_overrides
             WHERE id = :id
             """)
@@ -151,9 +153,10 @@ public class PolicyOverrideRepositoryCustom {
         .sql(
             """
             SELECT id, scope_level, organization_id, project_id, gateway_group_id, api_id, route_id,
-                   policy_type, mode, content_json, created_at, updated_at
+                   policy_type, mode, content_json::text AS content_json, created_at, updated_at
             FROM policy_overrides
-            WHERE scope_level = :scopeLevel AND """
+            WHERE scope_level = :scopeLevel"""
+                + " AND "
                 + column
                 + " = :resourceId")
         .bind("scopeLevel", scopeLevel)
@@ -173,9 +176,14 @@ public class PolicyOverrideRepositoryCustom {
         row.get("route_id", UUID.class),
         row.get("policy_type", String.class),
         row.get("mode", String.class),
-        row.get("content_json", Json.class),
+        readJson(row, "content_json"),
         row.get("created_at", OffsetDateTime.class),
         row.get("updated_at", OffsetDateTime.class));
+  }
+
+  private static Json readJson(Row row, String column) {
+    String raw = row.get(column, String.class);
+    return raw == null ? null : Json.of(raw);
   }
 
   private DatabaseClient.GenericExecuteSpec bindNullableString(

@@ -16,10 +16,12 @@ class PolicyEngineIntegrationTest extends ControlPlaneIntegrationTest {
   private static final String ORG_ID = ManagementAuthTestSupport.DEFAULT_ORG_ID;
 
   @Autowired DatabaseClient databaseClient;
+  @Autowired EffectivePolicyCache effectivePolicyCache;
 
   @BeforeEach
   void cleanDatabase() {
     ControlPlaneDatabaseCleaner.cleanAll(databaseClient);
+    effectivePolicyCache.invalidateAll();
   }
 
   @Test
@@ -111,9 +113,9 @@ class PolicyEngineIntegrationTest extends ControlPlaneIntegrationTest {
         .expectStatus()
         .isOk()
         .expectBody()
-        .jsonPath("$.headers.X-Org")
+        .jsonPath("$.headers['X-Org']")
         .isEqualTo("org-value")
-        .jsonPath("$.headers.X-Api")
+        .jsonPath("$.headers['X-Api']")
         .isEqualTo("api-value")
         .jsonPath("$.explanations[?(@.policyType=='headers')].winningLevel")
         .isEqualTo("API");

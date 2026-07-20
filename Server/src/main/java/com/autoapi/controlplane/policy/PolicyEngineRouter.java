@@ -438,7 +438,7 @@ public class PolicyEngineRouter {
                           body.mode(),
                           body.content(),
                           context(request))
-                      .flatMap(view -> ServerResponse.ok().bodyValue(view)))
+                      .flatMap(view -> ServerResponse.status(201).bodyValue(view)))
           .onErrorResume(ControlPlaneException.class, this::error);
     }
 

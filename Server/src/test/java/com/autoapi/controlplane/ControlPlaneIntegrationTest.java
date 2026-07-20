@@ -63,8 +63,14 @@ public abstract class ControlPlaneIntegrationTest implements PostgresDynamicProp
 
   @org.springframework.beans.factory.annotation.Autowired protected WebTestClient webTestClient;
 
+  @org.springframework.beans.factory.annotation.Autowired
+  private com.autoapi.controlplane.policy.EffectivePolicyCache effectivePolicyCache;
+
   @org.junit.jupiter.api.BeforeEach
   void authorizeManagementRequests() {
+    if (effectivePolicyCache != null) {
+      effectivePolicyCache.invalidateAll();
+    }
     webTestClient =
         webTestClient
             .mutate()

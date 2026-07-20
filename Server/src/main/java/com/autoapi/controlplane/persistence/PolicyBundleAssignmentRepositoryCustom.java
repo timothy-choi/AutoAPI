@@ -87,8 +87,8 @@ public class PolicyBundleAssignmentRepositoryCustom {
             """
             UPDATE policy_bundle_assignments
             SET enabled = false, updated_at = :updatedAt
-            WHERE bundle_id = :bundleId AND scope_level = :scopeLevel AND enabled = true
-              AND """
+            WHERE bundle_id = :bundleId AND scope_level = :scopeLevel AND enabled = true"""
+                + " AND "
                 + column
                 + " = :scopeResourceId")
         .bind("bundleId", bundleId)
@@ -180,8 +180,8 @@ public class PolicyBundleAssignmentRepositoryCustom {
             SELECT id, bundle_id, revision_number, scope_level, organization_id, project_id,
                    gateway_group_id, api_id, route_id, enabled, created_at, updated_at
             FROM policy_bundle_assignments
-            WHERE bundle_id = :bundleId AND scope_level = :scopeLevel AND enabled = true
-              AND """
+            WHERE bundle_id = :bundleId AND scope_level = :scopeLevel AND enabled = true"""
+                + " AND "
                 + column
                 + " = :scopeResourceId")
         .bind("bundleId", bundleId)
@@ -200,7 +200,8 @@ public class PolicyBundleAssignmentRepositoryCustom {
             SELECT id, bundle_id, revision_number, scope_level, organization_id, project_id,
                    gateway_group_id, api_id, route_id, enabled, created_at, updated_at
             FROM policy_bundle_assignments
-            WHERE scope_level = :scopeLevel AND """
+            WHERE scope_level = :scopeLevel"""
+                + " AND "
                 + column
                 + """
              = :scopeResourceId AND enabled = true

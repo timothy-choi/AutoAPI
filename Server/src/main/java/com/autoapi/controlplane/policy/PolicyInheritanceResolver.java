@@ -10,9 +10,9 @@ import com.autoapi.controlplane.persistence.PolicyBundleRevisionEntity;
 import com.autoapi.controlplane.persistence.PolicyOverrideEntity;
 import com.autoapi.controlplane.persistence.PolicyOverrideRepositoryCustom;
 import com.autoapi.controlplane.persistence.ProjectEntity;
-import com.autoapi.controlplane.persistence.ProjectRepository;
 import com.autoapi.controlplane.persistence.RouteEntity;
 import com.autoapi.controlplane.persistence.RouteRepository;
+import com.autoapi.controlplane.project.ProjectService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
@@ -36,7 +36,7 @@ import reactor.core.publisher.Mono;
 public class PolicyInheritanceResolver {
 
   private final ApiDefinitionService apiDefinitionService;
-  private final ProjectRepository projectRepository;
+  private final ProjectService projectService;
   private final RouteRepository routeRepository;
   private final GatewayGroupRepositoryCustom gatewayGroupRepository;
   private final PolicyBundleAssignmentRepositoryCustom assignmentRepository;
@@ -48,7 +48,7 @@ public class PolicyInheritanceResolver {
 
   public PolicyInheritanceResolver(
       ApiDefinitionService apiDefinitionService,
-      ProjectRepository projectRepository,
+      ProjectService projectService,
       RouteRepository routeRepository,
       GatewayGroupRepositoryCustom gatewayGroupRepository,
       PolicyBundleAssignmentRepositoryCustom assignmentRepository,
@@ -58,7 +58,7 @@ public class PolicyInheritanceResolver {
       ObjectMapper objectMapper,
       PolicyEngineMetrics metrics) {
     this.apiDefinitionService = apiDefinitionService;
-    this.projectRepository = projectRepository;
+    this.projectService = projectService;
     this.routeRepository = routeRepository;
     this.gatewayGroupRepository = gatewayGroupRepository;
     this.assignmentRepository = assignmentRepository;
@@ -74,8 +74,8 @@ public class PolicyInheritanceResolver {
         .get(apiId)
         .flatMap(
             api ->
-                projectRepository
-                    .findById(api.projectId())
+                projectService
+                    .get(api.projectId())
                     .flatMap(
                         project ->
                             resolveContext(api, project, routeId)
@@ -259,6 +259,9 @@ public class PolicyInheritanceResolver {
           case OVERRIDE, MERGE, APPEND -> parseJson(override.contentJson());
           default -> null;
         };
+    if (mode != PolicyOverrideMode.DISABLE && (value == null || value.isNull())) {
+      return Mono.empty();
+    }
     return Mono.just(
         new PolicyContribution(override.policyType(), value, level, sourceId, sourceName, 0, true));
   }

@@ -14,6 +14,7 @@ import com.autoapi.controlplane.persistence.TrafficSplitPolicyEntity;
 import com.autoapi.controlplane.policy.EffectivePolicyDocument;
 import com.autoapi.controlplane.policy.EffectivePolicyRuntimeBridge;
 import com.autoapi.controlplane.policy.EffectivePolicyService;
+import com.autoapi.controlplane.policy.bundle.PolicyCacheInvalidator;
 import com.autoapi.controlplane.validation.DraftGraphValidator;
 import com.autoapi.controlplane.validation.ValidationResult;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -43,6 +44,7 @@ public class ConfigVersionService {
   private final ObjectMapper objectMapper;
   private final EffectivePolicyService effectivePolicyService;
   private final EffectivePolicyRuntimeBridge effectivePolicyRuntimeBridge;
+  private final PolicyCacheInvalidator policyCacheInvalidator;
 
   public ConfigVersionService(
       DraftGraphService draftGraphService,
@@ -50,13 +52,15 @@ public class ConfigVersionService {
       DatabaseClient databaseClient,
       ObjectMapper objectMapper,
       EffectivePolicyService effectivePolicyService,
-      EffectivePolicyRuntimeBridge effectivePolicyRuntimeBridge) {
+      EffectivePolicyRuntimeBridge effectivePolicyRuntimeBridge,
+      PolicyCacheInvalidator policyCacheInvalidator) {
     this.draftGraphService = draftGraphService;
     this.configVersionRepository = configVersionRepository;
     this.databaseClient = databaseClient;
     this.objectMapper = objectMapper;
     this.effectivePolicyService = effectivePolicyService;
     this.effectivePolicyRuntimeBridge = effectivePolicyRuntimeBridge;
+    this.policyCacheInvalidator = policyCacheInvalidator;
   }
 
   public Mono<ValidationResult> validate(UUID apiId) {
@@ -223,6 +227,8 @@ public class ConfigVersionService {
                                   OffsetDateTime.now(ZoneOffset.UTC));
                           return configVersionRepository
                               .save(entity)
+                              .flatMap(
+                                  saved -> policyCacheInvalidator.invalidate().thenReturn(saved))
                               .onErrorResume(
                                   DataIntegrityViolationException.class,
                                   ex ->
