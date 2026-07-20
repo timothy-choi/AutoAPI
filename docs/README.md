@@ -1,8 +1,8 @@
 # AutoAPI Documentation Index
 
-Renovation planning documentation for transforming AutoAPI from a legacy multi-cloud API generator monolith into a **Distributed API Runtime and Traffic-Management Platform**.
+Documentation for AutoAPI, a **distributed API runtime and traffic-management platform** implemented in [`Server/`](../Server/) (Java 21 / Spring WebFlux).
 
-Legacy implementation lives in `server-old/` and is analyzed separately from proposed architecture. **No production code has been modified** as part of this documentation effort.
+Legacy implementation lives in [`server-old/`](../server-old/) and is analyzed separately. The active platform includes a PostgreSQL-backed control plane, gateway runtime, policy engine, and Docker Compose deployment — see the [root README](../README.md) for the current feature list and quick start.
 
 ---
 
@@ -49,14 +49,16 @@ Product definition for the renovated platform.
 
 ### [ARCHITECTURE.md](./ARCHITECTURE.md)
 
-Complete proposed system architecture.
+System architecture and request-path design.
 
 **Read this to understand:**
-- FastAPI control plane, PostgreSQL, embedded config distribution, Go gateway, Redis, telemetry
+- Control plane, PostgreSQL, embedded config distribution, gateway runtime, Redis, telemetry
 - Component responsibilities, owned state, failure behavior
 - Full external request path (client → gateway → upstream)
 - Configuration publication and atomic activation flow
 - Why PostgreSQL is excluded from the hot request path
+
+> **Implementation note:** Architecture docs describe FastAPI/Go as the original target stack. The shipped implementation is Java/Spring WebFlux in `Server/` with the same component boundaries.
 
 ---
 
@@ -100,15 +102,14 @@ PostgreSQL schema design for the management plane.
 
 ---
 
-### [MVP_ROADMAP.md](./MVP_ROADMAP.md)
+### [POLICY_ENGINE.md](./POLICY_ENGINE.md)
 
-Vertical-slice implementation plan (Phases 0–9).
+Hierarchical policy engine (Phase 14).
 
 **Read this to understand:**
-- Sequential phases from single-gateway proxy through AWS deployment
-- Tasks, affected components, tests, and definition of done per phase
-- What to build first and what to defer (no K8s/Kafka/gRPC before core slice)
-- **First Resume-Ready Milestone** (Phases 1, 2A–2C, 3, 4 + basic metrics + one failure demo)
+- Organization → project → gateway group → API → route hierarchy
+- Policy bundles, immutable revisions, overrides, and effective policy evaluation
+- Gateway integration at publish time and cache invalidation
 
 ---
 
@@ -120,7 +121,46 @@ Gateway groups and progressive runtime rollouts (Phase 12).
 - Label-based gateway group membership and selector precedence
 - Progressive rollout stages, deterministic cohort ranking, and manual advance flow
 - Effective desired config precedence (rollout assignment vs group vs API default)
-- Local smoke script and test commands for Phase 12
+- Local smoke script: `./scripts/smoke-phase12.sh`
+
+---
+
+### [MANAGEMENT_AUTH.md](./MANAGEMENT_AUTH.md)
+
+Management-plane identity, RBAC, and scoped credentials (Phase 13).
+
+**Read this to understand:**
+- Bootstrap flow, bearer token format, built-in roles, endpoint authorization
+- See also [`PHASE13_SECURITY_REVIEW.md`](./PHASE13_SECURITY_REVIEW.md)
+
+---
+
+### [SERVICE_DISCOVERY.md](./SERVICE_DISCOVERY.md)
+
+Dynamic backend membership with lease heartbeats (Phase 10).
+
+---
+
+### [EVENTS.md](./EVENTS.md)
+
+Platform events, transactional outbox, and signed webhooks (Phase 11).
+
+---
+
+### [OBSERVABILITY.md](./OBSERVABILITY.md)
+
+Request correlation, tracing, structured logs, and Prometheus metrics (Phase 9).
+
+---
+
+### [MVP_ROADMAP.md](./MVP_ROADMAP.md)
+
+Original vertical-slice implementation plan (Phases 0–9). **Phases 1–14 are implemented** in `Server/`; AWS deployment and items beyond Phase 14 remain future work.
+
+**Read this to understand:**
+- Historical sequencing from single-gateway proxy through observability
+- Tasks, affected components, tests, and definition of done per phase
+- What was deferred (K8s/Kafka/gRPC before core slice)
 
 ---
 
@@ -138,16 +178,14 @@ File-level classification: KEEP, REFACTOR AS CONCEPT, REWRITE, DELETE FROM NEW A
 
 ## Recommended Reading Order
 
-### For a new contributor implementing the renovation
+### For a new contributor
 
-1. **PRODUCT_SPEC.md** — what we are building and why
-2. **LEGACY_ANALYSIS.md** — what existed and what not to repeat
-3. **RENOVATION_OPTIONS.md** — confirm direction choice
-4. **ARCHITECTURE.md** — system shape
-5. **DATA_MODEL.md** + **API_SPEC.md** — implementation contracts
-6. **DISTRIBUTED_SYSTEMS.md** — failure-mode rationale
-7. **MVP_ROADMAP.md** — where to start coding (Phase 0)
-8. **LEGACY_MIGRATION.md** — what to touch and what to ignore in `server-old/`
+1. [Root README](../README.md) — quick start, architecture, and feature overview
+2. **PRODUCT_SPEC.md** — goals and non-goals
+3. **ARCHITECTURE.md** + **DISTRIBUTED_SYSTEMS.md** — system shape and failure modes
+4. **API_SPEC.md** + **DATA_MODEL.md** — implementation contracts
+5. Feature guides — **POLICY_ENGINE.md**, **ROLLOUTS.md**, **SERVICE_DISCOVERY.md**, etc.
+6. **LEGACY_MIGRATION.md** — what to ignore in `server-old/`
 
 ### For portfolio/interview preparation
 
@@ -188,8 +226,7 @@ LEGACY_ANALYSIS ──► RENOVATION_OPTIONS ──► PRODUCT_SPEC
 ## Constraints Acknowledged Across All Documents
 
 - Project name **AutoAPI** unchanged
-- No production code modified during documentation phase
-- Legacy code not deleted
+- Legacy code preserved in `server-old/` (not deleted)
 - Configuration distribution embedded in control plane for MVP
 - No unnecessary microservices or resume-driven technology choices
 - Distinct from DevNest (orchestration) and Cloud Networking Studio (infrastructure/IaC)
@@ -200,4 +237,4 @@ LEGACY_ANALYSIS ──► RENOVATION_OPTIONS ──► PRODUCT_SPEC
 
 ## Next Step After Reading
 
-Begin **MVP Roadmap Phase 0**: repository scaffold and legacy freeze, then Phase 1 single-gateway vertical slice. See [MVP_ROADMAP.md](./MVP_ROADMAP.md).
+For a hands-on introduction, follow the [root README quick start](../README.md#getting-started). For a specific feature area, open the guide listed above (policy engine, rollouts, service discovery, etc.).
