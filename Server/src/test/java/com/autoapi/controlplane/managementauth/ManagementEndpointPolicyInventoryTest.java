@@ -59,8 +59,25 @@ class ManagementEndpointPolicyInventoryTest {
                 "/api/v1/management/organizations/" + ID + "/role-bindings/" + ID),
             route(HttpMethod.DELETE, "/api/v1/management/projects/" + ID + "/role-bindings/" + ID),
             route(
-                HttpMethod.GET,
-                "/api/v1/management/service-accounts/" + ID + "/credentials/" + ID));
+                HttpMethod.GET, "/api/v1/management/service-accounts/" + ID + "/credentials/" + ID),
+            route(HttpMethod.GET, "/api/v1/management/organizations/" + ID + "/policy-bundles"),
+            route(HttpMethod.POST, "/api/v1/management/organizations/" + ID + "/policy-bundles"),
+            route(
+                HttpMethod.POST,
+                "/api/v1/management/organizations/" + ID + "/policy-bundles/" + ID + "/revisions"),
+            route(
+                HttpMethod.POST,
+                "/api/v1/management/organizations/"
+                    + ID
+                    + "/policy-bundles/"
+                    + ID
+                    + "/assignments"),
+            route(
+                HttpMethod.POST,
+                "/api/v1/management/projects/" + ID + "/policy-bundles/" + ID + "/assignments"),
+            route(HttpMethod.POST, "/api/v1/management/apis/" + ID + "/policy-overrides"),
+            route(HttpMethod.GET, "/api/v1/management/apis/" + ID + "/effective-policy"),
+            route(HttpMethod.POST, "/api/v1/management/policies/evaluate"));
 
     for (RouteSample sample : samples) {
       assertNotNull(

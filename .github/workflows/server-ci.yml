@@ -126,6 +126,10 @@ jobs:
         timeout-minutes: 22
         run: timeout --signal=TERM --kill-after=15s 20m ./scripts/smoke-phase13.sh
 
+      - name: Run Phase 14 policy engine smoke
+        timeout-minutes: 22
+        run: timeout --signal=TERM --kill-after=15s 20m ./scripts/smoke-phase14.sh
+
       - name: Compose cleanup
         if: always()
         run: docker compose down -v

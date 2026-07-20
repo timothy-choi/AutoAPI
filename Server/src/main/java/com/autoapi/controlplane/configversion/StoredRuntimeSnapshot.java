@@ -11,7 +11,8 @@ import java.util.UUID;
   "gateway",
   "routes",
   "apiKeys",
-  "observabilityMetadata"
+  "observabilityMetadata",
+  "effectivePolicies"
 })
 public record StoredRuntimeSnapshot(
     UUID apiId,
@@ -20,4 +21,5 @@ public record StoredRuntimeSnapshot(
     CompiledGatewaySection gateway,
     List<CompiledRouteSection> routes,
     List<CompiledApiKeySection> apiKeys,
-    CompiledObservabilityMetadataSection observabilityMetadata) {}
+    CompiledObservabilityMetadataSection observabilityMetadata,
+    List<CompiledEffectivePolicyRouteSection> effectivePolicies) {}

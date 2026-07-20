@@ -32,6 +32,18 @@ public final class ControlPlaneDatabaseCleaner {
     databaseClient.sql("DELETE FROM gateway_groups").fetch().rowsUpdated().block();
     databaseClient.sql("DELETE FROM gateways").fetch().rowsUpdated().block();
     databaseClient.sql("DELETE FROM config_versions").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM policy_audit_log").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM effective_policy_cache_metadata").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM policy_overrides").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM policy_bundle_assignments").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM policy_bundle_revisions").fetch().rowsUpdated().block();
+    databaseClient.sql("DELETE FROM policy_bundles").fetch().rowsUpdated().block();
+    databaseClient
+        .sql(
+            "UPDATE global_policy_cache_generation SET generation = 0, updated_at = NOW() WHERE id = 1")
+        .fetch()
+        .rowsUpdated()
+        .block();
     databaseClient.sql("DELETE FROM route_policy_bindings").fetch().rowsUpdated().block();
     databaseClient.sql("DELETE FROM traffic_split_destinations").fetch().rowsUpdated().block();
     databaseClient.sql("DELETE FROM traffic_split_policies").fetch().rowsUpdated().block();

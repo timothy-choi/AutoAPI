@@ -11,6 +11,9 @@ import com.autoapi.controlplane.persistence.RetryPolicyEntity;
 import com.autoapi.controlplane.persistence.RoutePolicyBindingEntity;
 import com.autoapi.controlplane.persistence.TrafficSplitDestinationEntity;
 import com.autoapi.controlplane.persistence.TrafficSplitPolicyEntity;
+import com.autoapi.controlplane.policy.EffectivePolicyDocument;
+import com.autoapi.controlplane.policy.EffectivePolicyRuntimeBridge;
+import com.autoapi.controlplane.policy.EffectivePolicyService;
 import com.autoapi.controlplane.validation.DraftGraphValidator;
 import com.autoapi.controlplane.validation.ValidationResult;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -38,16 +41,22 @@ public class ConfigVersionService {
   private final ConfigVersionRepository configVersionRepository;
   private final DatabaseClient databaseClient;
   private final ObjectMapper objectMapper;
+  private final EffectivePolicyService effectivePolicyService;
+  private final EffectivePolicyRuntimeBridge effectivePolicyRuntimeBridge;
 
   public ConfigVersionService(
       DraftGraphService draftGraphService,
       ConfigVersionRepository configVersionRepository,
       DatabaseClient databaseClient,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      EffectivePolicyService effectivePolicyService,
+      EffectivePolicyRuntimeBridge effectivePolicyRuntimeBridge) {
     this.draftGraphService = draftGraphService;
     this.configVersionRepository = configVersionRepository;
     this.databaseClient = databaseClient;
     this.objectMapper = objectMapper;
+    this.effectivePolicyService = effectivePolicyService;
+    this.effectivePolicyRuntimeBridge = effectivePolicyRuntimeBridge;
   }
 
   public Mono<ValidationResult> validate(UUID apiId) {
@@ -73,19 +82,103 @@ public class ConfigVersionService {
               if (!validation.valid()) {
                 return Mono.error(ControlPlaneException.validationFailed(validation.errors()));
               }
-              return configVersionRepository
-                  .findByApiIdAndContentHash(apiId, validation.contentHash())
+              return buildEnrichedPayload(apiId, graph)
                   .flatMap(
-                      existing ->
-                          Mono.<ConfigVersionEntity>error(
-                              ControlPlaneException.configVersionAlreadyExists(existing)))
-                  .switchIfEmpty(
-                      Mono.defer(() -> lockApiAndInsert(apiId, validation, message, graph)));
+                      enriched ->
+                          configVersionRepository
+                              .findByApiIdAndContentHash(apiId, enriched.runtimeContentHash())
+                              .flatMap(
+                                  existing ->
+                                      Mono.<ConfigVersionEntity>error(
+                                          ControlPlaneException.configVersionAlreadyExists(
+                                              existing)))
+                              .switchIfEmpty(
+                                  Mono.defer(() -> lockApiAndInsert(apiId, message, enriched))));
+            });
+  }
+
+  private Mono<EnrichedRuntimePayload> buildEnrichedPayload(
+      UUID apiId, DraftGraphService.DraftGraph graph) {
+    OffsetDateTime publishInstant = OffsetDateTime.now(ZoneOffset.UTC);
+    java.util.Map<UUID, RoutePolicyBindingEntity> bindingByRouteId =
+        graph.routePolicyBindings().stream()
+            .collect(java.util.stream.Collectors.toMap(RoutePolicyBindingEntity::routeId, b -> b));
+    java.util.Map<UUID, RateLimitPolicyEntity> policyById =
+        graph.rateLimitPolicies().stream()
+            .collect(java.util.stream.Collectors.toMap(RateLimitPolicyEntity::id, p -> p));
+    java.util.Map<UUID, BackendHealthPolicyEntity> healthPolicyById =
+        graph.backendHealthPolicies().stream()
+            .collect(java.util.stream.Collectors.toMap(BackendHealthPolicyEntity::id, p -> p));
+    java.util.Map<UUID, RetryPolicyEntity> retryPolicyById =
+        graph.retryPolicies().stream()
+            .collect(java.util.stream.Collectors.toMap(RetryPolicyEntity::id, p -> p));
+    java.util.Map<UUID, CircuitBreakerPolicyEntity> circuitBreakerPolicyById =
+        graph.circuitBreakerPolicies().stream()
+            .collect(java.util.stream.Collectors.toMap(CircuitBreakerPolicyEntity::id, p -> p));
+    java.util.Map<UUID, TrafficSplitPolicyEntity> trafficSplitPolicyById =
+        graph.trafficSplitPolicies().stream()
+            .collect(java.util.stream.Collectors.toMap(TrafficSplitPolicyEntity::id, p -> p));
+    java.util.Map<UUID, java.util.List<TrafficSplitDestinationEntity>> destinationsByPolicyId =
+        graph.trafficSplitDestinations().stream()
+            .collect(
+                java.util.stream.Collectors.groupingBy(
+                    TrafficSplitDestinationEntity::trafficSplitPolicyId));
+    HashableRuntimePayload payload =
+        RuntimeConfigCompiler.compile(
+            apiId,
+            graph.gatewayDefaults(),
+            graph.routes().stream()
+                .filter(com.autoapi.controlplane.persistence.RouteEntity::enabled)
+                .toList(),
+            graph.pools().stream()
+                .collect(
+                    java.util.stream.Collectors.toMap(
+                        com.autoapi.controlplane.persistence.UpstreamPoolEntity::id, p -> p)),
+            graph.targets().stream()
+                .collect(
+                    java.util.stream.Collectors.groupingBy(
+                        com.autoapi.controlplane.persistence.UpstreamTargetEntity::upstreamPoolId)),
+            bindingByRouteId,
+            policyById,
+            healthPolicyById,
+            retryPolicyById,
+            circuitBreakerPolicyById,
+            trafficSplitPolicyById,
+            destinationsByPolicyId,
+            graph.discoveredServices().stream()
+                .collect(
+                    java.util.stream.Collectors.toMap(
+                        com.autoapi.controlplane.persistence.DiscoveredServiceEntity::id, s -> s)),
+            graph.serviceInstances().stream()
+                .collect(
+                    java.util.stream.Collectors.groupingBy(
+                        com.autoapi.controlplane.persistence.ServiceInstanceEntity::serviceId)),
+            graph.apiKeys(),
+            publishInstant);
+    return effectivePolicyService
+        .evaluateAllRoutes(apiId, false)
+        .map(
+            effectiveByRoute -> {
+              java.util.Map<UUID, EffectivePolicyDocument> policies =
+                  effectiveByRoute == null ? java.util.Map.of() : effectiveByRoute;
+              HashableRuntimePayload enrichedPayload =
+                  new HashableRuntimePayload(
+                      payload.apiId(),
+                      payload.gateway(),
+                      effectivePolicyRuntimeBridge.apply(payload.routes(), policies),
+                      payload.apiKeys());
+              String runtimeContentHash =
+                  RuntimeContentHasher.sha256Hex(
+                      RuntimeContentHasher.canonicalJson(enrichedPayload));
+              java.util.List<CompiledEffectivePolicyRouteSection> effectiveSections =
+                  effectivePolicyRuntimeBridge.toSnapshotSections(policies);
+              return new EnrichedRuntimePayload(
+                  enrichedPayload, runtimeContentHash, effectiveSections, publishInstant);
             });
   }
 
   private Mono<ConfigVersionEntity> lockApiAndInsert(
-      UUID apiId, ValidationResult validation, String message, DraftGraphService.DraftGraph graph) {
+      UUID apiId, String message, EnrichedRuntimePayload enriched) {
     return databaseClient
         .sql("SELECT id FROM apis WHERE id = $1 FOR UPDATE")
         .bind(0, apiId)
@@ -102,89 +195,13 @@ public class ConfigVersionService {
                     .one()
                     .flatMap(
                         nextVersion -> {
-                          OffsetDateTime publishInstant = OffsetDateTime.now(ZoneOffset.UTC);
-                          java.util.Map<UUID, RoutePolicyBindingEntity> bindingByRouteId =
-                              graph.routePolicyBindings().stream()
-                                  .collect(
-                                      java.util.stream.Collectors.toMap(
-                                          RoutePolicyBindingEntity::routeId, b -> b));
-                          java.util.Map<UUID, RateLimitPolicyEntity> policyById =
-                              graph.rateLimitPolicies().stream()
-                                  .collect(
-                                      java.util.stream.Collectors.toMap(
-                                          RateLimitPolicyEntity::id, p -> p));
-                          java.util.Map<UUID, BackendHealthPolicyEntity> healthPolicyById =
-                              graph.backendHealthPolicies().stream()
-                                  .collect(
-                                      java.util.stream.Collectors.toMap(
-                                          BackendHealthPolicyEntity::id, p -> p));
-                          java.util.Map<UUID, RetryPolicyEntity> retryPolicyById =
-                              graph.retryPolicies().stream()
-                                  .collect(
-                                      java.util.stream.Collectors.toMap(
-                                          RetryPolicyEntity::id, p -> p));
-                          java.util.Map<UUID, CircuitBreakerPolicyEntity> circuitBreakerPolicyById =
-                              graph.circuitBreakerPolicies().stream()
-                                  .collect(
-                                      java.util.stream.Collectors.toMap(
-                                          CircuitBreakerPolicyEntity::id, p -> p));
-                          java.util.Map<UUID, TrafficSplitPolicyEntity> trafficSplitPolicyById =
-                              graph.trafficSplitPolicies().stream()
-                                  .collect(
-                                      java.util.stream.Collectors.toMap(
-                                          TrafficSplitPolicyEntity::id, p -> p));
-                          java.util.Map<UUID, java.util.List<TrafficSplitDestinationEntity>>
-                              destinationsByPolicyId =
-                                  graph.trafficSplitDestinations().stream()
-                                      .collect(
-                                          java.util.stream.Collectors.groupingBy(
-                                              TrafficSplitDestinationEntity::trafficSplitPolicyId));
-                          HashableRuntimePayload payload =
-                              RuntimeConfigCompiler.compile(
-                                  apiId,
-                                  graph.gatewayDefaults(),
-                                  graph.routes().stream()
-                                      .filter(
-                                          com.autoapi.controlplane.persistence.RouteEntity::enabled)
-                                      .toList(),
-                                  graph.pools().stream()
-                                      .collect(
-                                          java.util.stream.Collectors.toMap(
-                                              com.autoapi.controlplane.persistence
-                                                      .UpstreamPoolEntity
-                                                  ::id,
-                                              p -> p)),
-                                  graph.targets().stream()
-                                      .collect(
-                                          java.util.stream.Collectors.groupingBy(
-                                              com.autoapi.controlplane.persistence
-                                                      .UpstreamTargetEntity
-                                                  ::upstreamPoolId)),
-                                  bindingByRouteId,
-                                  policyById,
-                                  healthPolicyById,
-                                  retryPolicyById,
-                                  circuitBreakerPolicyById,
-                                  trafficSplitPolicyById,
-                                  destinationsByPolicyId,
-                                  graph.discoveredServices().stream()
-                                      .collect(
-                                          java.util.stream.Collectors.toMap(
-                                              com.autoapi.controlplane.persistence
-                                                      .DiscoveredServiceEntity
-                                                  ::id,
-                                              s -> s)),
-                                  graph.serviceInstances().stream()
-                                      .collect(
-                                          java.util.stream.Collectors.groupingBy(
-                                              com.autoapi.controlplane.persistence
-                                                      .ServiceInstanceEntity
-                                                  ::serviceId)),
-                                  graph.apiKeys(),
-                                  publishInstant);
                           StoredRuntimeSnapshot snapshot =
                               RuntimeConfigCompiler.toStoredSnapshot(
-                                  payload, nextVersion, validation.contentHash(), publishInstant);
+                                  enriched.payload(),
+                                  nextVersion,
+                                  enriched.runtimeContentHash(),
+                                  enriched.publishInstant(),
+                                  enriched.effectiveSections());
                           Json snapshotJson;
                           try {
                             snapshotJson =
@@ -200,7 +217,7 @@ public class ConfigVersionService {
                                   UUID.randomUUID(),
                                   apiId,
                                   nextVersion,
-                                  validation.contentHash(),
+                                  enriched.runtimeContentHash(),
                                   snapshotJson,
                                   message,
                                   OffsetDateTime.now(ZoneOffset.UTC));
@@ -211,7 +228,7 @@ public class ConfigVersionService {
                                   ex ->
                                       configVersionRepository
                                           .findByApiIdAndContentHash(
-                                              apiId, validation.contentHash())
+                                              apiId, enriched.runtimeContentHash())
                                           .flatMap(
                                               existing ->
                                                   Mono.<ConfigVersionEntity>error(
@@ -223,6 +240,12 @@ public class ConfigVersionService {
                                                       null))));
                         }));
   }
+
+  private record EnrichedRuntimePayload(
+      HashableRuntimePayload payload,
+      String runtimeContentHash,
+      java.util.List<CompiledEffectivePolicyRouteSection> effectiveSections,
+      OffsetDateTime publishInstant) {}
 
   public Flux<ConfigVersionEntity> listMetadata(UUID apiId) {
     return configVersionRepository.findByApiIdOrderByVersionDesc(apiId);

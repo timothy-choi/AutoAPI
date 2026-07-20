@@ -92,6 +92,14 @@ public final class PlatformEventTypes {
   public static final String MANAGEMENT_AUTHORIZATION_DENIED = "management_authorization.denied.v1";
   public static final String MANAGEMENT_BOOTSTRAP_INITIALIZED = "bootstrap_admin_initialized.v1";
 
+  public static final String POLICY_BUNDLE_CREATED = "policy_bundle.created.v1";
+  public static final String POLICY_BUNDLE_UPDATED = "policy_bundle.updated.v1";
+  public static final String POLICY_BUNDLE_REVISION_CREATED = "policy_bundle.revision.created.v1";
+  public static final String POLICY_BUNDLE_ASSIGNED = "policy_bundle.assigned.v1";
+  public static final String POLICY_BUNDLE_DETACHED = "policy_bundle.detached.v1";
+  public static final String POLICY_EVALUATED = "policy.evaluated.v1";
+  public static final String EFFECTIVE_POLICY_CHANGED = "effective_policy.changed.v1";
+
   /** Event types excluded from default webhook fan-out to prevent recursion. */
   public static final Set<String> NON_DELIVERABLE_EVENT_TYPES =
       Set.of(
@@ -164,7 +172,14 @@ public final class PlatformEventTypes {
           MANAGEMENT_CREDENTIAL_EXPIRED,
           MANAGEMENT_AUTHENTICATION_FAILED,
           MANAGEMENT_AUTHORIZATION_DENIED,
-          MANAGEMENT_BOOTSTRAP_INITIALIZED);
+          MANAGEMENT_BOOTSTRAP_INITIALIZED,
+          POLICY_BUNDLE_CREATED,
+          POLICY_BUNDLE_UPDATED,
+          POLICY_BUNDLE_REVISION_CREATED,
+          POLICY_BUNDLE_ASSIGNED,
+          POLICY_BUNDLE_DETACHED,
+          POLICY_EVALUATED,
+          EFFECTIVE_POLICY_CHANGED);
 
   private PlatformEventTypes() {}
 

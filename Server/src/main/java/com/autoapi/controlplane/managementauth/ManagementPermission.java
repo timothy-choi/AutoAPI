@@ -26,6 +26,13 @@ public enum ManagementPermission {
   POLICY_READ("policy.read"),
   POLICY_MANAGE("policy.manage"),
 
+  POLICY_BUNDLE_READ("policy_bundle.read"),
+  POLICY_BUNDLE_MANAGE("policy_bundle.manage"),
+  POLICY_BUNDLE_ASSIGN("policy_bundle.assign"),
+  POLICY_BUNDLE_DETACH("policy_bundle.detach"),
+  POLICY_EVALUATE("policy.evaluate"),
+  POLICY_EFFECTIVE_READ("policy.effective.read"),
+
   CONFIGURATION_READ("configuration.read"),
   CONFIGURATION_CREATE("configuration.create"),
   CONFIGURATION_ACTIVATE("configuration.activate"),

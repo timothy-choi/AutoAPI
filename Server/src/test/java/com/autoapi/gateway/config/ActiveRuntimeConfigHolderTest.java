@@ -351,6 +351,7 @@ class ActiveRuntimeConfigHolderTest {
         snapshot.gateway(),
         snapshot.routes(),
         snapshot.apiKeys(),
+        null,
         null);
   }
 }

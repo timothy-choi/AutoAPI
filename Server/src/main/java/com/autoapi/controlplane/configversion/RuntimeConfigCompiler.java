@@ -294,6 +294,15 @@ public final class RuntimeConfigCompiler {
 
   public static StoredRuntimeSnapshot toStoredSnapshot(
       HashableRuntimePayload payload, long version, String contentHash, OffsetDateTime compiledAt) {
+    return toStoredSnapshot(payload, version, contentHash, compiledAt, List.of());
+  }
+
+  public static StoredRuntimeSnapshot toStoredSnapshot(
+      HashableRuntimePayload payload,
+      long version,
+      String contentHash,
+      OffsetDateTime compiledAt,
+      List<CompiledEffectivePolicyRouteSection> effectivePolicies) {
     CompiledObservabilityMetadataSection metadata =
         com.autoapi.controlplane.observability.ObservabilityMetadataCompiler.compile(
             payload, version, compiledAt);
@@ -304,7 +313,8 @@ public final class RuntimeConfigCompiler {
         payload.gateway(),
         payload.routes(),
         payload.apiKeys(),
-        metadata);
+        metadata,
+        effectivePolicies == null ? List.of() : List.copyOf(effectivePolicies));
   }
 
   private static Comparator<RouteEntity> routeComparator() {
